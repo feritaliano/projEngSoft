@@ -7,13 +7,14 @@
 > - `database/docs/modelo-er.md`: **modelo ER do projeto — contexto obrigatório para banco, backend e frontend.** Entidades, atributos, relacionamentos, cardinalidades, versão Mermaid com nomes físicos e verificação de 3FN. Desenhado no brModelo Web (`CarteiraB3_ER`, lógico `CarteiraB3_Logico`). **Congelado em 05/10/2026 (D14).** Resumo do esquema relacional na seção 7 deste documento.
 > - `database/docs/mapeamento.md`: as 29 tabelas com colunas, tipos, PK, FK, UNIQUE e regra de mapeamento aplicada.
 > - `database/docs/descricao-problema.md`: descrição do problema, público, ODS e regras de negócio em linguagem de usuário (BD Parte 1).
-> - `claude/plano-de-acao.md`: tarefas, datas e critérios de pronto de todas as trilhas. **Replanejado em 24/10/2026: todas as frentes com datas a partir de 25/10.**
-> - `claude/convencoes-equipe.md`: Git, definição de pronto e uso dos agentes.
+> - `claude/plano-de-acao.md`: tarefas, datas e critérios de pronto de todas as trilhas. **Replanejado em 24/10/2026: todas as frentes com datas a partir de 25/10; ajustado em 26/10 (D38).**
+> - `claude/convencoes-equipe.md`: Git, definição de pronto, uso dos agentes e **ferramentas do Claude Code (plugins por frente, D38)**.
 > - `claude/estrutura-repositorio.md`: árvore de pastas do repositório, local do `.env` e dos arquivos do Docker, o que é gerado e o dono de cada pasta.
+> - `claude/handoff-ux.md`: handoff do UX para o frontend, com o link do arquivo Figma e do frame de cada tela (modelo criado em 26/10; preenchido no U5).
 > - `projetoEngSoftware.md`: enunciado de Engenharia de Software.
 > - `claude/enunciadoBancoDeDados.md`: enunciado de BD, transcrição integral do PDF. **É a fonte primária para qualquer entrega de BD.**
 >
-> Ordem de precedência em caso de conflito: este documento → `claude/arquitetura.md` → `database/docs/modelo-er.md` → prompts em `agentes/`. Os quatro prompts em `agentes/` (banco, backend, frontend e UX/UI) foram reescritos em 05/10/2026 a partir deste documento, da arquitetura e do ER congelado.
+> Ordem de precedência em caso de conflito: este documento → `claude/arquitetura.md` → `database/docs/modelo-er.md` → prompts em `agentes/`. Os quatro prompts em `agentes/` (banco, backend, frontend e UX/UI) foram reescritos em 05/10/2026 a partir deste documento, da arquitetura e do ER congelado; os de backend, frontend e UX/UI foram atualizados em 26/10/2026 com as ferramentas (D38).
 
 ## 1. O que é
 Sistema único, desenvolvido por **1 pessoa, com eventual ajuda de uma segunda**, que atende **duas disciplinas** da UNIFESP/ICT. O enunciado de BD permite trabalho individual ou em grupo de até 4 pessoas.
@@ -33,13 +34,13 @@ Sistema único, desenvolvido por **1 pessoa, com eventual ajuda de uma segunda**
 **ODS:** 10 (meta 10.2, inclusão econômica) e 4 (meta 4.4, educação financeira como habilidade relevante). A meta 8.10 foi descartada porque trata de instituições financeiras. **Enquadramento confirmado com a professora em 05/10/2026.** A justificativa está na seção 5 de `database/docs/descricao-problema.md`.
 
 ## 2. Stack
-- Frontend: Angular (standalone, TypeScript strict) + Tailwind CSS
+- Frontend: Angular (standalone, TypeScript strict) + Tailwind CSS; E2E com `@playwright/test` (D38)
 - Backend: NestJS (TypeScript strict), monólito modular com dois processos (api e worker) e rotinas agendadas de ingestão (`@nestjs/schedule`) — ver `claude/arquitetura.md`
 - Banco: PostgreSQL 16+ em Docker + Prisma ORM (migrations versionadas); schemas `public` (domínio/ER), `ops` (técnico) e `analytics` (derivado)
 - Contrato front↔back: OpenAPI gerado pelo backend
-- Design: Figma (conector ativo no Claude)
+- Design: Figma (conector ativo no Claude); o frontend lê os frames pelo plugin Figma do Claude Code (D38)
 - Modelagem ER de entrega: brModelo Web
-- Desenvolvimento dos agentes de código: Claude Code (VS Code), subagentes em `.claude/agents/`
+- Desenvolvimento dos agentes de código: Claude Code (VS Code), subagentes em `.claude/agents/`, plugins por frente em `claude/convencoes-equipe.md` (D38)
 
 ## 3. Fontes de dados (fonte primária sempre que existir)
 | Dado | Fonte | Observação |
@@ -183,6 +184,7 @@ Todos os itens abaixo fazem parte do produto. O banco é modelado para o produto
 | D35 | Operações comuns separadas em duas categorias de IR: ações no mercado à vista (`COMMON_STOCK`, com isenção de vendas até R$ 20 mil) e demais ativos (`COMMON_OTHER`: ETF de renda variável, BDR, units). Muda só o domínio de `CategoriaIR.codigo`, não a estrutura do ER (24/10/2026) | A isenção da Lei 11.033/2004, art. 3º, I, vale só para vendas de ações; com uma categoria única, um mês com ações e ETF não pode ser apurado corretamente (P0, `database/docs/memoria-calculo.md`) |
 | D36 | IRRF ("dedo-duro": 0,005% sobre vendas comuns; 1% sobre ganho de day trade) não é armazenado: é calculado das operações e deduzido do imposto do mês (24/10/2026) | É valor derivado (D32); diferença eventual com o retido pela corretora não é registrada |
 | D37 | Estrutura do repositório (26/10/2026): monorepo com três pacotes Node (raiz com Prisma e Docker; `backend/` e `frontend/` com `package.json` próprio, criados pelos CLIs no K1 e no W1); **um único `.env` na raiz**, lido pelo Compose, pelo Prisma e pelo backend; contrato da API versionado em `backend/openapi/openapi.json`. Detalhes em `claude/estrutura-repositorio.md` | Uma fonte de credenciais evita divergência entre Docker, migrations e API; o Prisma já vive na raiz (D1) |
+| D38 | Ferramentas do Claude Code (26/10/2026). Plugins oficiais com escopo de projeto: `feature-dev`, `pr-review-toolkit`, `claude-md-management`, `security-guidance`, `commit-commands`, `figma`, `playwright`; `frontend-design` e `superpowers` desativados no projeto (`enabledPlugins` em `.claude/settings.json`). Uso por frente em `claude/convencoes-equipe.md` e nos prompts. **E2E com `@playwright/test`** em `frontend/e2e/*.spec.ts`, no CI; o plugin Playwright serve só para conferência interativa. **Handoff de UX** em `claude/handoff-ux.md`, com o link do frame de cada tela; o frontend lê o Figma pelo plugin e não implementa tela sem link. **Sem segunda pessoa, `/review-pr` substitui o revisor**; a proteção da `main` exige PR e CI, com 0 aprovações enquanto houver uma pessoa | Plugins que tomam decisões visuais ou impõem fluxo próprio conflitam com o design system e com o formato dos agentes; o D33 exige testes versionados, que o plugin não é; o GitHub não deixa o autor aprovar o próprio PR |
 
 ## 7. Modelo de dados
 O banco cobre o produto completo (D6). Modelo detalhado em `claude/arquitetura.md` (seção 4, físico) e `database/docs/modelo-er.md` (conceitual, B2): **27 entidades + 2 relacionamentos N:N com atributos = 29 tabelas**, 33 relacionamentos nomeados, todas as relações na 3FN.
@@ -231,37 +233,38 @@ O banco cobre o produto completo (D6). Modelo detalhado em `claude/arquitetura.m
 Dado derivado **nunca** vira coluna (D4, D17, D32): posição, preço médio, lucro, indicadores, VP por cota, vacância do fundo, nível do setor, base e imposto do IR, valor devido e vencimento do DARF.
 
 ## 8. Agentes
-Os prompts completos estão em `agentes/`, todos reescritos em 05/10/2026: modelo de 27 entidades/29 tabelas, etapas S1–S10 (S1 neste semestre), decisões D1–D36, regras RN01–RN12, tarefas e datas do plano de cada frente. Quando uma decisão ou RN mudar, os quatro prompts são atualizados na mesma tarefa (`claude/convencoes-equipe.md`).
+Os prompts completos estão em `agentes/`, todos reescritos em 05/10/2026: modelo de 27 entidades/29 tabelas, etapas S1–S10 (S1 neste semestre), decisões D1–D36, regras RN01–RN12, tarefas e datas do plano de cada frente. Os de backend, frontend e UX/UI foram atualizados em 26/10/2026 com as ferramentas de cada frente (D38). Quando uma decisão ou RN mudar, os quatro prompts são atualizados na mesma tarefa (`claude/convencoes-equipe.md`).
 
 **Frentes ativas (replanejadas em 24/10/2026):** todas, com datas no plano. Fundação em 25–27/10; de 28/10 a meados de novembro correm BD (P1–P2), UX/UI (U1–U5) e backend (K0–K3); o frontend entra em 10/11. Prazos de BD têm prioridade (G-P4, G-UX).
 
-| Agente | Arquivo | Responsável por | Onde roda |
-|---|---|---|---|
-| Banco de Dados | `agentes/agente-banco-de-dados.md` | Modelagem do produto completo, `schema.prisma`, migrations, seed e **todos os entregáveis de BD** | Chat deste projeto (Parte 1) e Claude Code (`@database`, Parte 2 e schema) |
-| Backend | `agentes/agente-backend.md` | API NestJS, arquitetura, regras de negócio, ingestão de dados, cálculos (posição, indicadores, valuation, IR), testes | Claude Code (`@backend`) |
-| Frontend | `agentes/agente-frontend.md` | Angular + Tailwind, telas, integração com a API, specs | Claude Code (`@frontend`) |
-| UX/UI | `agentes/agente-ux-ui.md` | Design system, telas no Figma, microcopy educativa | Chat deste projeto, com o conector Figma ativo |
+| Agente | Arquivo | Responsável por | Onde roda | Ferramentas (D38) |
+|---|---|---|---|---|
+| Banco de Dados | `agentes/agente-banco-de-dados.md` | Modelagem do produto completo, `schema.prisma`, migrations, seed e **todos os entregáveis de BD** | Chat deste projeto (Parte 1) e Claude Code (`@database`, Parte 2 e schema) | Fluxo geral das convenções (`/feature-dev`, `/review-pr`, `/commit`) |
+| Backend | `agentes/agente-backend.md` | API NestJS, arquitetura, regras de negócio, ingestão de dados, cálculos (posição, indicadores, valuation, IR), testes | Claude Code (`@backend`) | `/feature-dev`, `code-simplifier`, `silent-failure-hunter`, `type-design-analyzer`, `pr-test-analyzer`, `/review-pr` |
+| Frontend | `agentes/agente-frontend.md` | Angular + Tailwind, telas, integração com a API, specs | Claude Code (`@frontend`) | Plugin Figma (frames do `claude/handoff-ux.md`), Playwright (conferência), `@playwright/test` (E2E), `/feature-dev`, `/review-pr` |
+| UX/UI | `agentes/agente-ux-ui.md` | Design system, telas no Figma, microcopy educativa, handoff | Chat deste projeto, com o conector Figma ativo | Plugin Design: design system, crítica de design, microcopy, revisão de acessibilidade, especificação de handoff |
 
 **Regras de uso:**
 - Um chat por agente, iniciado com `Agente: <nome>` e a tarefa do plano.
 - Resultado aprovado vira documento do projeto e é registrado na seção 10.
 - Um agente não altera o artefato de outro.
-- Git, PR e definição de pronto seguem `claude/convencoes-equipe.md`.
+- Git, PR, definição de pronto e ferramentas seguem `claude/convencoes-equipe.md`.
 
-**Checklist interativo** (página privada): https://claude.ai/artifact/MEKLYSKz6kRe1ff3nvop6U. **Atualizado em 05/10/2026** com o plano vigente (`claude/plano-de-acao.md`): todas as trilhas (BD Parte 1, BD Parte 2, UX/UI, fundação, backend, frontend) com datas, dependências e critério de pronto. O progresso marcado vive no checklist; datas e critérios vivem no plano. Toda mudança no plano atualiza o checklist na mesma tarefa.
+**Checklist interativo** (página privada): https://claude.ai/artifact/MEKLYSKz6kRe1ff3nvop6U. **Atualizado em 26/10/2026** com o plano vigente (`claude/plano-de-acao.md`): todas as trilhas (BD Parte 1, BD Parte 2, UX/UI, fundação, backend, frontend) com datas, dependências e critério de pronto. O progresso marcado vive no checklist; datas e critérios vivem no plano. Toda mudança no plano atualiza o checklist na mesma tarefa.
 
 ## 9. Estrutura do repositório
 Definida em `claude/estrutura-repositorio.md` (D37): árvore completa, onde fica cada arquivo, o que vai para o Git e o dono de cada pasta. Resumo:
 ```
 .claude/agents/   subagentes do Claude Code (espelho de agentes/)
+.claude/settings.json  permissões e plugins do projeto (D38)
 .github/          template de PR; workflows/ci.yml (K1)
-agentes/  claude/ prompts e documentação
+agentes/  claude/ prompts e documentação (inclui claude/handoff-ux.md)
 prisma/           schema.prisma, migrations/ (agente database)
 database/         docs/, scripts/, tests/, sql/ (ddl gerado, inserts, queries), results/
 data/raw/         bronze (fora do Git)
 docker/           scripts de inicialização do PostgreSQL
 backend/          NestJS (K1): src/modules/<modulo>/{domain,application,infrastructure,presentation}, main.api.ts, main.worker.ts, openapi/
-frontend/         Angular (W1): src/app/{core,shared,api,features}
+frontend/         Angular (W1): src/app/{core,shared,api,features}, e2e/ com @playwright/test (R1)
 .env (fora do Git), .env.example, docker-compose.yml, prisma.config.ts, package.json, CLAUDE.md, README.md  na raiz
 ```
 
@@ -269,11 +272,13 @@ frontend/         Angular (W1): src/app/{core,shared,api,features}
 | Artefato | Status | Local |
 |---|---|---|
 | Prompt do agente de banco | **Atualizado (05/10/2026)** | `agentes/agente-banco-de-dados.md` |
-| Prompts de backend, frontend e UX/UI | **Reescritos (05/10/2026)** | `agentes/` |
-| Estrutura do repositório | **Concluído (26/10/2026)**, D37 | `claude/estrutura-repositorio.md` |
-| Plano de ação | **Replanejado (24/10/2026)**, todas as trilhas com datas a partir de 25/10 | `claude/plano-de-acao.md` |
-| Checklist interativo | **Atualizado (24/10/2026)**, datas do replanejamento; B1–B6, F1, P0, G1 e D1 marcadas | página privada (link na seção 8) |
-| Convenções da equipe | Concluído | `claude/convencoes-equipe.md` |
+| Prompts de backend, frontend e UX/UI | **Reescritos (05/10/2026); ferramentas incluídas (26/10/2026, D38)** | `agentes/` |
+| Estrutura do repositório | **Concluído (26/10/2026)**, D37; atualizada com handoff e E2E (D38) | `claude/estrutura-repositorio.md` |
+| Plano de ação | **Replanejado (24/10/2026)**, todas as trilhas com datas a partir de 25/10; ajustado em 26/10 (D38: U5, R1, W1, F3, G-U3) | `claude/plano-de-acao.md` |
+| Checklist interativo | **Atualizado (26/10/2026)** com o ajuste do D38; B1–B6, F1, P0, G1 e D1 marcadas | página privada (link na seção 8) |
+| Convenções da equipe | **Atualizado (26/10/2026)**: ferramentas do Claude Code, revisão sem segunda pessoa, proteção da `main` | `claude/convencoes-equipe.md` |
+| Handoff UX → frontend | **Modelo criado (26/10/2026)**; preenchido no U5 | `claude/handoff-ux.md` |
+| Arquivo Figma do design system | **Pendente (U1)**: registrar o link aqui quando o arquivo for criado | — |
 | Enunciado de BD (transcrição) | Concluído | `claude/enunciadoBancoDeDados.md` |
 | Arquitetura de dados e da aplicação | **Aprovada (30/09/2026)**; atualizada com D31 | `claude/arquitetura.md` |
 | Modelo ER (Mermaid + especificação brModelo + verificação 3FN) | **Congelado (05/10/2026)** | `database/docs/modelo-er.md` |
@@ -294,14 +299,17 @@ frontend/         Angular (W1): src/app/{core,shared,api,features}
 - [ ] P1: tabelas com poucos registros reais (`tax_categories` tem 4 categorias; `economic_indexes`, 4 índices) contra a exigência de ±10 tuplas por tabela: decidir com a professora ou completar com dados reais (ex.: outros índices do Banco Central).
 - [ ] Decidir a fonte de proventos (seção 3); afeta também o DY de C4 no S3.
 - [ ] Confirmar a fonte do Ibovespa.
+- [ ] D2 (27–31/10): schema `ops` com `ops.user_sessions`; bloqueia o K2 (04/11). Banco do sistema, fora da entrega de BD.
 
 **Fundação (usuário, 25–27/10)**
 - [ ] F2: Claude Code funcionando (comando `claude` no PATH).
-- [ ] F3: repositório no GitHub com regras e `.claude/agents/`.
-- [ ] F4: `docker-compose` com PostgreSQL (destrava o D1 sem o ambiente de nuvem).
+- [ ] F3: repositório no GitHub com regras e `.claude/agents/`; proteção da `main` com PR obrigatório e 0 aprovações enquanto houver uma pessoa (D38); `gh auth login`.
+- [ ] Copiar para o repositório os documentos atualizados em 26/10 (D38): `agentes/agente-backend.md`, `agentes/agente-frontend.md`, `agentes/agente-ux-ui.md`, `claude/contexto-projeto.md`, `claude/convencoes-equipe.md`, `claude/plano-de-acao.md`, `claude/estrutura-repositorio.md`, `claude/handoff-ux.md`; e atualizar o corpo de `.claude/agents/backend.md` e `.claude/agents/frontend.md` (o cabeçalho YAML não muda).
+- [ ] Template de PR (`.github/pull_request_template.md`): incluir o item "`/review-pr` rodado; achados críticos tratados ou descartados com motivo".
 
 **UX/UI, backend e frontend**
 - [ ] U0 (25/10): aprovar a lista de telas do S1 proposta em `agentes/agente-ux-ui.md`.
+- [ ] U1: registrar na seção 10 o link do arquivo Figma do design system.
 
 **Planejamento**
 - [ ] Aprovar a entrega do semestre de Engenharia de Software (seção 5): as datas atuais cobrem só o S1.
@@ -323,3 +331,5 @@ frontend/         Angular (W1): src/app/{core,shared,api,features}
 | 24/10/2026 | Domínio `binaries.prisma.sh` liberado pelo usuário; conferência do Prisma concluída: `migrate deploy` do zero, `migrate diff` vazio, `ddl.sql` idêntico, Prisma Client gerado | `prisma/`, `database/sql/ddl.sql` |
 | 24/10/2026 | Projeto geral retomado: todas as frentes replanejadas a partir de 25/10 (fundação 25–27/10, UX/UI até 16/11, backend até 25/11, frontend até 06/12, BD Parte 2 até 30/11); novo gatilho G-U3; datas atualizadas nos prompts de UX, backend, frontend e banco e no checklist | `claude/plano-de-acao.md`, `agentes/*.md`, checklist interativo |
 | 26/10/2026 | Estrutura do repositório definida (D37) para o F3: árvore, local do `.env` (raiz, único) e dos arquivos do Docker, gerados e donos por pasta; referência incluída nos quatro prompts, no `CLAUDE.md` e no README; F3 e F4 com critério de pronto ajustado (o CI só existe a partir do K1) | `claude/estrutura-repositorio.md`, `claude/plano-de-acao.md`, `agentes/*.md`, `CLAUDE.md` |
+| 26/10/2026 | F4 concluído: banco local validado pelo usuário (Docker, `db:migrate`, `db:test`). Revisão da prontidão do banco para o sistema: `public` completo para o S1; falta o schema `ops` com `ops.user_sessions` (exigido pelo K2 e sem tarefa no plano) → nova tarefa D2 (27–31/10), K2 passa a depender dela | `claude/plano-de-acao.md`, `agentes/agente-banco-de-dados.md`, `agentes/agente-backend.md`, checklist |
+| 26/10/2026 | Ferramentas do Claude Code (D38): plugins por frente; `frontend-design` e `superpowers` desativados no projeto (feito pelo usuário em `.claude/settings.json`, junto com a seção de ferramentas do `CLAUDE.md`); E2E com `@playwright/test`; handoff de UX com link do frame de cada tela (`claude/handoff-ux.md`, modelo); `/review-pr` no lugar do revisor humano e proteção da `main` com 0 aprovações enquanto houver uma pessoa; U5, R1, W1, F3 e G-U3 ajustados no plano e no checklist | `agentes/agente-backend.md`, `agentes/agente-frontend.md`, `agentes/agente-ux-ui.md`, `claude/convencoes-equipe.md`, `claude/plano-de-acao.md`, `claude/estrutura-repositorio.md`, `claude/handoff-ux.md`, checklist |

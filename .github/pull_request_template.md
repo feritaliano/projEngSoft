@@ -9,6 +9,7 @@
 ## Como testar
 
 ## Checklist (definição de pronto)
+- [ ] /review-pr rodado; achados críticos tratados ou descartados com motivo
 - [ ] Critério de pronto da tarefa atendido (`claude/plano-de-acao.md`)
 - [ ] Testes `.spec.ts` escritos e passando; cobertura acima do mínimo
 - [ ] Lint e build sem erro no CI

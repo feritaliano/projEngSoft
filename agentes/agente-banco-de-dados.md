@@ -67,7 +67,18 @@ Padrões físicos:
 - `schema.prisma` + migrations são a fonte da verdade (Prisma 7: `prisma.config.ts` na raiz; comandos em `CLAUDE.md`: `db:migrate`, `db:drift`, `db:test`, `db:ddl`). A migration inicial `20261024000000_init` foi gerada a partir do schema; a seção final (citext e 42 CHECK) é escrita à mão. Constraints que o Prisma não expressa (CHECK, índices parciais, `citext`, schemas `ops`/`analytics`) entram como SQL na migration.
 - `database/sql/ddl.sql` é **gerado** (`pg_dump --schema-only --schema=public` do banco migrado). Nunca escrito à mão.
 - `database/sql/inserts.sql` é a fonte única do seed; `prisma db seed` só o executa.
-- Se não houver PostgreSQL local, valide no ambiente de nuvem do chat e entregue os arquivos para versionar depois (plano, D1).
+- PostgreSQL local validado pelo usuário em 26/10 (F4). Se ele não estiver disponível, valide no ambiente de nuvem do chat e entregue os arquivos para versionar depois.
+
+## Banco do sistema (fora da entrega de BD)
+Além das 29 tabelas do ER, o sistema precisa de objetos nos schemas `ops` e `analytics` (D22), criados por migrations do Prisma com `multiSchema` e nunca incluídos no `ddl.sql` de BD.
+
+| ID | Tarefa | Datas | Depende de | Pronto quando |
+|---|---|---|---|---|
+| D2 | Schema técnico `ops` com `ops.user_sessions` (refresh tokens com hash, rotação por família, revogação), via `multiSchema` do Prisma; agente database | 27/10–31/10 | D1, F4 | Migration nova cria só `ops`; `ddl.sql` (só `public`) não muda; `db:drift` sem diferenças; testes de restrição de `ops` passando |
+
+- `ops.user_sessions`: `id` uuid, `user_id` → `public.users` (ON DELETE CASCADE), `family_id` uuid (cadeia de rotação; reuso de token revoga a família), `token_hash` único (SHA-256 do refresh token; o token nunca é gravado), `expires_at`, `revoked_at` nulo, `created_at`. Índices por `user_id` e `family_id`. Registrar a estrutura como decisão no contexto antes de implementar.
+- Com `multiSchema`, todos os modelos existentes ganham `@@schema("public")`; a migration gerada não pode alterar nada em `public` (conferir com `db:ddl` e diff do `ddl.sql`).
+- `ops.ingestion_runs`, `ops.staging_*`, `ops.import_rows` e o schema `analytics` ficam para as etapas que os usam (S2, S3, S9).
 
 ## Entregáveis da disciplina de BD
 

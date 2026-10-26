@@ -1,6 +1,6 @@
 # Estrutura do repositório — Carteira B3
 
-> Criado em 26/10/2026 (F3). Define onde cada arquivo fica, quem é dono de cada pasta e o que vai ou não para o Git. Vale para todos os agentes; mudança de estrutura só com registro em `claude/contexto-projeto.md` (D37).
+> Criado em 26/10/2026 (F3); atualizado no mesmo dia com o handoff de UX e o E2E do frontend (D38). Define onde cada arquivo fica, quem é dono de cada pasta e o que vai ou não para o Git. Vale para todos os agentes; mudança de estrutura só com registro em `claude/contexto-projeto.md` (D37).
 
 ## 1. Princípios
 - **Um repositório (monorepo), três pacotes Node:** a raiz guarda as ferramentas de banco (Prisma) e a orquestração local (Docker); `backend/` e `frontend/` têm `package.json` próprio.
@@ -19,12 +19,12 @@ carteira-b3/
 │   │   ├── database.md              [ok] subagente do Claude Code (espelho de agentes/agente-banco-de-dados.md)
 │   │   ├── backend.md               [ok] espelho de agentes/agente-backend.md
 │   │   └── frontend.md              [ok] espelho de agentes/agente-frontend.md
-│   ├── settings.json                [ok] permissões compartilhadas do Claude Code
+│   ├── settings.json                [ok] permissões compartilhadas e plugins do projeto (enabledPlugins, D38)
 │   └── settings.local.json          configurações pessoais (fora do Git)
 ├── .github/
 │   ├── pull_request_template.md     [ok]
 │   └── workflows/
-│       └── ci.yml                   [K1] lint, testes e build do backend em todo PR; o W1 acrescenta o frontend
+│       └── ci.yml                   [K1] lint, testes e build do backend em todo PR; o W1 acrescenta o frontend e o R1 o E2E
 ├── agentes/                         [ok] prompts-fonte dos agentes
 │   ├── agente-banco-de-dados.md
 │   ├── agente-backend.md
@@ -36,6 +36,7 @@ carteira-b3/
 │   ├── plano-de-acao.md
 │   ├── convencoes-equipe.md
 │   ├── estrutura-repositorio.md     este documento
+│   ├── handoff-ux.md                [U5] link do arquivo Figma e do frame de cada tela (modelo criado em 26/10)
 │   └── enunciadoBancoDeDados.md
 ├── projetoEngSoftware.md            [ok] enunciado de Engenharia de Software
 │
@@ -103,6 +104,7 @@ carteira-b3/
 │   ├── tsconfig.json
 │   ├── tsconfig.app.json
 │   ├── tsconfig.spec.json
+│   ├── playwright.config.ts         [W1] configuração do @playwright/test (D38)
 │   ├── (configuração do Tailwind)   tokens do design system; o arquivo depende da versão do Tailwind (ver W1)
 │   ├── src/
 │   │   ├── environments/            URLs e configuração por ambiente
@@ -112,14 +114,15 @@ carteira-b3/
 │   │       ├── shared/              componentes de apresentação, DerivedValueExplainer, pipes pt-BR
 │   │       ├── api/                 gerado a partir de backend/openapi/openapi.json (fora do Git)
 │   │       └── features/            auth, portfolios, operations, assets (S1); demais por etapa
-│   └── e2e/                         [R1] teste ponta a ponta do S1
+│   └── e2e/
+│       └── *.spec.ts                [R1] E2E ponta a ponta do S1 com @playwright/test, no CI (D38)
 │
 ├── .env                             fora do Git: credenciais locais (copiado do .env.example)
 ├── .env.example                     [ok] modelo do .env, sem segredos
 ├── .gitignore                       [ok]
 ├── package.json                     [ok] scripts db:* e Prisma
 ├── package-lock.json                [ok]
-├── CLAUDE.md                        [ok] instruções para o Claude Code
+├── CLAUDE.md                        [ok] instruções para o Claude Code, incluindo a seção de ferramentas (D38)
 └── README.md                        [ok] como subir o ambiente; o R1 completa com backend e frontend
 ```
 
@@ -135,6 +138,9 @@ carteira-b3/
 | DDL da entrega de BD | `database/sql/ddl.sql` | Sim (gerado) |
 | Contrato da API | `backend/openapi/openapi.json` | Sim (gerado) |
 | Cliente da API no frontend | `frontend/src/app/api/` | Não (gerado) |
+| Handoff do UX (links do Figma) | `claude/handoff-ux.md` | Sim |
+| Testes E2E | `frontend/e2e/*.spec.ts` (+ `frontend/playwright.config.ts`) | Sim |
+| Plugins do Claude Code do projeto | `.claude/settings.json` (`enabledPlugins`) | Sim |
 | Arquivos brutos das fontes | `data/raw/` | Não |
 | Configuração pessoal do Claude Code | `.claude/settings.local.json` | Não |
 
@@ -144,5 +150,6 @@ carteira-b3/
 | `prisma/`, `database/`, `docker/postgres/` | agente database | pedem mudança ao agente database |
 | `backend/` | agente backend | o frontend consome só o `openapi.json` |
 | `frontend/` | agente frontend | — |
+| `claude/handoff-ux.md` | agente UX/UI | o frontend só lê |
 | `agentes/`, `.claude/agents/`, `claude/` | usuário (atualizados pelos agentes no chat do projeto) | `.claude/agents/*.md` e `agentes/*.md` mudam juntos |
 | `docker-compose.yml` | agente database (serviço postgres); agente backend (api e worker, a partir do K1) | — |
