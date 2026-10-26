@@ -4,6 +4,8 @@
 
 **Ajuste de 26/10/2026 (D38):** ferramentas do Claude Code definidas por frente (`claude/convencoes-equipe.md`); U5 passa a entregar `claude/handoff-ux.md` com o link do frame de cada tela no Figma; R1 usa `@playwright/test` para o E2E; F3 inclui `gh auth login` e a proteção da `main` sem aprovação obrigatória enquanto o projeto tiver uma pessoa. Datas inalteradas.
 
+**Ajuste de 26/10/2026 (D40):** estratégia de testes e CI definida (`claude/arquitetura.md`, seção 9). O job `database` do CI já existe; K1, W1 e R1 acrescentam os jobs `backend`, `frontend` e `e2e`; o F3 passa a exigir o job `database` na proteção da `main`. Permissões do Claude Code revistas em `.claude/settings.json`. Datas inalteradas.
+
 **Frentes ativas:** todas.
 - 25–27/10: fundação (usuário).
 - 28/10 a meados de novembro: BD (P1–P2), UX/UI (U1–U5) e backend (K0–K3).
@@ -44,7 +46,7 @@
 |---|---|---|---|---|
 | F1 | E-mails às professoras: ODS (BD) e reuso nas duas disciplinas | **Concluído (05/10)** | — | ODS confirmado; reuso registrado (D33) |
 | F2 | Comando `claude` no PATH e extensão do VS Code | 25/10–26/10 (usuário) | — | `claude --version` responde; `@database` aparece na lista |
-| F3 | Repositório GitHub: estrutura de `claude/estrutura-repositorio.md` (conteúdo do pacote do repositório) no commit inicial; depois `main` protegida (PR obrigatório; 0 aprovações enquanto houver uma pessoa, D38), template de PR, Conventional Commits, GitHub Projects; `gh auth login` para os comandos `/commit-push-pr` | 26/10–27/10 (usuário) | F2 | Commit inicial na `main` sem `.env`; PR de teste mesclado pela regra de proteção (o CI entra no K1); `gh auth status` responde |
+| F3 | Repositório GitHub: estrutura de `claude/estrutura-repositorio.md` (conteúdo do pacote do repositório) no commit inicial; depois `main` protegida (PR obrigatório; 0 aprovações enquanto houver uma pessoa, D38), template de PR, Conventional Commits, GitHub Projects; `gh auth login` para os comandos `/commit-push-pr` | 26/10–27/10 (usuário) | F2 | Commit inicial na `main` sem `.env`; PR de teste mesclado pela regra de proteção, com o job `database` do CI como verificação obrigatória (D40); `gh auth status` responde |
 | F4 | **Concluído (26/10, validado na máquina do usuário).** `docker-compose.yml` com PostgreSQL 16 (bancos dev, test e shadow) e `.env.example` | 27/10 (usuário) | F3 | `docker compose up` sobe os bancos; `npm run db:migrate` e `npm run db:test` passam |
 
 ## Banco do sistema (fora da entrega de BD)
@@ -70,7 +72,7 @@ O catálogo de referência do S1 (setores, emissores, ativos, corretoras) vem do
 | ID | Tarefa | Datas | Depende de | Pronto quando |
 |---|---|---|---|---|
 | K0 | `PositionCalculator` com TDD: domínio puro, sem banco (RN05–RN10, eventos corporativos), em segundo plano | 28/10–06/11 | F3 | 100% de ramos nos `.spec.ts`; casos de borda passando |
-| K1 | Esqueleto NestJS (api e worker): config validada, filtro RFC 7807, Jest + Testcontainers, GitHub Actions | 28/10–03/11 | F3, F4 | CI roda lint, testes e build em todo PR |
+| K1 | Esqueleto NestJS (api e worker): config validada, filtro RFC 7807, Jest (unitário em paralelo; integração e E2E com Testcontainers em série, migrations pelo Prisma da raiz), job `backend` no `ci.yml` (D40) | 28/10–03/11 | F3, F4 | Jobs `database` e `backend` verdes em todo PR e exigidos na proteção da `main` |
 | K2 | Módulos auth e users (RN01), guard JWT, rate limit | 04/11–08/11 | D1, D2, K1 | E2E de cadastro e login passando |
 | K3 | reference-data (ativos, emissores, corretoras) e portfolios (RN02) | 09/11–13/11 | K2 | Carteira de outro usuário retorna 404 |
 | K4 | operations com recálculo transacional (RN04–RN12); OpenAPI versionado | 16/11–25/11 | K3, K0 | E2E compra → venda → posição; violação da RN10 identifica a operação |
@@ -78,11 +80,11 @@ O catálogo de referência do S1 (setores, emissores, ativos, corretoras) vem do
 ## Frontend
 | ID | Tarefa | Datas | Depende de | Pronto quando |
 |---|---|---|---|---|
-| W1 | Esqueleto Angular, tokens no `tailwind.config` (conferidos com as variáveis do Figma), interceptors, `@playwright/test` configurado, CI | 10/11–13/11 | U1, F3 | Build e specs rodando no CI |
+| W1 | Esqueleto Angular, tokens no `tailwind.config` (conferidos com as variáveis do Figma), interceptors, specs com Vitest (limite de 80%), `@playwright/test` configurado, job `frontend` no `ci.yml` (D40) | 10/11–13/11 | U1, F3 | Job `frontend` (lint, specs, build) verde e exigido na proteção da `main` |
 | W2 | Login e cadastro | 14/11–18/11 | W1, K2, U3 | Erros do backend exibidos no campo certo |
 | W3 | Lista e criação de carteiras, com estado vazio | 19/11–23/11 | W2, K3 | Os 4 estados de dados cobertos por spec |
 | W4 | Lançamento de operação, histórico, posição e "como foi calculado" | 26/11–02/12 | W3, K4, U5 | Fluxo completo usando a API real |
-| R1 | E2E ponta a ponta com `@playwright/test` (`frontend/e2e/*.spec.ts`, no CI), README de execução e roteiro de demonstração: S1 pronto | 03/12–06/12 | W4 | E2E do S1 passando no CI; alguém de fora sobe e usa o sistema seguindo só o README |
+| R1 | E2E ponta a ponta com `@playwright/test` (`frontend/e2e/*.spec.ts`, job `e2e` no CI contra a API e um PostgreSQL de serviço; na máquina, contra `carteira_test`), README de execução e roteiro de demonstração: S1 pronto | 03/12–06/12 | W4 | E2E do S1 passando no CI; alguém de fora sobe e usa o sistema seguindo só o README |
 
 ## Gatilhos de corte
 | # | Data | Condição | Ação |

@@ -299,7 +299,7 @@ Regras:
 - Rotas das etapas futuras ficam previstas no layout, mas só aparecem quando a etapa é entregue.
 
 ### 7.6 Infraestrutura (docker-compose)
-Serviços: `postgres` (bancos dev e test), `api`, `worker`, volume `data/raw`. Testes de integração usam Testcontainers. Configuração é validada com zod no boot dos dois processos.
+Serviços: `postgres` (bancos `carteira_dev`, `carteira_test` e `carteira_shadow`), `api`, `worker`, volume `data/raw`. Configuração é validada com zod no boot dos dois processos. Onde cada teste roda e o CI: seção 9 (D40).
 
 ## 8. Invariantes (valem para todos os agentes)
 1. Operações (e eventos corporativos) são a fonte da posição; a posição nunca é gravada (D4).
@@ -312,7 +312,21 @@ Serviços: `postgres` (bancos dev e test), `api`, `worker`, volume `data/raw`. T
 8. Todo número derivado exibido tem trace (`DerivedValue`).
 
 ## 9. Testes ligados à arquitetura de dados
-Todos os testes são escritos em TypeScript, em arquivos `.spec.ts` (D33): Jest no backend (E2E em `test/*.e2e-spec.ts`, integração com Testcontainers) e o runner do Angular CLI no frontend. Cada teste cita no nome a RN ou decisão que cobre.
+Todos os testes são escritos em TypeScript, em arquivos `.spec.ts` (D33). Cada teste cita no nome a RN ou decisão que cobre. Onde cada tipo de teste roda (D40):
+
+| Tipo | Ferramenta | Banco |
+|---|---|---|
+| Unitário de domínio e de caso de uso (backend) | Jest, em paralelo | Nenhum: dados montados no teste (builders em `backend/test/factories/`), ports mockados |
+| Integração e E2E do backend (`backend/test/*.e2e-spec.ts`) | Jest + Testcontainers + Supertest, em série (`--runInBand`) | PostgreSQL 16 novo por execução da suíte; `TRUNCATE ... CASCADE` das tabelas de `public` e `ops` antes de cada teste, e cada teste cria os dados de que precisa |
+| Specs do frontend | Vitest, executor padrão do Angular CLI (Karma não é usado) | Nenhum: HTTP com `HttpTestingController` |
+| E2E do frontend (`frontend/e2e/*.spec.ts`) | `@playwright/test` | Na máquina: API apontando para `carteira_test` do docker-compose (`DATABASE_URL_TEST`). No CI: serviço PostgreSQL do GitHub Actions |
+| Restrições do banco (`database/tests/*.sql`) | `npm run db:test` | `carteira_dev` na máquina; serviço PostgreSQL no CI |
+
+**Migrations no Testcontainers:** o global setup do Jest sobe o contêiner, define `DATABASE_URL` com a URL dele e roda `npx prisma migrate deploy` **a partir da raiz do repositório** (onde estão o Prisma CLI e o `prisma.config.ts`); o Prisma Client gerado em `backend/src/generated/prisma` conecta na mesma URL. Teste nunca usa `migrate dev`, `db push` nem o banco `carteira_dev`.
+
+**CI (`.github/workflows/ci.yml`):** job `database` desde 26/10/2026 (migrations do zero, `db:drift`, `db:test`, `ddl.sql` igual ao regerado); `backend` no K1 (lint, unitário, integração e E2E, cobertura); `frontend` no W1 (lint, specs com cobertura, build); `e2e` no R1 (Playwright contra a API e um PostgreSQL de serviço). Cada job vira verificação obrigatória da proteção da `main` assim que existir.
+
+Testes ligados aos dados:
 
 - **Ingestão:** fixtures reais reduzidas (trecho de COTAHIST, um DFP de empresa real, um informe trimestral de FII com imóveis) → teste de parse, idempotência (rodar 2×) e rejeição de linha inválida.
 - **Indicadores:** teste de referência contra uma empresa real e um FII real, com o cálculo manual documentado em `database/docs/memoria-calculo.md` (inclui a vacância ponderada pela área).
@@ -344,6 +358,7 @@ Todos os testes são escritos em TypeScript, em arquivos `.spec.ts` (D33): Jest 
 | D26 | Contrato `DerivedValue` com trace para todo número derivado; um componente único no front | Implementa o D12 de forma uniforme e testável |
 | D27 | Ingestão idempotente (hash + upsert por chave natural); dado externo exibido com fonte e data de referência; CVM guarda a última versão da demonstração | Reprocessamento seguro e transparência (ODS 4.4) |
 | D28 | Calculadoras (H1–H4) no backend, como funções puras | Regra única "sem cálculo de negócio no front" e Decimal em todas as camadas |
+| D40 | Estratégia de testes e CI (26/10/2026): seção 9 | Isolamento por execução, mesmo comportamento na máquina e no CI, banco conferido em todo PR |
 
 ## 12. Pendências desta arquitetura
 - ~~P1: CPF em `users`~~ Resolvida: D30 (não armazenar).

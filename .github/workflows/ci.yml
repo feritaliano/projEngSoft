@@ -1,0 +1,71 @@
+# CI do Carteira B3 (D40). Cada job vira verificação obrigatória da proteção da `main` assim que existir.
+# Job `database` desde 26/10/2026; `backend` entra no K1, `frontend` no W1 e `e2e` no R1.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  database:
+    name: database
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: carteira
+          POSTGRES_PASSWORD: ci-only-password # banco descartável do CI; não é segredo
+          POSTGRES_DB: carteira_dev
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U carteira -d carteira_dev"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://carteira:ci-only-password@localhost:5432/carteira_dev
+      SHADOW_DATABASE_URL: postgresql://carteira:ci-only-password@localhost:5432/carteira_shadow
+      PSQL: local # database/scripts/run-sql.mjs usa o psql do runner
+      PG_DUMP: local # database/scripts/export-ddl.mjs usa o pg_dump do runner
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install PostgreSQL 16 client (psql, pg_dump)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-16
+          echo "/usr/lib/postgresql/16/bin" >> "$GITHUB_PATH"
+
+      - name: Create shadow database (prisma migrate diff)
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "CREATE DATABASE carteira_shadow"
+
+      - run: npm ci
+
+      - name: Validate schema
+        run: npm run db:validate
+
+      - name: Apply migrations from scratch
+        run: npm run db:migrate
+
+      - name: Schema and migrations in sync
+        run: npm run db:drift
+
+      - name: Constraint tests (public and ops)
+        run: npm run db:test
+
+      - name: ddl.sql matches the migrated database
+        run: |
+          npm run db:ddl
+          git diff --exit-code -- database/sql/ddl.sql

@@ -4,7 +4,7 @@
 > Ordem de precedência em caso de conflito: `claude/contexto-projeto.md` → `claude/arquitetura.md` → `database/docs/modelo-er.md` → prompts em `agentes/`.
 
 ## Git e GitHub
-- `main` é protegida: não aceita push direto; todo código entra por PR, com CI verde (a partir do K1, quando o CI passa a existir).
+- `main` é protegida: não aceita push direto; todo código entra por PR, com CI verde. Verificações obrigatórias: job `database` desde 26/10; `backend` a partir do K1, `frontend` a partir do W1 e `e2e` a partir do R1 (D40).
 - **Aprovação obrigatória no PR:** o GitHub não permite que o autor aprove o próprio PR. Enquanto o projeto tiver uma só pessoa, a regra de proteção exige **0 aprovações** e a revisão é feita pelo `/review-pr` (ver "Definição de pronto"). Quando a segunda pessoa entrar, a regra volta para 1 aprovação.
 - Branch por tarefa do plano: `<tipo>/<ID>-<descricao>`. Ex.: `feat/D1-prisma-schema`, `docs/G1-glossario`.
 - Commits em inglês no padrão Conventional Commits: `feat:`, `fix:`, `test:`, `docs:`, `refactor:`, `chore:`, `ci:`. Ex.: `feat(operations): reject sell above position (RN07)`.
@@ -14,8 +14,10 @@
 ## Testes automatizados (D33)
 - Exigência de Engenharia de Software: regras de negócio testadas e testes automatizados.
 - Todos os testes em TypeScript, em arquivos `.spec.ts` ao lado do código testado (E2E do backend em `test/*.e2e-spec.ts`).
-- Backend NestJS: Jest. Domínio puro (ex.: `PositionCalculator`, calculadoras, regras de IR) com testes unitários sem banco; integração e E2E com Testcontainers (PostgreSQL real).
-- Frontend Angular: specs de componentes e serviços; E2E do fluxo completo com `@playwright/test` em `frontend/e2e/*.spec.ts`, rodando no CI (D38).
+- Backend NestJS: Jest. Domínio puro (ex.: `PositionCalculator`, calculadoras, regras de IR) com testes unitários sem banco, em paralelo; integração e E2E com Testcontainers (PostgreSQL real e novo por execução, migrations pelo Prisma da raiz), em série.
+- Frontend Angular: specs de componentes e serviços com Vitest; E2E do fluxo completo com `@playwright/test` em `frontend/e2e/*.spec.ts`, rodando no CI (D38) e, na máquina, contra o banco `carteira_test`.
+- Banco: `npm run db:test` (restrições de `public` e `ops`) e `npm run db:drift`, também no CI.
+- Onde cada tipo de teste roda e o que cada job do CI faz: `claude/arquitetura.md`, seção 9 (D40). Teste nunca usa o banco `carteira_dev`, exceto os testes de restrição do banco.
 - Todo teste cita no nome a RN ou decisão que cobre quando houver (ex.: `rejects sell above position (RN07)`).
 
 ## Definição de pronto (vale para toda tarefa de código)
@@ -42,6 +44,8 @@ Plugins oficiais instalados com escopo de projeto (registrados em `.claude/setti
 | `playwright` | Abrir a aplicação local para conferir e depurar telas; **não** é a suíte E2E (essa é `@playwright/test`, versionada) | frontend |
 | `claude-md-management` | `/revise-claude-md` ao fim de sessão com aprendizado do projeto | todos |
 
+**Permissões (`.claude/settings.json`, D40):** comandos de leitura, testes, lint, build e `db:*` não destrutivos rodam sem perguntar; `docker exec`, `docker compose down`, `prisma migrate` (dev e reset), `npm install <pacote>`, `git push` e `gh pr merge` sempre pedem confirmação; ler `.env`, `docker compose config` (imprime a senha), `git push --force` e `git reset --hard` são bloqueados. `git commit` e `gh pr create` pedem confirmação por padrão. Ajuste pessoal vai em `.claude/settings.local.json`, nunca no arquivo do projeto.
+
 Desativados neste projeto (via `enabledPlugins` em `.claude/settings.json`): `frontend-design` (toma decisões visuais fora do design system) e `superpowers` (fluxo de trabalho concorrente ao `feature-dev`). O UX/UI roda no chat do projeto no claude.ai, com o conector Figma e o plugin Design (ver `agentes/agente-ux-ui.md`).
 
 ## Uso dos agentes
@@ -52,7 +56,7 @@ Desativados neste projeto (via `enabledPlugins` em `.claude/settings.json`): `fr
 - Frentes ativas (replanejadas em 24/10/2026): todas, com datas em `claude/plano-de-acao.md` e nos prompts de cada agente. Os quatro prompts em `agentes/` foram reescritos em 05/10/2026, atualizados em 24/10/2026 e, todos os quatro, em 26/10/2026 (D38); o de banco também com o banco do sistema (D2, D39).
 
 ## Mudança de escopo ou de decisão
-- Qualquer mudança em decisão (D1–D39), no ER congelado (D14, 05/10/2026) ou nas regras de negócio (RN) é registrada em `claude/contexto-projeto.md`, na seção de decisões, antes de ser implementada.
+- Qualquer mudança em decisão (D1–D40), no ER congelado (D14, 05/10/2026) ou nas regras de negócio (RN) é registrada em `claude/contexto-projeto.md`, na seção de decisões, antes de ser implementada.
 - Mudança no ER atualiza, na mesma tarefa: `database/docs/modelo-er.md`, `database/docs/mapeamento.md`, os modelos no brModelo (`CarteiraB3_ER` e `CarteiraB3_Logico`) e o esquema da seção 7 de `claude/contexto-projeto.md`.
 - Mudança no plano atualiza, na mesma tarefa, o checklist interativo (link em `claude/plano-de-acao.md`) e o prompt da frente afetada.
 - Quando mudar uma RN, atualize os 4 prompts em `agentes/` e o `.claude/agents/` do repositório.
@@ -61,7 +65,7 @@ Desativados neste projeto (via `enabledPlugins` em `.claude/settings.json`): `fr
 ## Documentos do projeto
 | Documento | Para quê |
 |---|---|
-| `claude/contexto-projeto.md` | Visão geral, decisões (D1–D39), esquema relacional resumido, agentes, artefatos, pendências |
+| `claude/contexto-projeto.md` | Visão geral, decisões (D1–D40), esquema relacional resumido, agentes, artefatos, pendências |
 | `claude/arquitetura.md` | Arquitetura do sistema e do banco (schemas `public`/`ops`/`analytics`, ingestão, CQRS leve) |
 | `claude/plano-de-acao.md` | Tarefas, datas, dependências, gatilhos de corte; link do checklist interativo |
 | `claude/convencoes-equipe.md` | Este documento |

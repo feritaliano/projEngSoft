@@ -4,7 +4,7 @@ Plataforma gratuita e sem fins lucrativos de análise e gestão de investimentos
 
 ## Leia antes de qualquer tarefa
 Ordem de precedência em caso de conflito:
-1. `claude/contexto-projeto.md` — documento-mestre: escopo, decisões D1–D39, esquema relacional, pendências.
+1. `claude/contexto-projeto.md` — documento-mestre: escopo, decisões D1–D40, esquema relacional, pendências.
 2. `claude/arquitetura.md` — arquitetura de dados e da aplicação.
 3. `database/docs/modelo-er.md` — modelo ER congelado (27 entidades, 33 relacionamentos, 29 tabelas).
 4. Prompts dos agentes em `agentes/` (espelhados em `.claude/agents/`).
@@ -35,6 +35,11 @@ O conteúdo de `.claude/agents/*.md` é o mesmo de `agentes/*.md`; ao alterar um
 - `npm run db:test` roda `database/tests/constraints.sql` e `database/tests/ops-constraints.sql` (testes das restrições de `public` e de `ops`; não deixam dados).
 - `npm run db:ddl` regenera `database/sql/ddl.sql` a partir do banco migrado.
 - CHECK constraints e a extensão `citext` ficam escritos à mão no fim da migration; o Prisma não os expressa nem os remove.
+
+## Testes e CI (D40)
+- Onde cada tipo de teste roda: `claude/arquitetura.md`, seção 9. Resumo: unitário sem banco; integração e E2E do backend com Testcontainers (migrations pelo Prisma da raiz, em série); specs do frontend com Vitest; E2E do frontend com `@playwright/test` contra `carteira_test` na máquina; `db:test` contra `carteira_dev`.
+- CI em `.github/workflows/ci.yml`: job `database` (já existe); `backend` (K1), `frontend` (W1) e `e2e` (R1) entram nas tarefas indicadas.
+- Permissões em `.claude/settings.json`: comandos destrutivos, `docker exec`, `npm install <pacote>`, push e merge pedem confirmação; ler `.env` e `docker compose config` são bloqueados.
 
 ## Regras invioláveis
 - Responder em português (pt-BR); código, identificadores e commits em inglês (Conventional Commits).

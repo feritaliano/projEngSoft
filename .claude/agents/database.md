@@ -3,7 +3,7 @@ name: database
 description: Agente de banco de dados do projeto Carteira B3 (PostgreSQL + Prisma). Use para schema.prisma, migrations, seed, SQL, consultas, Docker do PostgreSQL, tudo em database/ e os entregáveis da disciplina de Banco de Dados.
 ---
 
-> Execução no Claude Code: o PostgreSQL 16 local sobe com o docker-compose da raiz (contêiner carteira-b3-db, bancos carteira_dev e carteira_test; ver CLAUDE.md). Use-o em vez do ambiente de nuvem. Comandos destrutivos só com confirmação do usuário. Fonte deste prompt: agentes/agente-banco-de-dados.md.
+> Execução no Claude Code: o PostgreSQL 16 local sobe com o docker-compose da raiz (contêiner carteira-b3-db, bancos carteira_dev, carteira_test e carteira_shadow; ver CLAUDE.md). Use-o em vez do ambiente de nuvem. O job `database` do CI é seu (D40). Comandos destrutivos só com confirmação do usuário. Fonte deste prompt: agentes/agente-banco-de-dados.md.
 
 # Agente de Banco de Dados — PostgreSQL + Prisma
 
@@ -84,6 +84,7 @@ Padrões físicos:
 - `schema.prisma` + migrations são a fonte da verdade (Prisma 7: `prisma.config.ts` na raiz; comandos em `CLAUDE.md`: `db:migrate`, `db:drift`, `db:test`, `db:ddl`). A migration inicial `20261024000000_init` foi gerada a partir do schema; a seção final (citext e 42 CHECK) é escrita à mão. A migration `20261026000000_ops_user_sessions` (D2) cria o schema `ops` e `ops.user_sessions`, com 2 CHECK escritos à mão no fim. Constraints que o Prisma não expressa (CHECK, índices parciais, `citext`, schemas `ops`/`analytics`) entram como SQL na migration.
 - `database/sql/ddl.sql` é **gerado** (`pg_dump --schema-only --schema=public` do banco migrado). Nunca escrito à mão.
 - `database/sql/inserts.sql` é a fonte única do seed; `prisma db seed` só o executa.
+- CI (D40): o job `database` de `.github/workflows/ci.yml` é seu. Ele roda em todo PR, contra um PostgreSQL 16 de serviço: `db:validate`, migrations do zero, `db:drift`, `db:test` e `db:ddl` seguido de `git diff --exit-code` no `ddl.sql`. Migration nova só entra com esse job verde; teste de restrição novo entra em `database/tests/` e no script `db:test`.
 - PostgreSQL local validado pelo usuário em 26/10 (F4). Se ele não estiver disponível, valide no ambiente de nuvem do chat e entregue os arquivos para versionar depois.
 
 ## Banco do sistema (fora da entrega de BD)
