@@ -12,7 +12,7 @@ description: Agente backend do projeto Carteira B3 (NestJS, TypeScript). Use par
 ## Contexto do projeto
 Um único sistema atende duas disciplinas da UNIFESP/ICT:
 - **Engenharia de Software:** sistema não trivial (não um CRUD simples), com backend de arquitetura adequada, frontend integrado, regras de negócio testadas, testes automatizados, Git/GitHub, documentação e entregas incrementais. O reuso do sistema nas duas disciplinas está confirmado (D33).
-- **Banco de Dados (Profa. Daniela Leal Musa):** Parte 1 entregue em 05/10 (envio até 19/10); Parte 2 (DDL, seed, consultas, relatório) até 07/12/2026. O schema é do agente de banco.
+- **Banco de Dados (Profa. Daniela Leal Musa):** Parte 1 enviada em 19/10/2026; Parte 2 (DDL, seed, consultas, relatório) até 07/12/2026. O schema é do agente de banco.
 
 **Tema:** plataforma gratuita e sem fins lucrativos de análise e gestão de investimentos da B3 para pessoa física (referências: Investidor10 e Ward). O usuário consulta dados de ações, FIIs, ETFs e BDRs a partir de fontes primárias (B3, CVM, Banco Central), monta rankings e valuation, e gere a própria carteira: operações, posição, preço médio, proventos e IR, com explicação de cada número.
 

@@ -49,10 +49,10 @@ Desativados neste projeto (via `enabledPlugins` em `.claude/settings.json`): `fr
 - Claude Code: `@database`, `@backend`, `@frontend` dentro do repositório; um agente por branch.
 - Todo código gerado por agente passa pela mesma revisão de PR que código humano. Aprovar sem ler e sem rodar não é revisão.
 - Divergência entre agentes (ex.: contrato de API ou schema) se resolve no artefato dono: o schema é do agente de banco; o contrato da API (OpenAPI) é do backend; os tokens visuais e os frames do Figma são do UX.
-- Frentes ativas (replanejadas em 24/10/2026): todas, com datas em `claude/plano-de-acao.md` e nos prompts de cada agente. Os quatro prompts em `agentes/` foram reescritos em 05/10/2026, atualizados em 24/10/2026 e, os de backend, frontend e UX/UI, em 26/10/2026 (D38).
+- Frentes ativas (replanejadas em 24/10/2026): todas, com datas em `claude/plano-de-acao.md` e nos prompts de cada agente. Os quatro prompts em `agentes/` foram reescritos em 05/10/2026, atualizados em 24/10/2026 e, todos os quatro, em 26/10/2026 (D38); o de banco também com o banco do sistema (D2, D39).
 
 ## Mudança de escopo ou de decisão
-- Qualquer mudança em decisão (D1–D38), no ER congelado (D14, 05/10/2026) ou nas regras de negócio (RN) é registrada em `claude/contexto-projeto.md`, na seção de decisões, antes de ser implementada.
+- Qualquer mudança em decisão (D1–D39), no ER congelado (D14, 05/10/2026) ou nas regras de negócio (RN) é registrada em `claude/contexto-projeto.md`, na seção de decisões, antes de ser implementada.
 - Mudança no ER atualiza, na mesma tarefa: `database/docs/modelo-er.md`, `database/docs/mapeamento.md`, os modelos no brModelo (`CarteiraB3_ER` e `CarteiraB3_Logico`) e o esquema da seção 7 de `claude/contexto-projeto.md`.
 - Mudança no plano atualiza, na mesma tarefa, o checklist interativo (link em `claude/plano-de-acao.md`) e o prompt da frente afetada.
 - Quando mudar uma RN, atualize os 4 prompts em `agentes/` e o `.claude/agents/` do repositório.
@@ -61,7 +61,7 @@ Desativados neste projeto (via `enabledPlugins` em `.claude/settings.json`): `fr
 ## Documentos do projeto
 | Documento | Para quê |
 |---|---|
-| `claude/contexto-projeto.md` | Visão geral, decisões (D1–D38), esquema relacional resumido, agentes, artefatos, pendências |
+| `claude/contexto-projeto.md` | Visão geral, decisões (D1–D39), esquema relacional resumido, agentes, artefatos, pendências |
 | `claude/arquitetura.md` | Arquitetura do sistema e do banco (schemas `public`/`ops`/`analytics`, ingestão, CQRS leve) |
 | `claude/plano-de-acao.md` | Tarefas, datas, dependências, gatilhos de corte; link do checklist interativo |
 | `claude/convencoes-equipe.md` | Este documento |

@@ -1,7 +1,8 @@
-// Carteira B3 — schema do domínio (schema PostgreSQL `public`).
-// Fonte: database/docs/modelo-er.md (ER congelado em 05/10/2026, D14) e database/docs/glossario.md (PT ↔ EN).
+// Carteira B3 — schema Prisma único, com três schemas PostgreSQL (D22).
+// `public` = domínio. Fonte: database/docs/modelo-er.md (ER congelado em 05/10/2026, D14) e database/docs/glossario.md (PT ↔ EN).
 // 27 entidades + 2 relacionamentos N:N = 29 tabelas. Dado derivado nunca vira coluna (D4, D17, D32).
-// CHECK constraints e a extensão citext ficam no SQL da migration (o Prisma não os expressa).
+// `ops` = técnico, fora do ER e do ddl.sql de BD (D39). `analytics` entra quando houver o primeiro objeto (S3).
+// CHECK constraints e a extensão citext ficam no SQL das migrations (o Prisma não os expressa).
 
 generator client {
   provider = "prisma-client"
@@ -10,6 +11,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  schemas  = ["public", "ops"]
 }
 
 // ---------------------------------------------------------------- enums
@@ -20,6 +22,7 @@ enum ImportBatchStatus {
   DISCARDED
 
   @@map("import_batch_status")
+  @@schema("public")
 }
 
 enum OperationType {
@@ -27,6 +30,7 @@ enum OperationType {
   SELL
 
   @@map("operation_type")
+  @@schema("public")
 }
 
 enum IssuerKind {
@@ -35,6 +39,7 @@ enum IssuerKind {
   FOREIGN
 
   @@map("issuer_kind")
+  @@schema("public")
 }
 
 enum AssetType {
@@ -44,6 +49,7 @@ enum AssetType {
   BDR
 
   @@map("asset_type")
+  @@schema("public")
 }
 
 enum ShareClass {
@@ -54,6 +60,7 @@ enum ShareClass {
   UNIT
 
   @@map("share_class")
+  @@schema("public")
 }
 
 enum IndexCode {
@@ -63,6 +70,7 @@ enum IndexCode {
   IBOV
 
   @@map("index_code")
+  @@schema("public")
 }
 
 enum IndexPeriodicity {
@@ -70,6 +78,7 @@ enum IndexPeriodicity {
   MONTHLY
 
   @@map("index_periodicity")
+  @@schema("public")
 }
 
 enum IndexUnit {
@@ -77,6 +86,7 @@ enum IndexUnit {
   POINTS
 
   @@map("index_unit")
+  @@schema("public")
 }
 
 enum FilingType {
@@ -84,6 +94,7 @@ enum FilingType {
   ITR
 
   @@map("filing_type")
+  @@schema("public")
 }
 
 enum StatementScope {
@@ -91,6 +102,7 @@ enum StatementScope {
   CONSOLIDATED
 
   @@map("statement_scope")
+  @@schema("public")
 }
 
 enum PropertyClass {
@@ -100,6 +112,7 @@ enum PropertyClass {
   SALE_UNDER_CONSTRUCTION
 
   @@map("property_class")
+  @@schema("public")
 }
 
 enum CorporateEventType {
@@ -108,6 +121,7 @@ enum CorporateEventType {
   BONUS
 
   @@map("corporate_event_type")
+  @@schema("public")
 }
 
 enum DataSource {
@@ -115,6 +129,7 @@ enum DataSource {
   MANUAL
 
   @@map("data_source")
+  @@schema("public")
 }
 
 enum IncomeType {
@@ -123,6 +138,7 @@ enum IncomeType {
   FII_INCOME
 
   @@map("income_type")
+  @@schema("public")
 }
 
 // D35: operações comuns separadas em ações à vista (isenção de vendas até R$ 20 mil, Lei 11.033/2004,
@@ -134,6 +150,7 @@ enum TaxCategoryCode {
   FII
 
   @@map("tax_category_code")
+  @@schema("public")
 }
 
 enum IndicatorGroup {
@@ -145,6 +162,7 @@ enum IndicatorGroup {
   FII
 
   @@map("indicator_group")
+  @@schema("public")
 }
 
 enum IndicatorUnit {
@@ -153,6 +171,7 @@ enum IndicatorUnit {
   CURRENCY
 
   @@map("indicator_unit")
+  @@schema("public")
 }
 
 enum AnalysisAssetType {
@@ -160,6 +179,7 @@ enum AnalysisAssetType {
   FII
 
   @@map("analysis_asset_type")
+  @@schema("public")
 }
 
 enum PriceDirection {
@@ -167,6 +187,7 @@ enum PriceDirection {
   BELOW
 
   @@map("price_direction")
+  @@schema("public")
 }
 
 enum SortDirection {
@@ -174,6 +195,7 @@ enum SortDirection {
   DESC
 
   @@map("sort_direction")
+  @@schema("public")
 }
 
 // ---------------------------------------------------------------- conta e carteira
@@ -191,8 +213,10 @@ model User {
   priceAlerts    PriceAlert[]
   savedScreens   SavedScreen[]
   watchlistItems WatchlistItem[]
+  sessions       UserSession[]
 
   @@map("users")
+  @@schema("public")
 }
 
 model Broker {
@@ -204,6 +228,7 @@ model Broker {
   receivedIncome ReceivedIncome[]
 
   @@map("brokers")
+  @@schema("public")
 }
 
 model Portfolio {
@@ -219,6 +244,7 @@ model Portfolio {
 
   @@unique([userId, name], map: "portfolios_user_id_name_key")
   @@map("portfolios")
+  @@schema("public")
 }
 
 model ImportBatch {
@@ -236,6 +262,7 @@ model ImportBatch {
 
   @@unique([portfolioId, fileSha256], map: "import_batches_portfolio_id_file_sha256_key")
   @@map("import_batches")
+  @@schema("public")
 }
 
 model Operation {
@@ -259,6 +286,7 @@ model Operation {
   @@index([portfolioId, assetId, tradeDate, sequence], map: "operations_timeline_idx")
   @@index([assetId], map: "operations_asset_id_idx")
   @@map("operations")
+  @@schema("public")
 }
 
 // ---------------------------------------------------------------- catálogo
@@ -274,6 +302,7 @@ model Sector {
 
   @@unique([parentId, name], map: "sectors_parent_id_name_key")
   @@map("sectors")
+  @@schema("public")
 }
 
 model Issuer {
@@ -293,6 +322,7 @@ model Issuer {
 
   @@index([sectorId], map: "issuers_sector_id_idx")
   @@map("issuers")
+  @@schema("public")
 }
 
 model Asset {
@@ -314,6 +344,7 @@ model Asset {
 
   @@index([issuerId], map: "assets_issuer_id_idx")
   @@map("assets")
+  @@schema("public")
 }
 
 // ---------------------------------------------------------------- mercado
@@ -332,6 +363,7 @@ model Quote {
 
   @@id([assetId, quoteDate])
   @@map("quotes")
+  @@schema("public")
 }
 
 model EconomicIndex {
@@ -345,6 +377,7 @@ model EconomicIndex {
   values IndexValue[]
 
   @@map("economic_indexes")
+  @@schema("public")
 }
 
 model IndexValue {
@@ -356,6 +389,7 @@ model IndexValue {
 
   @@id([economicIndexId, referenceDate])
   @@map("index_values")
+  @@schema("public")
 }
 
 // ---------------------------------------------------------------- fundamentos
@@ -378,6 +412,7 @@ model FinancialStatement {
 
   @@unique([issuerId, periodEnd], map: "financial_statements_issuer_id_period_end_key")
   @@map("financial_statements")
+  @@schema("public")
 }
 
 model StatementLine {
@@ -391,6 +426,7 @@ model StatementLine {
 
   @@id([financialStatementId, scope, accountCode])
   @@map("statement_lines")
+  @@schema("public")
 }
 
 model FiiMonthlyReport {
@@ -407,6 +443,7 @@ model FiiMonthlyReport {
 
   @@unique([issuerId, referenceMonth], map: "fii_monthly_reports_issuer_id_reference_month_key")
   @@map("fii_monthly_reports")
+  @@schema("public")
 }
 
 model FiiQuarterlyReport {
@@ -420,6 +457,7 @@ model FiiQuarterlyReport {
 
   @@unique([issuerId, referenceDate], map: "fii_quarterly_reports_issuer_id_reference_date_key")
   @@map("fii_quarterly_reports")
+  @@schema("public")
 }
 
 model FiiReportProperty {
@@ -438,6 +476,7 @@ model FiiReportProperty {
 
   @@id([fiiQuarterlyReportId, itemNumber])
   @@map("fii_report_properties")
+  @@schema("public")
 }
 
 model CorporateFiling {
@@ -454,6 +493,7 @@ model CorporateFiling {
 
   @@index([issuerId, referenceDate], map: "corporate_filings_issuer_id_reference_date_idx")
   @@map("corporate_filings")
+  @@schema("public")
 }
 
 // ---------------------------------------------------------------- proventos e eventos
@@ -472,6 +512,7 @@ model CorporateEvent {
 
   @@unique([assetId, type, exDate], map: "corporate_events_asset_id_type_ex_date_key")
   @@map("corporate_events")
+  @@schema("public")
 }
 
 model IncomeDistribution {
@@ -488,6 +529,7 @@ model IncomeDistribution {
 
   @@index([assetId, recordDate], map: "income_distributions_asset_id_record_date_idx")
   @@map("income_distributions")
+  @@schema("public")
 }
 
 model ReceivedIncome {
@@ -506,6 +548,7 @@ model ReceivedIncome {
 
   @@unique([portfolioId, incomeDistributionId, brokerId], map: "received_income_portfolio_distribution_broker_key")
   @@map("received_income")
+  @@schema("public")
 }
 
 // ---------------------------------------------------------------- imposto de renda
@@ -520,6 +563,7 @@ model TaxCategory {
   assessments TaxAssessment[]
 
   @@map("tax_categories")
+  @@schema("public")
 }
 
 model TaxRule {
@@ -532,6 +576,7 @@ model TaxRule {
 
   @@id([taxCategoryId, effectiveFrom])
   @@map("tax_rules")
+  @@schema("public")
 }
 
 model TaxAssessment {
@@ -552,6 +597,7 @@ model TaxAssessment {
   @@unique([userId, referenceMonth, taxCategoryId], map: "tax_assessments_user_month_category_key")
   @@index([darfId], map: "tax_assessments_darf_id_idx")
   @@map("tax_assessments")
+  @@schema("public")
 }
 
 model Darf {
@@ -566,6 +612,7 @@ model Darf {
 
   @@unique([userId, referenceMonth], map: "darfs_user_id_reference_month_key")
   @@map("darfs")
+  @@schema("public")
 }
 
 // ---------------------------------------------------------------- análise e acompanhamento
@@ -583,6 +630,7 @@ model Indicator {
   screenCriteria ScreenCriterion[]
 
   @@map("indicators")
+  @@schema("public")
 }
 
 model PriceAlert {
@@ -601,6 +649,7 @@ model PriceAlert {
   @@index([userId], map: "price_alerts_user_id_idx")
   @@index([assetId], map: "price_alerts_asset_id_idx")
   @@map("price_alerts")
+  @@schema("public")
 }
 
 model SavedScreen {
@@ -617,6 +666,7 @@ model SavedScreen {
 
   @@unique([userId, name], map: "saved_screens_user_id_name_key")
   @@map("saved_screens")
+  @@schema("public")
 }
 
 model WatchlistItem {
@@ -629,6 +679,7 @@ model WatchlistItem {
 
   @@id([userId, assetId])
   @@map("watchlist_items")
+  @@schema("public")
 }
 
 model ScreenCriterion {
@@ -643,4 +694,27 @@ model ScreenCriterion {
   @@id([savedScreenId, indicatorId])
   @@index([indicatorId], map: "screen_criteria_indicator_id_idx")
   @@map("screen_criteria")
+  @@schema("public")
+}
+
+// ================================================================ ops (técnico, fora do ER; D22, D39)
+
+// Sessão de refresh token. O token nunca é gravado: só o SHA-256 em hexadecimal minúsculo.
+// Rotação: cada refresh grava uma linha nova na mesma família e revoga a anterior; reuso de token
+// revogado revoga a família inteira (regra do backend, módulo auth).
+model UserSession {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  familyId  String    @map("family_id") @db.Uuid
+  tokenHash String    @unique(map: "user_sessions_token_hash_key") @map("token_hash") @db.Char(64)
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(3)
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "user_sessions_user_id_idx")
+  @@index([familyId], map: "user_sessions_family_id_idx")
+  @@map("user_sessions")
+  @@schema("ops")
 }

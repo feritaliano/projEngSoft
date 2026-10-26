@@ -52,7 +52,7 @@ O que o sistema precisa no banco além das 29 tabelas do ER. Não entra no `ddl.
 
 | ID | Tarefa | Datas | Depende de | Pronto quando |
 |---|---|---|---|---|
-| D2 | Schema técnico `ops` com `ops.user_sessions` (refresh tokens com hash, rotação por família, revogação), via `multiSchema` do Prisma; agente database | 27/10–31/10 | D1, F4 | Migration nova cria só `ops`; `ddl.sql` (só `public`) não muda; `db:drift` sem diferenças; testes de restrição de `ops` passando |
+| D2 | Schema técnico `ops` com `ops.user_sessions` (refresh tokens com hash, rotação por família, revogação), via `multiSchema` do Prisma; agente database | **Concluído (26/10)** | D1, F4 | Migration nova cria só `ops`; `ddl.sql` (só `public`) não muda; `db:drift` sem diferenças; testes de restrição de `ops` passando |
 
 O catálogo de referência do S1 (setores, emissores, ativos, corretoras) vem do seed do P1 (termina em 07/11, antes do K3); os testes de integração do backend criam os próprios dados.
 

@@ -44,8 +44,10 @@ carteira-b3/
 │   ├── schema.prisma                [ok]
 │   └── migrations/
 │       ├── migration_lock.toml      [ok]
-│       └── 20261024000000_init/
-│           └── migration.sql        [ok] gerada pelo Prisma + CHECKs e citext escritos à mão no fim
+│       ├── 20261024000000_init/
+│       │   └── migration.sql        [ok] gerada pelo Prisma + CHECKs e citext escritos à mão no fim
+│       └── 20261026000000_ops_user_sessions/
+│           └── migration.sql        [ok] D2: schema ops e ops.user_sessions + 2 CHECK à mão (D39)
 ├── prisma.config.ts                 [ok] lê DATABASE_URL e SHADOW_DATABASE_URL do .env da raiz
 ├── database/                        dono: agente database (entregáveis de BD)
 │   ├── docs/
@@ -59,7 +61,8 @@ carteira-b3/
 │   │   ├── export-ddl.mjs           [ok] npm run db:ddl
 │   │   └── run-sql.mjs              [ok] npm run db:test
 │   ├── tests/
-│   │   └── constraints.sql          [ok] 25 testes das restrições
+│   │   ├── constraints.sql          [ok] 25 testes das restrições de public
+│   │   └── ops-constraints.sql      [ok] 10 testes das restrições de ops (D2)
 │   ├── sql/
 │   │   ├── ddl.sql                  [ok] gerado (pg_dump --schema-only --schema=public)
 │   │   ├── inserts.sql              [P1] seed

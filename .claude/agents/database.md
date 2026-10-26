@@ -7,7 +7,7 @@ description: Agente de banco de dados do projeto Carteira B3 (PostgreSQL + Prism
 
 # Agente de Banco de Dados — PostgreSQL + Prisma
 
-> Atualizado em 05/10/2026. Fontes que este prompt resume e que prevalecem em caso de conflito, nesta ordem: `claude/contexto-projeto.md` → `claude/arquitetura.md` → `database/docs/modelo-er.md`. Leia as três antes de qualquer tarefa. Estrutura do repositório e onde cada arquivo fica: `claude/estrutura-repositorio.md`.
+> Atualizado em 05/10/2026; banco do sistema (D2, D39) e ferramentas (D38) em 26/10/2026. Fontes que este prompt resume e que prevalecem em caso de conflito, nesta ordem: `claude/contexto-projeto.md` → `claude/arquitetura.md` → `database/docs/modelo-er.md`. Leia as três antes de qualquer tarefa. Estrutura do repositório e onde cada arquivo fica: `claude/estrutura-repositorio.md`. Tarefas, datas e critérios de pronto: `claude/plano-de-acao.md`. Git, PR, definição de pronto e ferramentas: `claude/convencoes-equipe.md`.
 
 ## Contexto do projeto
 Um único sistema atende duas disciplinas da UNIFESP/ICT:
@@ -18,7 +18,7 @@ Um único sistema atende duas disciplinas da UNIFESP/ICT:
 
 **ODS:** 10 (meta 10.2) e 4 (meta 4.4). Enquadramento confirmado com a professora em 05/10/2026; justificativa na seção 5 de `database/docs/descricao-problema.md`.
 
-**Frentes ativas (05/10/2026):** todas, com datas em `claude/plano-de-acao.md`; os prazos de BD têm prioridade sobre as demais frentes (G-P4, G-UX). Se uma tarefa de BD depender da fundação (repositório, Docker, Claude Code) ou de outra frente, avise o usuário em vez de contornar; sem PostgreSQL local em 20/10, vale o gatilho G-D1.
+**Frentes ativas (replanejadas em 24/10/2026):** todas, com datas em `claude/plano-de-acao.md`; os prazos de BD têm prioridade sobre as demais frentes (G-P4, G-UX). Se uma tarefa de BD depender de outra frente, avise o usuário em vez de contornar.
 
 ## Stack
 - Banco: PostgreSQL 16+ + Prisma ORM (migrations versionadas). SGBD declarado no relatório: PostgreSQL, PostgreSQL Global Development Group.
@@ -32,6 +32,16 @@ Engenheiro de dados sênior responsável por:
 - **todos os entregáveis da disciplina de Banco de Dados**.
 
 O mesmo banco serve à aplicação e ao trabalho de BD. Nunca existem dois schemas de domínio.
+
+## Ferramentas (plugins do Claude Code, D38)
+No repositório (Claude Code, `@database`):
+- **Antes de mudar schema ou criar migration**: `/feature-dev` para ler `schema.prisma`, migrations e docs e propor o desenho; implemente só depois do plano aprovado.
+- **Depois de implementar:** agente `code-simplifier` sobre scripts alterados (`database/scripts/*.mjs`); agente `silent-failure-hunter` em todo script que executa SQL (nenhum erro engolido; `ON_ERROR_STOP=1` e código de saída diferente de zero em falha).
+- **Antes do PR:** `/review-pr`, tratando os achados críticos; a descrição do PR traz a saída de `db:migrate`, `db:drift` e `db:test`. Commits e PR com `/commit` e `/commit-push-pr` (Conventional Commits).
+- **security-guidance** roda sozinho; `.env` e senhas nunca aparecem em commit, log ou chat.
+- `/revise-claude-md` ao fim de sessão que mudou comandos ou fluxo de banco.
+
+No chat do projeto (claude.ai), os entregáveis de BD (texto, relatório, memória de cálculo) não usam plugins; o que vai para o repositório é versionado pelo Claude Code.
 
 ## Modelo de dados (congelado em 05/10/2026, D14)
 - **27 entidades** (5 fracas), **33 relacionamentos nomeados**, **29 tabelas**, todas na **3FN**. Especificação completa em `database/docs/modelo-er.md`; tabelas, tipos, PK, FK e regras de mapeamento em `database/docs/mapeamento.md`; esquema resumido na seção 7 de `claude/contexto-projeto.md`.
@@ -71,7 +81,7 @@ Padrões físicos:
 - RN12 Posição por carteira e ativo, somando as corretoras da carteira.
 
 ## Ambiente
-- `schema.prisma` + migrations são a fonte da verdade (Prisma 7: `prisma.config.ts` na raiz; comandos em `CLAUDE.md`: `db:migrate`, `db:drift`, `db:test`, `db:ddl`). A migration inicial `20261024000000_init` foi gerada a partir do schema; a seção final (citext e 42 CHECK) é escrita à mão. Constraints que o Prisma não expressa (CHECK, índices parciais, `citext`, schemas `ops`/`analytics`) entram como SQL na migration.
+- `schema.prisma` + migrations são a fonte da verdade (Prisma 7: `prisma.config.ts` na raiz; comandos em `CLAUDE.md`: `db:migrate`, `db:drift`, `db:test`, `db:ddl`). A migration inicial `20261024000000_init` foi gerada a partir do schema; a seção final (citext e 42 CHECK) é escrita à mão. A migration `20261026000000_ops_user_sessions` (D2) cria o schema `ops` e `ops.user_sessions`, com 2 CHECK escritos à mão no fim. Constraints que o Prisma não expressa (CHECK, índices parciais, `citext`, schemas `ops`/`analytics`) entram como SQL na migration.
 - `database/sql/ddl.sql` é **gerado** (`pg_dump --schema-only --schema=public` do banco migrado). Nunca escrito à mão.
 - `database/sql/inserts.sql` é a fonte única do seed; `prisma db seed` só o executa.
 - PostgreSQL local validado pelo usuário em 26/10 (F4). Se ele não estiver disponível, valide no ambiente de nuvem do chat e entregue os arquivos para versionar depois.
@@ -81,15 +91,15 @@ Além das 29 tabelas do ER, o sistema precisa de objetos nos schemas `ops` e `an
 
 | ID | Tarefa | Datas | Depende de | Pronto quando |
 |---|---|---|---|---|
-| D2 | Schema técnico `ops` com `ops.user_sessions` (refresh tokens com hash, rotação por família, revogação), via `multiSchema` do Prisma; agente database | 27/10–31/10 | D1, F4 | Migration nova cria só `ops`; `ddl.sql` (só `public`) não muda; `db:drift` sem diferenças; testes de restrição de `ops` passando |
+| D2 | Schema técnico `ops` com `ops.user_sessions` (refresh tokens com hash, rotação por família, revogação), via `multiSchema` do Prisma; agente database | **Concluído (26/10)** | D1, F4 | Migration nova cria só `ops`; `ddl.sql` (só `public`) não muda; `db:drift` sem diferenças; testes de restrição de `ops` passando |
 
-- `ops.user_sessions`: `id` uuid, `user_id` → `public.users` (ON DELETE CASCADE), `family_id` uuid (cadeia de rotação; reuso de token revoga a família), `token_hash` único (SHA-256 do refresh token; o token nunca é gravado), `expires_at`, `revoked_at` nulo, `created_at`. Índices por `user_id` e `family_id`. Registrar a estrutura como decisão no contexto antes de implementar.
+- `ops.user_sessions`: `id` uuid, `user_id` → `public.users` (ON DELETE CASCADE), `family_id` uuid (cadeia de rotação; reuso de token revoga a família), `token_hash` único (SHA-256 do refresh token; o token nunca é gravado), `expires_at`, `revoked_at` nulo, `created_at`. Índices por `user_id` e `family_id`. Estrutura registrada no D39 (`token_hash` em `char(64)` hexadecimal; CHECK de formato e `expires_at > created_at`); testes em `database/tests/ops-constraints.sql`.
 - Com `multiSchema`, todos os modelos existentes ganham `@@schema("public")`; a migration gerada não pode alterar nada em `public` (conferir com `db:ddl` e diff do `ddl.sql`).
 - `ops.ingestion_runs`, `ops.staging_*`, `ops.import_rows` e o schema `analytics` ficam para as etapas que os usam (S2, S3, S9).
 
 ## Entregáveis da disciplina de BD
 
-### Parte 1 — concluída em 05/10/2026 (falta o envio pelo usuário)
+### Parte 1 — concluída em 05/10/2026 e enviada em 19/10/2026
 - `database/docs/descricao-problema.md`, `database/docs/modelo-er.md`, `database/docs/mapeamento.md`.
 - PDF `BD_Parte1_CarteiraB3.pdf`: capa, texto, diagrama ER vetorial (A3), entidades, relacionamentos, regras de mapeamento e as 29 tabelas.
 
