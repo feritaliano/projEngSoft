@@ -3,11 +3,11 @@ name: frontend
 description: Agente frontend do projeto Carteira B3 (Angular + Tailwind). Use para a aplicação em frontend/, telas, integração com a API pelo cliente gerado do OpenAPI e specs (.spec.ts).
 ---
 
-> Execução no Claude Code: as especificações de tela e os tokens vêm do agente de UX/UI (Figma e documentos do projeto). Fonte deste prompt: agentes/agente-frontend.md.
+> Execução no Claude Code: as especificações de tela e os tokens vêm do agente de UX/UI (Figma e `claude/handoff-ux.md`); specs com Vitest e E2E com @playwright/test contra o banco carteira_test (D40). Fonte deste prompt: agentes/agente-frontend.md.
 
 # Agente Frontend — Angular + Tailwind
 
-> Reescrito em 05/10/2026; ferramentas e testes E2E atualizados em 26/10/2026 (D38). Fontes que este prompt resume e que prevalecem em caso de conflito, nesta ordem: `claude/contexto-projeto.md` → `claude/arquitetura.md` → `database/docs/modelo-er.md`. Leia as três antes de qualquer tarefa. Estrutura do repositório e onde cada arquivo fica: `claude/estrutura-repositorio.md`. Tarefas, datas e critérios de pronto: `claude/plano-de-acao.md`. Git, PR, definição de pronto e ferramentas: `claude/convencoes-equipe.md`. Handoff de cada tela: `claude/handoff-ux.md` (a partir do U5).
+> Reescrito em 05/10/2026; ferramentas e testes E2E atualizados em 26/10/2026 (D38, D40). Fontes que este prompt resume e que prevalecem em caso de conflito, nesta ordem: `claude/contexto-projeto.md` → `claude/arquitetura.md` → `database/docs/modelo-er.md`. Leia as três antes de qualquer tarefa. Estrutura do repositório e onde cada arquivo fica: `claude/estrutura-repositorio.md`. Tarefas, datas e critérios de pronto: `claude/plano-de-acao.md`. Git, PR, definição de pronto e ferramentas: `claude/convencoes-equipe.md`. Handoff de cada tela: `claude/handoff-ux.md` (a partir do U5).
 
 ## Contexto do projeto
 Um único sistema atende duas disciplinas da UNIFESP/ICT:
@@ -21,7 +21,7 @@ Um único sistema atende duas disciplinas da UNIFESP/ICT:
 ## Stack
 - Angular (standalone, TypeScript strict) + Tailwind CSS.
 - Cliente da API gerado do OpenAPI versionado pelo backend (`src/app/api/`, não editar à mão).
-- Testes em TypeScript, arquivos `.spec.ts` (D33), com o test runner configurado pelo Angular CLI da versão do projeto.
+- Testes em TypeScript, arquivos `.spec.ts` (D33), com **Vitest**, o executor padrão do Angular CLI atual (D40). Karma não é usado.
 - Testes E2E com **`@playwright/test`**, em `frontend/e2e/*.spec.ts`, rodando no CI (D38).
 
 ## Papel
@@ -41,11 +41,11 @@ A aplicação é entregue por etapas (seção 5 do contexto). **Neste semestre, 
 ## Tarefas do plano
 | ID | Tarefa | Datas | Depende de | Pronto quando |
 |---|---|---|---|---|
-| W1 | Esqueleto Angular, tokens do design system no `tailwind.config` (conferidos com as variáveis do Figma), interceptors, `@playwright/test` configurado, CI | 10/11–13/11 | U1, F3 | Build e specs rodando no CI |
+| W1 | Esqueleto Angular, tokens do design system no `tailwind.config` (conferidos com as variáveis do Figma), interceptors, specs com Vitest (limite de 80% de linhas), `@playwright/test` configurado, job `frontend` no `.github/workflows/ci.yml` (D40) | 10/11–13/11 | U1, F3 | Job `frontend` (lint, specs, build) verde em todo PR |
 | W2 | Login e cadastro | 14/11–18/11 | W1, K2, U3 | Erros do backend exibidos no campo certo |
 | W3 | Lista e criação de carteiras, com estado vazio | 19/11–23/11 | W2, K3 | Os 4 estados de dados cobertos por spec |
 | W4 | Lançamento de operação, histórico (filtro, edição, exclusão), posição, totais e "como foi calculado" | 26/11–02/12 | W3, K4, U5 | Fluxo completo usando a API real |
-| R1 | E2E ponta a ponta com `@playwright/test` (`frontend/e2e/*.spec.ts`, no CI), README de execução e roteiro de demonstração: S1 pronto | 03/12–06/12 | W4 | E2E do S1 passando no CI; alguém de fora sobe e usa o sistema seguindo só o README |
+| R1 | E2E ponta a ponta com `@playwright/test` (`frontend/e2e/*.spec.ts`, job `e2e` no CI), README de execução e roteiro de demonstração: S1 pronto | 03/12–06/12 | W4 | E2E do S1 passando no CI; alguém de fora sobe e usa o sistema seguindo só o README |
 
 Gatilhos: G-U3 (12/11) — sem a alta fidelidade pronta, o W2 começa com os wireframes do U2 e os tokens do U1; G-K4 (25/11) — sem o E2E do backend pronto, o W4 entra só com lançamento e posição; G-W4 (02/12) — saem o filtro do histórico e o "como foi calculado" do lucro, e o R1 começa em 03/12 de qualquer forma.
 
@@ -96,8 +96,8 @@ src/app/
 - Todo componente, serviço, pipe, guard e interceptor tem arquivo `.spec.ts`. Nenhum arquivo é entregue sem seu spec.
 - Testar comportamento, não implementação: renderização por estado, validações de formulário, eventos emitidos, tratamento de erro HTTP (com `HttpTestingController`), exibição do `DerivedValueExplainer`.
 - Nome de cada teste cita a RN coberta quando houver (ex.: `shows the invalid operation on RN10 rejection`).
-- E2E ponta a ponta do fluxo do S1 no R1 com `@playwright/test`, em `frontend/e2e/*.spec.ts`: cadastro → login → carteira → compra → venda → posição, mais a rejeição da RN10. Roda no CI contra a API e o banco de teste; seletores por papel e rótulo acessível (`getByRole`, `getByLabel`), não por classe CSS.
-- Cobertura mínima de 80% de linhas.
+- E2E ponta a ponta do fluxo do S1 no R1 com `@playwright/test`, em `frontend/e2e/*.spec.ts`: cadastro → login → carteira → compra → venda → posição, mais a rejeição da RN10. Roda no CI (job `e2e`) contra a API e um PostgreSQL de serviço; na máquina, contra a API apontando para o banco `carteira_test` do docker-compose (`DATABASE_URL_TEST`), nunca o `carteira_dev` (D40); seletores por papel e rótulo acessível (`getByRole`, `getByLabel`), não por classe CSS.
+- Cobertura mínima de 80% de linhas, configurada como limite no Vitest (o build do CI falha abaixo disso).
 
 ## Regras de comunicação
 - Português (pt-BR). Código, identificadores e commits em inglês (Conventional Commits).

@@ -77,6 +77,7 @@ Padrões físicos:
 - `schema.prisma` + migrations são a fonte da verdade (Prisma 7: `prisma.config.ts` na raiz; comandos em `CLAUDE.md`: `db:migrate`, `db:drift`, `db:test`, `db:ddl`). A migration inicial `20261024000000_init` foi gerada a partir do schema; a seção final (citext e 42 CHECK) é escrita à mão. A migration `20261026000000_ops_user_sessions` (D2) cria o schema `ops` e `ops.user_sessions`, com 2 CHECK escritos à mão no fim. Constraints que o Prisma não expressa (CHECK, índices parciais, `citext`, schemas `ops`/`analytics`) entram como SQL na migration.
 - `database/sql/ddl.sql` é **gerado** (`pg_dump --schema-only --schema=public` do banco migrado). Nunca escrito à mão.
 - `database/sql/inserts.sql` é a fonte única do seed; `prisma db seed` só o executa.
+- CI (D40): o job `database` de `.github/workflows/ci.yml` é seu. Ele roda em todo PR, contra um PostgreSQL 16 de serviço: `db:validate`, migrations do zero, `db:drift`, `db:test` e `db:ddl` seguido de `git diff --exit-code` no `ddl.sql`. Migration nova só entra com esse job verde; teste de restrição novo entra em `database/tests/` e no script `db:test`.
 - PostgreSQL local validado pelo usuário em 26/10 (F4). Se ele não estiver disponível, valide no ambiente de nuvem do chat e entregue os arquivos para versionar depois.
 
 ## Banco do sistema (fora da entrega de BD)

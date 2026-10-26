@@ -19,12 +19,12 @@ carteira-b3/
 │   │   ├── database.md              [ok] subagente do Claude Code (espelho de agentes/agente-banco-de-dados.md)
 │   │   ├── backend.md               [ok] espelho de agentes/agente-backend.md
 │   │   └── frontend.md              [ok] espelho de agentes/agente-frontend.md
-│   ├── settings.json                [ok] permissões compartilhadas e plugins do projeto (enabledPlugins, D38)
+│   ├── settings.json                [ok] permissões (allow / ask / deny, D40) e plugins do projeto (enabledPlugins, D38)
 │   └── settings.local.json          configurações pessoais (fora do Git)
 ├── .github/
 │   ├── pull_request_template.md     [ok]
 │   └── workflows/
-│       └── ci.yml                   [K1] lint, testes e build do backend em todo PR; o W1 acrescenta o frontend e o R1 o E2E
+│       └── ci.yml                   [ok] job `database` (migrations, drift, testes de restrição, ddl.sql); K1 acrescenta `backend`, W1 `frontend`, R1 `e2e` (D40)
 ├── agentes/                         [ok] prompts-fonte dos agentes
 │   ├── agente-banco-de-dados.md
 │   ├── agente-backend.md
@@ -82,7 +82,7 @@ carteira-b3/
 │   ├── tsconfig.json
 │   ├── tsconfig.build.json
 │   ├── eslint.config.mjs            inclui a regra de fronteira entre camadas
-│   ├── jest.config.ts
+│   ├── jest.config.ts               unitários (em paralelo), com os limites de cobertura
 │   ├── Dockerfile                   imagem única; api e worker mudam só o entrypoint
 │   ├── openapi/
 │   │   └── openapi.json             [K4] gerado pelo @nestjs/swagger e versionado; o frontend gera o cliente a partir dele
@@ -99,6 +99,9 @@ carteira-b3/
 │   │           ├── infrastructure/
 │   │           └── presentation/
 │   └── test/
+│       ├── jest-e2e.config.ts       integração e E2E, em série (--runInBand)
+│       ├── global-setup.ts          sobe o PostgreSQL do Testcontainers e roda `prisma migrate deploy` a partir da raiz (D40)
+│       ├── factories/               builders de dados de teste
 │       └── *.e2e-spec.ts            E2E e integração (Testcontainers)
 │
 ├── frontend/                        [W1] criado pelo Angular CLI; dono: agente frontend
@@ -106,7 +109,7 @@ carteira-b3/
 │   ├── angular.json
 │   ├── tsconfig.json
 │   ├── tsconfig.app.json
-│   ├── tsconfig.spec.json
+│   ├── tsconfig.spec.json           specs com Vitest (executor padrão do Angular CLI, D40)
 │   ├── playwright.config.ts         [W1] configuração do @playwright/test (D38)
 │   ├── (configuração do Tailwind)   tokens do design system; o arquivo depende da versão do Tailwind (ver W1)
 │   ├── src/
@@ -136,6 +139,8 @@ carteira-b3/
 | Modelo das variáveis | `.env.example` na raiz | Sim |
 | Banco local | `docker-compose.yml` na raiz + `docker/postgres/init/` | Sim |
 | Imagem da API e do worker | `backend/Dockerfile` (K1) | Sim |
+| CI (GitHub Actions) | `.github/workflows/ci.yml`; banco do CI é um serviço PostgreSQL 16 descartável, com senha fixa só do CI | Sim |
+| Relatórios do Playwright e cobertura | `playwright-report/`, `test-results/`, `coverage/` | Não |
 | Schema e migrations | `prisma/` | Sim |
 | Prisma Client | `backend/src/generated/prisma/` | Não (gerado) |
 | DDL da entrega de BD | `database/sql/ddl.sql` | Sim (gerado) |
@@ -156,3 +161,5 @@ carteira-b3/
 | `claude/handoff-ux.md` | agente UX/UI | o frontend só lê |
 | `agentes/`, `.claude/agents/`, `claude/` | usuário (atualizados pelos agentes no chat do projeto) | `.claude/agents/*.md` e `agentes/*.md` mudam juntos |
 | `docker-compose.yml` | agente database (serviço postgres); agente backend (api e worker, a partir do K1) | — |
+| `.github/workflows/ci.yml` | um job por dono (D40): `database` → agente database; `backend` → agente backend; `frontend` e `e2e` → agente frontend | um agente não altera o job de outro |
+| `.claude/settings.json` | usuário (permissões e plugins, D38, D40) | ajuste pessoal em `.claude/settings.local.json` |

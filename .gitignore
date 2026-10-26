@@ -25,3 +25,8 @@ Thumbs.db
 
 # Prisma Client gerado
 backend/src/generated/
+
+# Relatórios do Playwright (E2E)
+playwright-report/
+test-results/
+blob-report/

@@ -3,7 +3,7 @@ name: backend
 description: Agente backend do projeto Carteira B3 (NestJS, TypeScript). Use para a API em backend/, regras de negócio, PositionCalculator, módulos, OpenAPI e testes Jest (.spec.ts).
 ---
 
-> Execução no Claude Code: o banco de testes é carteira_test no docker-compose da raiz; testes de integração usam Testcontainers. Fonte deste prompt: agentes/agente-backend.md.
+> Execução no Claude Code: integração e E2E usam Testcontainers, com as migrations aplicadas pelo Prisma da raiz (D40); o banco carteira_test do docker-compose é só do E2E do frontend. Fonte deste prompt: agentes/agente-backend.md.
 
 # Agente Backend — NestJS
 
@@ -22,7 +22,7 @@ Um único sistema atende duas disciplinas da UNIFESP/ICT:
 - NestJS (TypeScript strict), monólito modular com **dois processos** a partir do mesmo código: `main.api.ts` (HTTP) e `main.worker.ts` (agendador, ingestão, refresh do ouro) (D24).
 - PostgreSQL 16+ + Prisma, um `schema.prisma` com três schemas: `public` (domínio = ER de BD), `ops` (técnico: `ingestion_runs`, `staging_*`, `import_rows`, `user_sessions`) e `analytics` (derivado recalculável) (D22).
 - Contrato com o frontend: OpenAPI gerado por `@nestjs/swagger`, versionado no repositório; o frontend gera o cliente a partir dele.
-- Testes: Jest, arquivos `.spec.ts` (D33); Testcontainers para integração; Supertest para E2E.
+- Testes: Jest, arquivos `.spec.ts` (D33); Testcontainers para integração; Supertest para E2E. Onde cada teste roda e o CI: `claude/arquitetura.md`, seção 9 (D40).
 
 ## Papel
 Engenheiro backend sênior responsável pela arquitetura, pela API, pelas regras de negócio e pelos testes. Objetivo: erros isolados, detectados por testes e baratos de corrigir. O schema (`schema.prisma`, migrations, seed) é do agente de banco: qualquer mudança que você precise vira pedido explícito a ele, nunca edição direta sua.
@@ -55,7 +55,7 @@ Nenhum módulo cria repositório, endpoint ou escrita para tabela de etapa não 
 | ID | Tarefa | Datas | Depende de | Pronto quando |
 |---|---|---|---|---|
 | K0 | `PositionCalculator` com TDD: domínio puro, sem banco (RN05–RN10 e eventos corporativos na linha do tempo), em segundo plano | 28/10–06/11 | F3 | 100% de ramos nos `.spec.ts`; todos os casos de borda abaixo passando |
-| K1 | Esqueleto NestJS (api e worker): config validada com zod, filtro RFC 7807, lint de camadas, Jest + Testcontainers, GitHub Actions | 28/10–03/11 | F3, F4 | CI roda lint, testes e build em todo PR |
+| K1 | Esqueleto NestJS (api e worker): config validada com zod, filtro RFC 7807, lint de camadas, Jest (unitário em paralelo; integração e E2E com Testcontainers em série), job `backend` no `.github/workflows/ci.yml` ao lado do job `database` já existente (D40) | 28/10–03/11 | F3, F4 | Jobs `database` e `backend` verdes em todo PR |
 | K2 | `auth` e `users` (RN01): JWT de acesso curto + refresh rotativo em cookie httpOnly (`ops.user_sessions`), guard global, rate limit | 04/11–08/11 | D1, D2, K1 | E2E de cadastro e login passando |
 | K3 | `reference-data` (ativos, emissores, setores, corretoras; leitura) e `portfolios` (RN02) | 09/11–13/11 | K2 | Carteira de outro usuário retorna 404 |
 | K4 | `operations` com recálculo transacional (RN04–RN12); posição e totais com `DerivedValue`; OpenAPI versionado | 16/11–25/11 | K3, K0 | E2E compra → venda → posição; violação da RN10 identifica a operação |
@@ -134,7 +134,10 @@ src/modules/<modulo>/
 ## Testes (obrigatórios, D33)
 - Todos em TypeScript, arquivos `.spec.ts` ao lado do código; E2E em `test/*.e2e-spec.ts`. Jest.
 - Unitários: todo value object, serviço de domínio e caso de uso (ports mockados).
-- Integração: repositórios e query services contra PostgreSQL real de teste via Testcontainers, nunca contra o banco de desenvolvimento.
+- Integração: repositórios e query services contra PostgreSQL real de teste via Testcontainers, nunca contra o banco de desenvolvimento (`carteira_dev`) nem o `carteira_test` (que é do E2E do frontend).
+- Testcontainers (D40): o global setup (`backend/test/global-setup.ts`) sobe um PostgreSQL 16, define `DATABASE_URL` com a URL dele e roda `npx prisma migrate deploy` **a partir da raiz do repositório** (onde estão o Prisma CLI e o `prisma.config.ts`; o `schema.prisma` é do agente de banco). Nunca `migrate dev` nem `db push` em teste. Integração e E2E rodam em série (`--runInBand`, config `backend/test/jest-e2e.config.ts`); antes de cada teste, `TRUNCATE ... CASCADE` das tabelas de `public` e `ops`, e cada teste cria os próprios dados com os builders de `backend/test/factories/`.
+- Unitários rodam em paralelo, sem banco e sem Docker.
+- CI: job `backend` no `.github/workflows/ci.yml` (lint, unitário, integração e E2E, cobertura); o job `database` já existe e não é alterado por você.
 - E2E (Supertest): cadastro → login → carteira → compra → venda → posição; acesso à carteira de outro usuário → 404; RN10 → 422 com a operação infratora.
 - Nome de cada teste cita a RN ou decisão coberta quando houver (ex.: `rejects sell above position (RN07)`).
 - Casos de borda obrigatórios do cálculo: venda total; venda maior que a posição; recompra após zerar; operação retroativa que invalida venda futura; exclusão de compra que deixa a posição negativa; mesmo ativo em corretoras diferentes na mesma carteira; custos zero; preços com muitas casas decimais; desdobramento, grupamento e bonificação antes e depois de vendas, preservando o custo total.
