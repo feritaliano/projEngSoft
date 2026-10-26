@@ -4,7 +4,7 @@ Plataforma gratuita e sem fins lucrativos de análise e gestão de investimentos
 
 ## Leia antes de qualquer tarefa
 Ordem de precedência em caso de conflito:
-1. `claude/contexto-projeto.md` — documento-mestre: escopo, decisões D1–D37, esquema relacional, pendências.
+1. `claude/contexto-projeto.md` — documento-mestre: escopo, decisões D1–D39, esquema relacional, pendências.
 2. `claude/arquitetura.md` — arquitetura de dados e da aplicação.
 3. `database/docs/modelo-er.md` — modelo ER congelado (27 entidades, 33 relacionamentos, 29 tabelas).
 4. Prompts dos agentes em `agentes/` (espelhados em `.claude/agents/`).
@@ -32,7 +32,7 @@ O conteúdo de `.claude/agents/*.md` é o mesmo de `agentes/*.md`; ao alterar um
 ## Banco de dados (Prisma 7)
 - `npm install` na raiz instala o Prisma (as ferramentas de banco ficam na raiz; o backend terá o próprio `package.json`).
 - `npm run db:migrate` aplica as migrations (`prisma migrate deploy`); `npm run db:drift` confere se `schema.prisma` e as migrations estão iguais (deve sair sem diferenças).
-- `npm run db:test` roda `database/tests/constraints.sql` (testes das restrições; não deixa dados).
+- `npm run db:test` roda `database/tests/constraints.sql` e `database/tests/ops-constraints.sql` (testes das restrições de `public` e de `ops`; não deixam dados).
 - `npm run db:ddl` regenera `database/sql/ddl.sql` a partir do banco migrado.
 - CHECK constraints e a extensão `citext` ficam escritos à mão no fim da migration; o Prisma não os expressa nem os remove.
 
@@ -57,7 +57,7 @@ prisma/           schema.prisma, migrations/
 database/
   docs/           descricao-problema.md, modelo-er.md, mapeamento.md, glossario.md, memoria-calculo.md, diagrama-er.svg
   scripts/        export-ddl.mjs, run-sql.mjs
-  tests/          constraints.sql
+  tests/          constraints.sql, ops-constraints.sql
   sql/            ddl.sql (gerado), inserts.sql (seed), queries.sql
   results/        resultados das consultas e listagens das tabelas
 data/raw/         arquivos brutos das fontes externas (fora do Git)

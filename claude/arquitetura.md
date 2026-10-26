@@ -76,7 +76,7 @@ flowchart LR
 | **Ouro** | Schema `analytics` | Tabelas de cache e materialized views derivadas | Pode ser apagado e reconstruído a qualquer momento (D17). Nunca é fonte da verdade. **Fora do ER.** Só o worker escreve. |
 
 ### 3.2 Esclarecimento do D7
-"Um único schema" passa a significar **um único banco e um único `schema.prisma`**, dividido em três schemas PostgreSQL. O `database/sql/ddl.sql` de BD passa a ser gerado por `pg_dump --schema-only --schema=public` a partir do banco migrado. Continua sendo gerado, nunca escrito à mão, e fica restrito ao que está no ER. Os objetos de `ops` e `analytics` são criados por SQL nas migrations do Prisma (recurso `multiSchema`; confirmar suporte na versão instalada).
+"Um único schema" passa a significar **um único banco e um único `schema.prisma`**, dividido em três schemas PostgreSQL. O `database/sql/ddl.sql` de BD passa a ser gerado por `pg_dump --schema-only --schema=public` a partir do banco migrado. Continua sendo gerado, nunca escrito à mão, e fica restrito ao que está no ER. Os objetos de `ops` e `analytics` são criados por SQL nas migrations do Prisma (recurso `multiSchema`, estável no Prisma 7 sem preview feature; primeira migration em `ops` no D2, D39).
 
 ## 4. Núcleo relacional (schema `public`)
 
@@ -349,4 +349,4 @@ Todos os testes são escritos em TypeScript, em arquivos `.spec.ts` (D33): Jest 
 - ~~P1: CPF em `users`~~ Resolvida: D30 (não armazenar).
 - ~~P2: R1~~ Resolvida: D29 (registro manual de eventos no S2).
 - P3: DY em C4 sem fonte de proventos (R2): decidir antes do S3.
-- P4: Confirmar o suporte a `multiSchema` na versão do Prisma adotada, no D1 do plano.
+- ~~P4: confirmar o suporte a `multiSchema`~~ Resolvida: estável no Prisma 7.10; usado no D2 (D39).

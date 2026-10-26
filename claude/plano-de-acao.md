@@ -1,6 +1,8 @@
-# Plano de ação — Carteira B3 (replanejado em 24/10/2026)
+# Plano de ação — Carteira B3 (replanejado em 24/10/2026; ajustado em 26/10/2026)
 
 **Situação em 24/10/2026:** BD Parte 1 enviada em 19/10; banco criado e validado (P0, G1, D1). Nenhuma tarefa das outras frentes andou entre 06/10 e 23/10, e o usuário retomou o projeto geral em 24/10: todas as datas abaixo foram refeitas a partir de 25/10.
+
+**Ajuste de 26/10/2026 (D38):** ferramentas do Claude Code definidas por frente (`claude/convencoes-equipe.md`); U5 passa a entregar `claude/handoff-ux.md` com o link do frame de cada tela no Figma; R1 usa `@playwright/test` para o E2E; F3 inclui `gh auth login` e a proteção da `main` sem aprovação obrigatória enquanto o projeto tiver uma pessoa. Datas inalteradas.
 
 **Frentes ativas:** todas.
 - 25–27/10: fundação (usuário).
@@ -14,7 +16,7 @@
 
 **Prompts dos agentes:** os quatro em `agentes/` foram reescritos em 05/10/2026 e trazem as tarefas e datas da própria frente; mudança neste plano atualiza também o prompt da frente afetada.
 
-**Checklist interativo:** artifact "Plano de Ação Carteira B3" (https://claude.ai/artifact/MEKLYSKz6kRe1ff3nvop6U), atualizado em 05/10/2026 com este plano. O progresso (tarefas marcadas) vive no artifact; datas, dependências e critérios de pronto vivem neste documento. Toda mudança neste plano atualiza o artifact na mesma tarefa.
+**Checklist interativo:** artifact "Plano de Ação Carteira B3" (https://claude.ai/artifact/MEKLYSKz6kRe1ff3nvop6U), atualizado em 26/10/2026 com este plano. O progresso (tarefas marcadas) vive no artifact; datas, dependências e critérios de pronto vivem neste documento. Toda mudança neste plano atualiza o artifact na mesma tarefa.
 
 ## BD Parte 1 — descrição do problema e modelo ER
 | ID | Tarefa | Status | Resultado |
@@ -42,36 +44,45 @@
 |---|---|---|---|---|
 | F1 | E-mails às professoras: ODS (BD) e reuso nas duas disciplinas | **Concluído (05/10)** | — | ODS confirmado; reuso registrado (D33) |
 | F2 | Comando `claude` no PATH e extensão do VS Code | 25/10–26/10 (usuário) | — | `claude --version` responde; `@database` aparece na lista |
-| F3 | Repositório GitHub: estrutura de `claude/estrutura-repositorio.md` (conteúdo do pacote do repositório) no commit inicial; depois `main` protegida, template de PR, Conventional Commits, GitHub Projects | 26/10–27/10 (usuário) | F2 | Commit inicial na `main` sem `.env`; PR de teste mesclado pela regra de proteção (o CI entra no K1) |
-| F4 | `docker-compose.yml` com PostgreSQL 16 (bancos dev e test) e `.env.example`: **arquivos prontos no pacote**; falta validar na máquina do usuário | 27/10 (usuário) | F3 | `docker compose up` sobe os bancos; `npm run db:migrate` e `npm run db:test` passam |
+| F3 | Repositório GitHub: estrutura de `claude/estrutura-repositorio.md` (conteúdo do pacote do repositório) no commit inicial; depois `main` protegida (PR obrigatório; 0 aprovações enquanto houver uma pessoa, D38), template de PR, Conventional Commits, GitHub Projects; `gh auth login` para os comandos `/commit-push-pr` | 26/10–27/10 (usuário) | F2 | Commit inicial na `main` sem `.env`; PR de teste mesclado pela regra de proteção (o CI entra no K1); `gh auth status` responde |
+| F4 | **Concluído (26/10, validado na máquina do usuário).** `docker-compose.yml` com PostgreSQL 16 (bancos dev, test e shadow) e `.env.example` | 27/10 (usuário) | F3 | `docker compose up` sobe os bancos; `npm run db:migrate` e `npm run db:test` passam |
+
+## Banco do sistema (fora da entrega de BD)
+O que o sistema precisa no banco além das 29 tabelas do ER. Não entra no `ddl.sql` nem no relatório de BD (D22).
+
+| ID | Tarefa | Datas | Depende de | Pronto quando |
+|---|---|---|---|---|
+| D2 | Schema técnico `ops` com `ops.user_sessions` (refresh tokens com hash, rotação por família, revogação), via `multiSchema` do Prisma; agente database | **Concluído (26/10)** | D1, F4 | Migration nova cria só `ops`; `ddl.sql` (só `public`) não muda; `db:drift` sem diferenças; testes de restrição de `ops` passando |
+
+O catálogo de referência do S1 (setores, emissores, ativos, corretoras) vem do seed do P1 (termina em 07/11, antes do K3); os testes de integração do backend criam os próprios dados.
 
 ## UX/UI
 | ID | Tarefa | Datas | Depende de | Pronto quando |
 |---|---|---|---|---|
 | U0 | Aprovar a lista de telas do S1 proposta em `agentes/agente-ux-ui.md` (prompt reescrito em 05/10) | 25/10 | — | Lista aprovada pelo usuário e registrada no projeto |
-| U1 | Design system: cores claro/escuro, tipografia, espaçamento, componentes base como tokens Tailwind | 26/10–29/10 | U0, B3 | Tokens no Figma e em tabela no projeto |
+| U1 | Design system: cores claro/escuro, tipografia, espaçamento, componentes base como tokens Tailwind | 26/10–29/10 | U0, B3 | Tokens no Figma (variáveis com os nomes dos tokens) e em tabela no projeto; link do arquivo Figma na seção 10 do contexto |
 | U2 | Fluxos e wireframes das telas do S1 (cadastro, login, carteiras, operações, posição) | 30/10–05/11 | U1 | Fluxo cadastro → carteira → compra → venda → posição completo |
-| U3 | Alta fidelidade com estados (vazio, carregando, erro, sucesso) | 06/11–12/11 | U2 | Estados de cada componente especificados |
+| U3 | Alta fidelidade com estados (vazio, carregando, erro, sucesso), um frame por tela | 06/11–12/11 | U2 | Estados de cada componente especificados |
 | U4 | Textos de ajuda: "como foi calculado" para PM, custo e lucro | 13/11–14/11 | U3 | Tabela salva no projeto |
-| U5 | Revisão por Nielsen e WCAG AA; handoff para o frontend | 15/11–16/11 | U4 | Sem pendência de contraste ou de foco |
+| U5 | Revisão por Nielsen e WCAG AA (plugin Design: crítica de design e revisão de acessibilidade); handoff para o frontend em `claude/handoff-ux.md` | 15/11–16/11 | U4 | Sem pendência de contraste ou de foco; `claude/handoff-ux.md` com o link do frame de cada tela |
 
 ## Backend
 | ID | Tarefa | Datas | Depende de | Pronto quando |
 |---|---|---|---|---|
 | K0 | `PositionCalculator` com TDD: domínio puro, sem banco (RN05–RN10, eventos corporativos), em segundo plano | 28/10–06/11 | F3 | 100% de ramos nos `.spec.ts`; casos de borda passando |
 | K1 | Esqueleto NestJS (api e worker): config validada, filtro RFC 7807, Jest + Testcontainers, GitHub Actions | 28/10–03/11 | F3, F4 | CI roda lint, testes e build em todo PR |
-| K2 | Módulos auth e users (RN01), guard JWT, rate limit | 04/11–08/11 | D1, K1 | E2E de cadastro e login passando |
+| K2 | Módulos auth e users (RN01), guard JWT, rate limit | 04/11–08/11 | D1, D2, K1 | E2E de cadastro e login passando |
 | K3 | reference-data (ativos, emissores, corretoras) e portfolios (RN02) | 09/11–13/11 | K2 | Carteira de outro usuário retorna 404 |
 | K4 | operations com recálculo transacional (RN04–RN12); OpenAPI versionado | 16/11–25/11 | K3, K0 | E2E compra → venda → posição; violação da RN10 identifica a operação |
 
 ## Frontend
 | ID | Tarefa | Datas | Depende de | Pronto quando |
 |---|---|---|---|---|
-| W1 | Esqueleto Angular, tokens no `tailwind.config`, interceptors, CI | 10/11–13/11 | U1, F3 | Build e specs rodando no CI |
+| W1 | Esqueleto Angular, tokens no `tailwind.config` (conferidos com as variáveis do Figma), interceptors, `@playwright/test` configurado, CI | 10/11–13/11 | U1, F3 | Build e specs rodando no CI |
 | W2 | Login e cadastro | 14/11–18/11 | W1, K2, U3 | Erros do backend exibidos no campo certo |
 | W3 | Lista e criação de carteiras, com estado vazio | 19/11–23/11 | W2, K3 | Os 4 estados de dados cobertos por spec |
 | W4 | Lançamento de operação, histórico, posição e "como foi calculado" | 26/11–02/12 | W3, K4, U5 | Fluxo completo usando a API real |
-| R1 | E2E ponta a ponta, README de execução e roteiro de demonstração: S1 pronto | 03/12–06/12 | W4 | Alguém de fora sobe e usa o sistema seguindo só o README |
+| R1 | E2E ponta a ponta com `@playwright/test` (`frontend/e2e/*.spec.ts`, no CI), README de execução e roteiro de demonstração: S1 pronto | 03/12–06/12 | W4 | E2E do S1 passando no CI; alguém de fora sobe e usa o sistema seguindo só o README |
 
 ## Gatilhos de corte
 | # | Data | Condição | Ação |
@@ -79,7 +90,7 @@
 | G-P0 | 10/10 | Alguma regra de IR sem confirmação na norma | Registrar a regra com a citação disponível e marcar como "a confirmar" na memória de cálculo; o seed de IR usa só as regras confirmadas |
 | G-D1 | 20/10 (**aplicado em 24/10**) | Sem PostgreSQL local (F4 não pronto) | O agente de banco valida schema, migrations e seed num PostgreSQL no ambiente de nuvem do chat e entrega os arquivos para versionar; o P1 não atrasa |
 | G-K4 | 25/11 | K4 sem o E2E compra → venda → posição passando | O W4 entra só com lançamento e posição; edição e exclusão retroativa ficam no backend (RN10 testada), fora da tela |
-| G-U3 | 12/11 | Alta fidelidade (U3) não pronta | O W2 começa com os wireframes do U2 e os tokens do U1; o U3 vira ajuste visual depois |
+| G-U3 | 12/11 | Alta fidelidade (U3) não pronta | O W2 começa com os wireframes do U2 e os tokens do U1, com os links dos frames de wireframe já em `claude/handoff-ux.md`; o U3 vira ajuste visual depois |
 | G-W4 | 02/12 | W4 não pronto | Saem do frontend o filtro do histórico e o "como foi calculado" do lucro; o R1 começa em 03/12 de qualquer forma |
 | G-P4 | 30/11 | Sempre | O relatório de BD tem prioridade sobre qualquer outra frente |
 | G-UX | Sempre | Uma tarefa de BD passou da data de término | O UX/UI pausa até a tarefa de BD voltar ao prazo |
@@ -93,6 +104,7 @@
 - **Duas semanas perdidas em outubro.** O replanejamento de 24/10 absorveu o atraso comprimindo UX/UI (U1–U5 em três semanas) e sobrepondo backend e UX.
 - **Folga final zero.** O R1 termina em 06/12.
 - **Fundação depende do usuário.** F2–F4 em 25–27/10; atraso no F3 atrasa K0, K1 e W1; o banco não depende mais do Docker (G-D1 aplicado).
+- **Revisão sem segunda pessoa.** O `/review-pr` substitui o revisor humano (D38); ele não roda o sistema, então "rodar localmente o que o PR afirma" continua sendo tarefa do usuário antes do merge.
 - **Seed com tabelas de poucos registros reais.** `tax_categories` e `economic_indexes` têm 4 registros reais cada, abaixo das ±10 tuplas do enunciado; decisão do usuário pendente antes do fim do P1.
 - Mudança no ER depois do congelamento atrasa schema, seed e telas (D14). Ajustes do retorno da Parte 1 entram como decisão registrada e são aplicados antes do P1 se chegarem a tempo.
 - Seed de IR sem regra validada gera apurações inconsistentes: por isso o P0 vem antes do P1.
