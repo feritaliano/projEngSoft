@@ -1,0 +1,24 @@
+# Carteira B3 — PostgreSQL 16 local (bancos dev e test)
+# Uso: copie .env.example para .env, ajuste a senha e rode: docker compose up -d
+services:
+  postgres:
+    image: postgres:16
+    container_name: carteira-b3-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: carteira_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d carteira_dev"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:

@@ -1,0 +1,646 @@
+// Carteira B3 — schema do domínio (schema PostgreSQL `public`).
+// Fonte: database/docs/modelo-er.md (ER congelado em 05/10/2026, D14) e database/docs/glossario.md (PT ↔ EN).
+// 27 entidades + 2 relacionamentos N:N = 29 tabelas. Dado derivado nunca vira coluna (D4, D17, D32).
+// CHECK constraints e a extensão citext ficam no SQL da migration (o Prisma não os expressa).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../backend/src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------- enums
+
+enum ImportBatchStatus {
+  PENDING
+  CONFIRMED
+  DISCARDED
+
+  @@map("import_batch_status")
+}
+
+enum OperationType {
+  BUY
+  SELL
+
+  @@map("operation_type")
+}
+
+enum IssuerKind {
+  COMPANY
+  FUND
+  FOREIGN
+
+  @@map("issuer_kind")
+}
+
+enum AssetType {
+  STOCK
+  FII
+  ETF
+  BDR
+
+  @@map("asset_type")
+}
+
+enum ShareClass {
+  ON
+  PN
+  PNA
+  PNB
+  UNIT
+
+  @@map("share_class")
+}
+
+enum IndexCode {
+  CDI
+  SELIC
+  IPCA
+  IBOV
+
+  @@map("index_code")
+}
+
+enum IndexPeriodicity {
+  DAILY
+  MONTHLY
+
+  @@map("index_periodicity")
+}
+
+enum IndexUnit {
+  RATE_PERCENT
+  POINTS
+
+  @@map("index_unit")
+}
+
+enum FilingType {
+  DFP
+  ITR
+
+  @@map("filing_type")
+}
+
+enum StatementScope {
+  INDIVIDUAL
+  CONSOLIDATED
+
+  @@map("statement_scope")
+}
+
+enum PropertyClass {
+  RENT_FINISHED
+  RENT_UNDER_CONSTRUCTION
+  SALE_FINISHED
+  SALE_UNDER_CONSTRUCTION
+
+  @@map("property_class")
+}
+
+enum CorporateEventType {
+  SPLIT
+  REVERSE_SPLIT
+  BONUS
+
+  @@map("corporate_event_type")
+}
+
+enum DataSource {
+  B3
+  MANUAL
+
+  @@map("data_source")
+}
+
+enum IncomeType {
+  DIVIDEND
+  JCP
+  FII_INCOME
+
+  @@map("income_type")
+}
+
+// D35: operações comuns separadas em ações à vista (isenção de vendas até R$ 20 mil, Lei 11.033/2004,
+// art. 3º, I) e demais ativos (ETF de renda variável, BDR, units), que não têm a isenção.
+enum TaxCategoryCode {
+  COMMON_STOCK
+  COMMON_OTHER
+  DAY_TRADE
+  FII
+
+  @@map("tax_category_code")
+}
+
+enum IndicatorGroup {
+  VALUATION
+  EFFICIENCY
+  PROFITABILITY
+  DEBT
+  GROWTH
+  FII
+
+  @@map("indicator_group")
+}
+
+enum IndicatorUnit {
+  RATIO
+  PERCENT
+  CURRENCY
+
+  @@map("indicator_unit")
+}
+
+enum AnalysisAssetType {
+  STOCK
+  FII
+
+  @@map("analysis_asset_type")
+}
+
+enum PriceDirection {
+  ABOVE
+  BELOW
+
+  @@map("price_direction")
+}
+
+enum SortDirection {
+  ASC
+  DESC
+
+  @@map("sort_direction")
+}
+
+// ---------------------------------------------------------------- conta e carteira
+
+model User {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name         String   @db.VarChar(150)
+  email        String   @unique @db.Citext
+  passwordHash String   @map("password_hash") @db.VarChar(255)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  portfolios     Portfolio[]
+  taxAssessments TaxAssessment[]
+  darfs          Darf[]
+  priceAlerts    PriceAlert[]
+  savedScreens   SavedScreen[]
+  watchlistItems WatchlistItem[]
+
+  @@map("users")
+}
+
+model Broker {
+  id   String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name String @db.VarChar(150)
+  cnpj String @unique @db.Char(14)
+
+  operations     Operation[]
+  receivedIncome ReceivedIncome[]
+
+  @@map("brokers")
+}
+
+model Portfolio {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  name      String   @db.VarChar(150)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  importBatches  ImportBatch[]
+  operations     Operation[]
+  receivedIncome ReceivedIncome[]
+
+  @@unique([userId, name], map: "portfolios_user_id_name_key")
+  @@map("portfolios")
+}
+
+model ImportBatch {
+  id          String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  portfolioId String            @map("portfolio_id") @db.Uuid
+  fileName    String            @map("file_name") @db.VarChar(255)
+  fileSha256  String            @map("file_sha256") @db.Char(64)
+  status      ImportBatchStatus @default(PENDING)
+  rowCount    Int               @map("row_count")
+  importedAt  DateTime          @default(now()) @map("imported_at") @db.Timestamptz(3)
+  confirmedAt DateTime?         @map("confirmed_at") @db.Timestamptz(3)
+
+  portfolio  Portfolio   @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  operations Operation[]
+
+  @@unique([portfolioId, fileSha256], map: "import_batches_portfolio_id_file_sha256_key")
+  @@map("import_batches")
+}
+
+model Operation {
+  id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  portfolioId   String        @map("portfolio_id") @db.Uuid
+  assetId       String        @map("asset_id") @db.Uuid
+  brokerId      String        @map("broker_id") @db.Uuid
+  importBatchId String?       @map("import_batch_id") @db.Uuid
+  type          OperationType
+  tradeDate     DateTime      @map("trade_date") @db.Date
+  quantity      Int
+  unitPrice     Decimal       @map("unit_price") @db.Decimal(20, 8)
+  fees          Decimal       @db.Decimal(18, 2)
+  sequence      BigInt        @unique @default(autoincrement())
+
+  portfolio   Portfolio    @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  asset       Asset        @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  broker      Broker       @relation(fields: [brokerId], references: [id], onDelete: Restrict)
+  importBatch ImportBatch? @relation(fields: [importBatchId], references: [id], onDelete: Restrict)
+
+  @@index([portfolioId, assetId, tradeDate, sequence], map: "operations_timeline_idx")
+  @@index([assetId], map: "operations_asset_id_idx")
+  @@map("operations")
+}
+
+// ---------------------------------------------------------------- catálogo
+
+model Sector {
+  id       String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  parentId String? @map("parent_id") @db.Uuid
+  name     String  @db.VarChar(150)
+
+  parent   Sector?  @relation("SectorHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+  children Sector[] @relation("SectorHierarchy")
+  issuers  Issuer[]
+
+  @@unique([parentId, name], map: "sectors_parent_id_name_key")
+  @@map("sectors")
+}
+
+model Issuer {
+  id       String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sectorId String?    @map("sector_id") @db.Uuid
+  name     String     @db.VarChar(150)
+  kind     IssuerKind
+  cnpj     String?    @unique @db.Char(14)
+  cvmCode  String?    @unique @map("cvm_code") @db.VarChar(10)
+
+  sector              Sector?              @relation(fields: [sectorId], references: [id], onDelete: Restrict)
+  assets              Asset[]
+  financialStatements FinancialStatement[]
+  fiiMonthlyReports   FiiMonthlyReport[]
+  fiiQuarterlyReports FiiQuarterlyReport[]
+  corporateFilings    CorporateFiling[]
+
+  @@index([sectorId], map: "issuers_sector_id_idx")
+  @@map("issuers")
+}
+
+model Asset {
+  id         String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  issuerId   String      @map("issuer_id") @db.Uuid
+  ticker     String      @unique @db.VarChar(12)
+  isin       String      @unique @db.Char(12)
+  type       AssetType
+  shareClass ShareClass? @map("share_class")
+  isActive   Boolean     @default(true) @map("is_active")
+
+  issuer              Issuer               @relation(fields: [issuerId], references: [id], onDelete: Restrict)
+  operations          Operation[]
+  quotes              Quote[]
+  corporateEvents     CorporateEvent[]
+  incomeDistributions IncomeDistribution[]
+  priceAlerts         PriceAlert[]
+  watchlistItems      WatchlistItem[]
+
+  @@index([issuerId], map: "assets_issuer_id_idx")
+  @@map("assets")
+}
+
+// ---------------------------------------------------------------- mercado
+
+model Quote {
+  assetId     String   @map("asset_id") @db.Uuid
+  quoteDate   DateTime @map("quote_date") @db.Date
+  open        Decimal  @db.Decimal(20, 8)
+  high        Decimal  @db.Decimal(20, 8)
+  low         Decimal  @db.Decimal(20, 8)
+  close       Decimal  @db.Decimal(20, 8)
+  volume      Decimal  @db.Decimal(18, 2)
+  tradesCount Int      @map("trades_count")
+
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Restrict)
+
+  @@id([assetId, quoteDate])
+  @@map("quotes")
+}
+
+model EconomicIndex {
+  id          String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code        IndexCode        @unique
+  name        String           @db.VarChar(150)
+  periodicity IndexPeriodicity
+  unit        IndexUnit
+  source      String           @db.VarChar(100)
+
+  values IndexValue[]
+
+  @@map("economic_indexes")
+}
+
+model IndexValue {
+  economicIndexId String   @map("economic_index_id") @db.Uuid
+  referenceDate   DateTime @map("reference_date") @db.Date
+  value           Decimal  @db.Decimal(20, 8)
+
+  economicIndex EconomicIndex @relation(fields: [economicIndexId], references: [id], onDelete: Restrict)
+
+  @@id([economicIndexId, referenceDate])
+  @@map("index_values")
+}
+
+// ---------------------------------------------------------------- fundamentos
+
+model FinancialStatement {
+  id                String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  issuerId          String     @map("issuer_id") @db.Uuid
+  filingType        FilingType @map("filing_type")
+  fiscalYearStart   DateTime   @map("fiscal_year_start") @db.Date
+  periodEnd         DateTime   @map("period_end") @db.Date
+  version           Int
+  filedAt           DateTime   @map("filed_at") @db.Timestamptz(3)
+  commonShares      BigInt     @map("common_shares")
+  preferredShares   BigInt     @map("preferred_shares")
+  treasuryCommon    BigInt     @map("treasury_common")
+  treasuryPreferred BigInt     @map("treasury_preferred")
+
+  issuer Issuer          @relation(fields: [issuerId], references: [id], onDelete: Restrict)
+  lines  StatementLine[]
+
+  @@unique([issuerId, periodEnd], map: "financial_statements_issuer_id_period_end_key")
+  @@map("financial_statements")
+}
+
+model StatementLine {
+  financialStatementId String         @map("financial_statement_id") @db.Uuid
+  scope                StatementScope
+  accountCode          String         @map("account_code") @db.VarChar(30)
+  accountDescription   String         @map("account_description") @db.VarChar(255)
+  value                Decimal        @db.Decimal(18, 2)
+
+  financialStatement FinancialStatement @relation(fields: [financialStatementId], references: [id], onDelete: Cascade)
+
+  @@id([financialStatementId, scope, accountCode])
+  @@map("statement_lines")
+}
+
+model FiiMonthlyReport {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  issuerId           String   @map("issuer_id") @db.Uuid
+  referenceMonth     DateTime @map("reference_month") @db.Date
+  version            Int
+  netWorth           Decimal  @map("net_worth") @db.Decimal(18, 2)
+  sharesOutstanding  BigInt   @map("shares_outstanding")
+  shareholdersCount  Int      @map("shareholders_count")
+  dividendYieldMonth Decimal  @map("dividend_yield_month") @db.Decimal(10, 8)
+
+  issuer Issuer @relation(fields: [issuerId], references: [id], onDelete: Restrict)
+
+  @@unique([issuerId, referenceMonth], map: "fii_monthly_reports_issuer_id_reference_month_key")
+  @@map("fii_monthly_reports")
+}
+
+model FiiQuarterlyReport {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  issuerId      String   @map("issuer_id") @db.Uuid
+  referenceDate DateTime @map("reference_date") @db.Date
+  version       Int
+
+  issuer     Issuer              @relation(fields: [issuerId], references: [id], onDelete: Restrict)
+  properties FiiReportProperty[]
+
+  @@unique([issuerId, referenceDate], map: "fii_quarterly_reports_issuer_id_reference_date_key")
+  @@map("fii_quarterly_reports")
+}
+
+model FiiReportProperty {
+  fiiQuarterlyReportId String        @map("fii_quarterly_report_id") @db.Uuid
+  itemNumber           Int           @map("item_number")
+  name                 String        @db.VarChar(255)
+  address              String        @db.VarChar(255)
+  propertyClass        PropertyClass @map("property_class")
+  area                 Decimal?      @db.Decimal(14, 2)
+  vacancyRate          Decimal?      @map("vacancy_rate") @db.Decimal(10, 8)
+  delinquencyRate      Decimal?      @map("delinquency_rate") @db.Decimal(10, 8)
+  revenueShare         Decimal?      @map("revenue_share") @db.Decimal(10, 8)
+  leasedRate           Decimal?      @map("leased_rate") @db.Decimal(10, 8)
+
+  fiiQuarterlyReport FiiQuarterlyReport @relation(fields: [fiiQuarterlyReportId], references: [id], onDelete: Cascade)
+
+  @@id([fiiQuarterlyReportId, itemNumber])
+  @@map("fii_report_properties")
+}
+
+model CorporateFiling {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  issuerId      String   @map("issuer_id") @db.Uuid
+  category      String   @db.VarChar(100)
+  subject       String   @db.VarChar(500)
+  referenceDate DateTime @map("reference_date") @db.Date
+  deliveredAt   DateTime @map("delivered_at") @db.Timestamptz(3)
+  documentUrl   String   @map("document_url") @db.VarChar(500)
+  cvmProtocol   String   @unique @map("cvm_protocol") @db.VarChar(30)
+
+  issuer Issuer @relation(fields: [issuerId], references: [id], onDelete: Restrict)
+
+  @@index([issuerId, referenceDate], map: "corporate_filings_issuer_id_reference_date_idx")
+  @@map("corporate_filings")
+}
+
+// ---------------------------------------------------------------- proventos e eventos
+
+model CorporateEvent {
+  id            String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  assetId       String             @map("asset_id") @db.Uuid
+  type          CorporateEventType
+  exDate        DateTime           @map("ex_date") @db.Date
+  ratioFrom     Decimal            @map("ratio_from") @db.Decimal(20, 8)
+  ratioTo       Decimal            @map("ratio_to") @db.Decimal(20, 8)
+  bonusUnitCost Decimal?           @map("bonus_unit_cost") @db.Decimal(20, 8)
+  source        DataSource
+
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Restrict)
+
+  @@unique([assetId, type, exDate], map: "corporate_events_asset_id_type_ex_date_key")
+  @@map("corporate_events")
+}
+
+model IncomeDistribution {
+  id             String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  assetId        String     @map("asset_id") @db.Uuid
+  type           IncomeType
+  recordDate     DateTime   @map("record_date") @db.Date
+  paymentDate    DateTime?  @map("payment_date") @db.Date
+  amountPerShare Decimal    @map("amount_per_share") @db.Decimal(20, 8)
+  source         String     @db.VarChar(50)
+
+  asset          Asset            @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  receivedIncome ReceivedIncome[]
+
+  @@index([assetId, recordDate], map: "income_distributions_asset_id_record_date_idx")
+  @@map("income_distributions")
+}
+
+model ReceivedIncome {
+  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  incomeDistributionId String   @map("income_distribution_id") @db.Uuid
+  portfolioId          String   @map("portfolio_id") @db.Uuid
+  brokerId             String   @map("broker_id") @db.Uuid
+  baseQuantity         Int      @map("base_quantity")
+  grossAmount          Decimal  @map("gross_amount") @db.Decimal(18, 2)
+  withheldTax          Decimal  @map("withheld_tax") @db.Decimal(18, 2)
+  receivedAt           DateTime @map("received_at") @db.Date
+
+  incomeDistribution IncomeDistribution @relation(fields: [incomeDistributionId], references: [id], onDelete: Restrict)
+  portfolio          Portfolio          @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  broker             Broker             @relation(fields: [brokerId], references: [id], onDelete: Restrict)
+
+  @@unique([portfolioId, incomeDistributionId, brokerId], map: "received_income_portfolio_distribution_broker_key")
+  @@map("received_income")
+}
+
+// ---------------------------------------------------------------- imposto de renda
+
+model TaxCategory {
+  id          String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code        TaxCategoryCode @unique
+  name        String          @db.VarChar(150)
+  revenueCode String          @map("revenue_code") @db.VarChar(10)
+
+  rules       TaxRule[]
+  assessments TaxAssessment[]
+
+  @@map("tax_categories")
+}
+
+model TaxRule {
+  taxCategoryId       String   @map("tax_category_id") @db.Uuid
+  effectiveFrom       DateTime @map("effective_from") @db.Date
+  rate                Decimal  @db.Decimal(10, 8)
+  salesExemptionLimit Decimal? @map("sales_exemption_limit") @db.Decimal(18, 2)
+
+  taxCategory TaxCategory @relation(fields: [taxCategoryId], references: [id], onDelete: Restrict)
+
+  @@id([taxCategoryId, effectiveFrom])
+  @@map("tax_rules")
+}
+
+model TaxAssessment {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  darfId         String?  @map("darf_id") @db.Uuid
+  taxCategoryId  String   @map("tax_category_id") @db.Uuid
+  referenceMonth DateTime @map("reference_month") @db.Date
+  totalSales     Decimal  @map("total_sales") @db.Decimal(18, 2)
+  netResult      Decimal  @map("net_result") @db.Decimal(18, 2)
+  lossOffset     Decimal  @map("loss_offset") @db.Decimal(18, 2)
+  closedAt       DateTime @map("closed_at") @db.Timestamptz(3)
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  darf        Darf?       @relation(fields: [darfId], references: [id], onDelete: SetNull)
+  taxCategory TaxCategory @relation(fields: [taxCategoryId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, referenceMonth, taxCategoryId], map: "tax_assessments_user_month_category_key")
+  @@index([darfId], map: "tax_assessments_darf_id_idx")
+  @@map("tax_assessments")
+}
+
+model Darf {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId         String    @map("user_id") @db.Uuid
+  referenceMonth DateTime  @map("reference_month") @db.Date
+  amountPaid     Decimal?  @map("amount_paid") @db.Decimal(18, 2)
+  paidAt         DateTime? @map("paid_at") @db.Date
+
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assessments TaxAssessment[]
+
+  @@unique([userId, referenceMonth], map: "darfs_user_id_reference_month_key")
+  @@map("darfs")
+}
+
+// ---------------------------------------------------------------- análise e acompanhamento
+
+model Indicator {
+  id             String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code           String            @unique @db.VarChar(20)
+  name           String            @db.VarChar(150)
+  indicatorGroup IndicatorGroup    @map("indicator_group")
+  formula        String
+  unit           IndicatorUnit
+  appliesTo      AnalysisAssetType @map("applies_to")
+
+  sortedScreens  SavedScreen[]
+  screenCriteria ScreenCriterion[]
+
+  @@map("indicators")
+}
+
+model PriceAlert {
+  id                 String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId             String         @map("user_id") @db.Uuid
+  assetId            String         @map("asset_id") @db.Uuid
+  targetPrice        Decimal        @map("target_price") @db.Decimal(20, 8)
+  direction          PriceDirection
+  createdAt          DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  triggeredAt        DateTime?      @map("triggered_at") @db.Timestamptz(3)
+  triggeredQuoteDate DateTime?      @map("triggered_quote_date") @db.Date
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Restrict)
+
+  @@index([userId], map: "price_alerts_user_id_idx")
+  @@index([assetId], map: "price_alerts_asset_id_idx")
+  @@map("price_alerts")
+}
+
+model SavedScreen {
+  id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String            @map("user_id") @db.Uuid
+  sortIndicatorId String?           @map("sort_indicator_id") @db.Uuid
+  name            String            @db.VarChar(150)
+  assetType       AnalysisAssetType @map("asset_type")
+  sortDirection   SortDirection     @map("sort_direction")
+
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sortIndicator Indicator?        @relation(fields: [sortIndicatorId], references: [id], onDelete: Restrict)
+  criteria      ScreenCriterion[]
+
+  @@unique([userId, name], map: "saved_screens_user_id_name_key")
+  @@map("saved_screens")
+}
+
+model WatchlistItem {
+  userId  String   @map("user_id") @db.Uuid
+  assetId String   @map("asset_id") @db.Uuid
+  addedAt DateTime @default(now()) @map("added_at") @db.Timestamptz(3)
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Restrict)
+
+  @@id([userId, assetId])
+  @@map("watchlist_items")
+}
+
+model ScreenCriterion {
+  savedScreenId String   @map("saved_screen_id") @db.Uuid
+  indicatorId   String   @map("indicator_id") @db.Uuid
+  minValue      Decimal? @map("min_value") @db.Decimal(20, 8)
+  maxValue      Decimal? @map("max_value") @db.Decimal(20, 8)
+
+  savedScreen SavedScreen @relation(fields: [savedScreenId], references: [id], onDelete: Cascade)
+  indicator   Indicator   @relation(fields: [indicatorId], references: [id], onDelete: Restrict)
+
+  @@id([savedScreenId, indicatorId])
+  @@index([indicatorId], map: "screen_criteria_indicator_id_idx")
+  @@map("screen_criteria")
+}

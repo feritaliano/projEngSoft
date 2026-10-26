@@ -1,0 +1,19 @@
+{
+  "name": "carteira-b3",
+  "private": true,
+  "description": "Carteira B3 — ferramentas de banco de dados (Prisma) compartilhadas por backend e entregáveis de BD",
+  "scripts": {
+    "db:validate": "prisma validate",
+    "db:migrate": "prisma migrate deploy",
+    "db:migrate:dev": "prisma migrate dev",
+    "db:drift": "prisma migrate diff --from-migrations prisma/migrations --to-schema prisma/schema.prisma --exit-code",
+    "db:reset": "prisma migrate reset",
+    "db:ddl": "node database/scripts/export-ddl.mjs",
+    "db:test": "node database/scripts/run-sql.mjs database/tests/constraints.sql",
+    "db:generate": "prisma generate"
+  },
+  "devDependencies": {
+    "dotenv": "17.2.3",
+    "prisma": "7.10.1"
+  }
+}

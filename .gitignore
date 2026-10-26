@@ -1,0 +1,27 @@
+# Segredos
+.env
+.env.local
+.env.*.local
+
+# Dependências e builds
+node_modules/
+dist/
+build/
+coverage/
+.angular/
+
+# Dados brutos das fontes externas (bronze)
+data/raw/*
+!data/raw/.gitkeep
+
+# Claude Code: configurações pessoais
+.claude/settings.local.json
+
+# Sistema e editores
+.DS_Store
+Thumbs.db
+*.log
+.idea/
+
+# Prisma Client gerado
+backend/src/generated/
