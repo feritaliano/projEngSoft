@@ -1,6 +1,6 @@
 # Agente Backend — NestJS
 
-> Reescrito em 05/10/2026; ferramentas atualizadas em 26/10/2026 (D38). Fontes que este prompt resume e que prevalecem em caso de conflito, nesta ordem: `claude/contexto-projeto.md` → `claude/arquitetura.md` → `database/docs/modelo-er.md`. Leia as três antes de qualquer tarefa. Estrutura do repositório e onde cada arquivo fica: `claude/estrutura-repositorio.md`. Tarefas, datas e critérios de pronto: `claude/plano-de-acao.md`. Git, PR, definição de pronto e ferramentas: `claude/convencoes-equipe.md`.
+> Reescrito em 05/10/2026; ferramentas atualizadas em 26/10/2026 (D38); contrato ajustado às telas aprovadas no U0 em 26/10/2026 (D41). Fontes que este prompt resume e que prevalecem em caso de conflito, nesta ordem: `claude/contexto-projeto.md` → `claude/arquitetura.md` → `database/docs/modelo-er.md`. Leia as três antes de qualquer tarefa. Estrutura do repositório e onde cada arquivo fica: `claude/estrutura-repositorio.md`. Tarefas, datas e critérios de pronto: `claude/plano-de-acao.md`. Git, PR, definição de pronto e ferramentas: `claude/convencoes-equipe.md`.
 
 ## Contexto do projeto
 Um único sistema atende duas disciplinas da UNIFESP/ICT:
@@ -50,8 +50,8 @@ Nenhum módulo cria repositório, endpoint ou escrita para tabela de etapa não 
 | K0 | `PositionCalculator` com TDD: domínio puro, sem banco (RN05–RN10 e eventos corporativos na linha do tempo), em segundo plano | 28/10–06/11 | F3 | 100% de ramos nos `.spec.ts`; todos os casos de borda abaixo passando |
 | K1 | Esqueleto NestJS (api e worker): config validada com zod, filtro RFC 7807, lint de camadas, Jest (unitário em paralelo; integração e E2E com Testcontainers em série), job `backend` no `.github/workflows/ci.yml` ao lado do job `database` já existente (D40) | 28/10–03/11 | F3, F4 | Jobs `database` e `backend` verdes em todo PR |
 | K2 | `auth` e `users` (RN01): JWT de acesso curto + refresh rotativo em cookie httpOnly (`ops.user_sessions`), guard global, rate limit | 04/11–08/11 | D1, D2, K1 | E2E de cadastro e login passando |
-| K3 | `reference-data` (ativos, emissores, setores, corretoras; leitura) e `portfolios` (RN02) | 09/11–13/11 | K2 | Carteira de outro usuário retorna 404 |
-| K4 | `operations` com recálculo transacional (RN04–RN12); posição e totais com `DerivedValue`; OpenAPI versionado | 16/11–25/11 | K3, K0 | E2E compra → venda → posição; violação da RN10 identifica a operação |
+| K3 | `reference-data` (ativos, emissores, setores, corretoras; leitura) e `portfolios` (RN02); `GET /portfolios` com `operationCount` (D41) | 09/11–13/11 | K2 | Carteira de outro usuário retorna 404; `operationCount` coberto por teste |
+| K4 | `operations` com recálculo transacional (RN04–RN12); posições abertas e encerradas e totais com `DerivedValue` (D41); OpenAPI versionado | 16/11–25/11 | K3, K0 | E2E compra → venda → posição; venda total aparece como posição encerrada com o lucro realizado; violação da RN10 identifica a operação |
 
 Gatilho G-K4 (25/11): sem o E2E compra → venda → posição passando, o frontend entra só com lançamento e posição; edição e exclusão retroativa ficam no backend, testadas (RN10), fora da tela.
 
@@ -102,9 +102,9 @@ src/modules/<modulo>/
 - Endpoints do S1 (o contrato final é o OpenAPI):
   - `POST /auth/register`, `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout`;
   - `GET /assets?search=&page=&pageSize=` (ticker ou nome do emissor), `GET /assets/:ticker`, `GET /brokers`;
-  - `GET|POST /portfolios`, `DELETE /portfolios/:id`;
-  - `GET|POST /portfolios/:id/operations` (filtro por ativo e corretora), `PATCH|DELETE /portfolios/:id/operations/:operationId`;
-  - `GET /portfolios/:id/positions` e `GET /portfolios/:id/summary` (totais).
+  - `GET|POST /portfolios`, `DELETE /portfolios/:id`; cada carteira de `GET /portfolios` traz `operationCount` (inteiro, contado na consulta, nunca coluna), usado na confirmação de exclusão (D41: a exclusão apaga as operações em cascata);
+  - `GET|POST /portfolios/:id/operations` (filtro por ativo e corretora), `GET|PATCH|DELETE /portfolios/:id/operations/:operationId` (o `GET` alimenta o formulário no modo editar);
+  - `GET /portfolios/:id/positions`: posições abertas (quantidade > 0) **e encerradas** (quantidade 0 e lucro realizado ≠ 0), cada uma com `status` ∈ {`OPEN`, `CLOSED`} (D41); a soma do lucro realizado das linhas bate com o total de `GET /portfolios/:id/summary` (totais).
 - Status: 201 criação, 204 exclusão, 400 validação, 401 sem autenticação, **404 para recurso inexistente ou de outro usuário**, 409 conflito, 422 regra de negócio.
 - Erros em RFC 7807 (`application/problem+json`) por exception filter global; nenhum stack trace vaza. Na RN10, o corpo identifica a operação que ficaria inválida (id, data, quantidade disponível vs. vendida).
 - `ValidationPipe` global (`whitelist`, `forbidNonWhitelisted`, `transform`).
@@ -131,7 +131,7 @@ src/modules/<modulo>/
 - Testcontainers (D40): o global setup (`backend/test/global-setup.ts`) sobe um PostgreSQL 16, define `DATABASE_URL` com a URL dele e roda `npx prisma migrate deploy` **a partir da raiz do repositório** (onde estão o Prisma CLI e o `prisma.config.ts`; o `schema.prisma` é do agente de banco). Nunca `migrate dev` nem `db push` em teste. Integração e E2E rodam em série (`--runInBand`, config `backend/test/jest-e2e.config.ts`); antes de cada teste, `TRUNCATE ... CASCADE` das tabelas de `public` e `ops`, e cada teste cria os próprios dados com os builders de `backend/test/factories/`.
 - Unitários rodam em paralelo, sem banco e sem Docker.
 - CI: job `backend` no `.github/workflows/ci.yml` (lint, unitário, integração e E2E, cobertura); o job `database` já existe e não é alterado por você.
-- E2E (Supertest): cadastro → login → carteira → compra → venda → posição; acesso à carteira de outro usuário → 404; RN10 → 422 com a operação infratora.
+- E2E (Supertest): cadastro → login → carteira → compra → venda → posição; venda total → posição `CLOSED` com o lucro realizado, e soma das linhas igual ao total do `summary` (D41); `operationCount` correto após lançar e excluir operações; acesso à carteira de outro usuário → 404; RN10 → 422 com a operação infratora.
 - Nome de cada teste cita a RN ou decisão coberta quando houver (ex.: `rejects sell above position (RN07)`).
 - Casos de borda obrigatórios do cálculo: venda total; venda maior que a posição; recompra após zerar; operação retroativa que invalida venda futura; exclusão de compra que deixa a posição negativa; mesmo ativo em corretoras diferentes na mesma carteira; custos zero; preços com muitas casas decimais; desdobramento, grupamento e bonificação antes e depois de vendas, preservando o custo total.
 - O seed (`database/sql/inserts.sql`, do agente de banco) deve produzir as posições esperadas: manter um teste de integração que carrega o seed e confere o resultado.

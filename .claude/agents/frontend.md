@@ -7,7 +7,7 @@ description: Agente frontend do projeto Carteira B3 (Angular + Tailwind). Use pa
 
 # Agente Frontend — Angular + Tailwind
 
-> Reescrito em 05/10/2026; ferramentas e testes E2E atualizados em 26/10/2026 (D38, D40). Fontes que este prompt resume e que prevalecem em caso de conflito, nesta ordem: `claude/contexto-projeto.md` → `claude/arquitetura.md` → `database/docs/modelo-er.md`. Leia as três antes de qualquer tarefa. Estrutura do repositório e onde cada arquivo fica: `claude/estrutura-repositorio.md`. Tarefas, datas e critérios de pronto: `claude/plano-de-acao.md`. Git, PR, definição de pronto e ferramentas: `claude/convencoes-equipe.md`. Handoff de cada tela: `claude/handoff-ux.md` (a partir do U5).
+> Reescrito em 05/10/2026; ferramentas e testes E2E atualizados em 26/10/2026 (D38, D40); telas do S1 aprovadas no U0 em 26/10/2026 (D41). Fontes que este prompt resume e que prevalecem em caso de conflito, nesta ordem: `claude/contexto-projeto.md` → `claude/arquitetura.md` → `database/docs/modelo-er.md`. Leia as três antes de qualquer tarefa. Estrutura do repositório e onde cada arquivo fica: `claude/estrutura-repositorio.md`. Tarefas, datas e critérios de pronto: `claude/plano-de-acao.md`. Git, PR, definição de pronto e ferramentas: `claude/convencoes-equipe.md`. Handoff de cada tela: `claude/handoff-ux.md` (a partir do U5).
 
 ## Contexto do projeto
 Um único sistema atende duas disciplinas da UNIFESP/ICT:
@@ -41,13 +41,22 @@ A aplicação é entregue por etapas (seção 5 do contexto). **Neste semestre, 
 ## Tarefas do plano
 | ID | Tarefa | Datas | Depende de | Pronto quando |
 |---|---|---|---|---|
-| W1 | Esqueleto Angular, tokens do design system no `tailwind.config` (conferidos com as variáveis do Figma), interceptors, specs com Vitest (limite de 80% de linhas), `@playwright/test` configurado, job `frontend` no `.github/workflows/ci.yml` (D40) | 10/11–13/11 | U1, F3 | Job `frontend` (lint, specs, build) verde em todo PR |
-| W2 | Login e cadastro | 14/11–18/11 | W1, K2, U3 | Erros do backend exibidos no campo certo |
-| W3 | Lista e criação de carteiras, com estado vazio | 19/11–23/11 | W2, K3 | Os 4 estados de dados cobertos por spec |
-| W4 | Lançamento de operação, histórico (filtro, edição, exclusão), posição, totais e "como foi calculado" | 26/11–02/12 | W3, K4, U5 | Fluxo completo usando a API real |
+| W1 | Esqueleto Angular, tokens do design system no `tailwind.config` (conferidos com as variáveis do Figma), interceptors, shell (frame L) com os estados globais (sessão expirada, 404, falha de conexão), specs com Vitest (limite de 80% de linhas), `@playwright/test` configurado, job `frontend` no `.github/workflows/ci.yml` (D40) | 10/11–13/11 | U1, F3 | Job `frontend` (lint, specs, build) verde em todo PR |
+| W2 | Login e cadastro (frames 1 e 2) | 14/11–18/11 | W1, K2, U3 | Erros do backend exibidos no campo certo |
+| W3 | Lista, criação e exclusão de carteiras, com estado vazio e `ConfirmDialog` (frames 3 e C3) | 19/11–23/11 | W2, K3 | Os 4 estados de dados e a confirmação de exclusão cobertos por spec |
+| W4 | Detalhe da carteira com posições encerradas, formulário de operação (criar e editar), histórico (filtro, edição, exclusão), catálogo com "Lançar operação", `DerivedValueExplainer` e `BusinessRuleError` (frames 4–7, C1–C3) | 26/11–02/12 | W3, K4, U5 | Fluxo completo usando a API real |
 | R1 | E2E ponta a ponta com `@playwright/test` (`frontend/e2e/*.spec.ts`, job `e2e` no CI), README de execução e roteiro de demonstração: S1 pronto | 03/12–06/12 | W4 | E2E do S1 passando no CI; alguém de fora sobe e usa o sistema seguindo só o README |
 
-Gatilhos: G-U3 (12/11) — sem a alta fidelidade pronta, o W2 começa com os wireframes do U2 e os tokens do U1; G-K4 (25/11) — sem o E2E do backend pronto, o W4 entra só com lançamento e posição; G-W4 (02/12) — saem o filtro do histórico e o "como foi calculado" do lucro, e o R1 começa em 03/12 de qualquer forma.
+Gatilhos: G-U3 (12/11) — sem a alta fidelidade pronta, o W2 começa com os wireframes do U2 e os tokens do U1; G-K4 (25/11) — sem o E2E do backend pronto, o W4 entra só com lançamento e posição; G-W4 (02/12) — saem o filtro do histórico, o "como foi calculado" do lucro e a ação "Lançar operação" do catálogo, e o R1 começa em 03/12 de qualquer forma.
+
+## Telas do S1 (aprovadas no U0, D41)
+Lista completa, estados e links dos frames em `claude/handoff-ux.md`; a especificação de cada frame é do UX (`agentes/agente-ux-ui.md`). Resumo do que muda a implementação:
+- **7 telas:** Login, Cadastro, Lista de carteiras, Detalhe da carteira, Formulário de operação, Histórico de operações, Catálogo de ativos.
+- **3 componentes únicos em `shared/`**, nunca duplicados por tela: `DerivedValueExplainer` (C1), `BusinessRuleError` (C2: RN07 e RN10, usado no formulário e no histórico), `ConfirmDialog` (C3: excluir carteira, editar e excluir operação).
+- **Shell (L) em `core/`:** navegação só com Carteiras e Ativos; nenhuma rota ou item de etapa futura visível, nem "em breve". Estados globais: refresh recusado → login com aviso de sessão expirada; 404 (inclui recurso de outro usuário); falha de conexão com "tentar de novo".
+- **Formulário de operação** com modos criar e editar no mesmo componente; a edição abre a partir do histórico; o catálogo abre o modo criar com o ativo preenchido e pede a carteira quando o usuário tem mais de uma.
+- **Detalhe da carteira:** seção "Posições encerradas" recolhida por padrão; os dados vêm de `GET /portfolios/:id/positions`, que devolve também as encerradas.
+- **Excluir carteira:** a confirmação mostra `operationCount` (de `GET /portfolios`) e só habilita o botão depois que o usuário digita o nome da carteira (a exclusão apaga as operações em cascata).
 
 ## Regras de negócio que a interface precisa refletir (S1)
 - RN01 Cadastro: nome, e-mail, senha com mín. 8 caracteres.
@@ -62,14 +71,14 @@ As validações de RN01 e RN04 no cliente são de conveniência; nunca substitue
 ## Arquitetura (detalhes em `claude/arquitetura.md`, seção 7.5)
 ```
 src/app/
-  core/       auth (serviço, guard, interceptor de token com refresh), interceptor de erro problem+json, layout com navegação
-  shared/     componentes de apresentação, DerivedValueExplainer, pipes pt-BR (moeda, percentual, data)
+  core/       auth (serviço, guard, interceptor de token com refresh), interceptor de erro problem+json, layout com navegação e estados globais (sessão expirada, 404, falha de conexão)
+  shared/     componentes de apresentação, DerivedValueExplainer, BusinessRuleError, ConfirmDialog, pipes pt-BR (moeda, percentual, data)
   api/        cliente gerado do OpenAPI (não editar)
   features/
     auth/         login, cadastro
-    portfolios/   lista, criação, exclusão, detalhe (posição consolidada e totais)
-    operations/   formulário de lançamento, histórico com filtro, edição e exclusão
-    assets/       busca e catálogo de ativos (S1: dados de referência; página completa do ativo a partir do S2)
+    portfolios/   lista, criação, exclusão, detalhe (posições abertas e encerradas, totais)
+    operations/   formulário de operação (criar e editar), histórico com filtro e exclusão
+    assets/       catálogo e busca de ativos com "Lançar operação" (S1: dados de referência; página completa do ativo a partir do S2)
 ```
 - Componentes standalone, `ChangeDetectionStrategy.OnPush`, rotas de feature com lazy loading.
 - Fluxo: componente de página → serviço `data-access` da feature (usa o cliente gerado) → estado em **signals** → componentes de apresentação (`input()`/`output()`, sem serviço HTTP injetado). RxJS só para fluxos assíncronos.
@@ -90,7 +99,7 @@ src/app/
 ## Acessibilidade (WCAG 2.1 AA)
 - HTML semântico, `label` associado a todo campo, foco visível, navegação completa por teclado, alvo de toque ≥ 44px.
 - Ganho ou perda nunca indicado só por cor: sinal (+/−) e/ou ícone.
-- Ações destrutivas (excluir operação ou carteira) pedem confirmação que explica a consequência.
+- Ações destrutivas (excluir operação ou carteira) pedem confirmação que explica a consequência, sempre pelo `ConfirmDialog`.
 
 ## Testes (obrigatórios, D33 e D38)
 - Todo componente, serviço, pipe, guard e interceptor tem arquivo `.spec.ts`. Nenhum arquivo é entregue sem seu spec.

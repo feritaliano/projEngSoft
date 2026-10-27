@@ -279,8 +279,8 @@ Regras:
 ### 7.5 Frontend
 ```
 src/app/
-  core/        auth, interceptors (token, erro problem+json), layout com navegação para todas as etapas
-  shared/      componentes de apresentação, DerivedValueExplainer (renderiza qualquer DerivedValue), pipes pt-BR
+  core/        auth, interceptors (token, erro problem+json), layout com navegação para todas as etapas e estados globais (sessão expirada, 404, falha de conexão)
+  shared/      componentes de apresentação, DerivedValueExplainer (renderiza qualquer DerivedValue), BusinessRuleError (RN07/RN10), ConfirmDialog, pipes pt-BR
   api/         cliente gerado do OpenAPI (não editar)
   features/
     auth/  portfolios/  operations/  imports/
@@ -297,6 +297,7 @@ Regras:
 - Valores chegam como string. A formatação pt-BR parte da string: `Intl.NumberFormat` aceita string decimal, ou decimal.js. **Exceção única:** converter para `number` só para plotar gráfico, nunca para conta.
 - O "como foi calculado" é **um único componente genérico** que lê `DerivedValue`. Os textos vêm da tabela de microcopy do UX, indexada por `formulaCode`.
 - Rotas das etapas futuras ficam previstas no layout, mas só aparecem quando a etapa é entregue.
+- Telas, componentes e estados do S1 aprovados no U0 (D41): lista em `agentes/agente-ux-ui.md`, links dos frames em `claude/handoff-ux.md`. Componente usado em mais de uma tela é implementado uma vez em `shared/`.
 
 ### 7.6 Infraestrutura (docker-compose)
 Serviços: `postgres` (bancos `carteira_dev`, `carteira_test` e `carteira_shadow`), `api`, `worker`, volume `data/raw`. Configuração é validada com zod no boot dos dois processos. Onde cada teste roda e o CI: seção 9 (D40).

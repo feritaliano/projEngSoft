@@ -6,6 +6,8 @@
 
 **Ajuste de 26/10/2026 (D40):** estratégia de testes e CI definida (`claude/arquitetura.md`, seção 9). O job `database` do CI já existe; K1, W1 e R1 acrescentam os jobs `backend`, `frontend` e `e2e`; o F3 passa a exigir o job `database` na proteção da `main`. Permissões do Claude Code revistas em `.claude/settings.json`. Datas inalteradas.
 
+**Ajuste de 26/10/2026 (U0, D41):** lista de telas do S1 aprovada: 7 telas, 3 componentes com frame próprio (`DerivedValueExplainer`, `BusinessRuleError`, `ConfirmDialog`) e o shell, em `agentes/agente-ux-ui.md` e `claude/handoff-ux.md`. Efeitos no plano: U2 e U3 cobrem os 11 frames; W1 inclui os estados globais do shell; W3 inclui a exclusão com confirmação; W4 inclui o formulário em modo editar, a seção de posições encerradas e a ação "Lançar operação" do catálogo; K3 devolve `operationCount` em `GET /portfolios`; K4 devolve as posições encerradas. Datas inalteradas.
+
 **Frentes ativas:** todas.
 - 25–27/10: fundação (usuário).
 - 28/10 a meados de novembro: BD (P1–P2), UX/UI (U1–U5) e backend (K0–K3).
@@ -61,10 +63,10 @@ O catálogo de referência do S1 (setores, emissores, ativos, corretoras) vem do
 ## UX/UI
 | ID | Tarefa | Datas | Depende de | Pronto quando |
 |---|---|---|---|---|
-| U0 | Aprovar a lista de telas do S1 proposta em `agentes/agente-ux-ui.md` (prompt reescrito em 05/10) | 25/10 | — | Lista aprovada pelo usuário e registrada no projeto |
+| U0 | **Concluído (26/10), D41.** Aprovar a lista de telas do S1 proposta em `agentes/agente-ux-ui.md` | 25/10 | — | Lista aprovada pelo usuário e registrada no projeto (`agentes/agente-ux-ui.md`, `claude/handoff-ux.md`) |
 | U1 | Design system: cores claro/escuro, tipografia, espaçamento, componentes base como tokens Tailwind | 26/10–29/10 | U0, B3 | Tokens no Figma (variáveis com os nomes dos tokens) e em tabela no projeto; link do arquivo Figma na seção 10 do contexto |
-| U2 | Fluxos e wireframes das telas do S1 (cadastro, login, carteiras, operações, posição) | 30/10–05/11 | U1 | Fluxo cadastro → carteira → compra → venda → posição completo |
-| U3 | Alta fidelidade com estados (vazio, carregando, erro, sucesso), um frame por tela | 06/11–12/11 | U2 | Estados de cada componente especificados |
+| U2 | Fluxos e wireframes dos 11 frames do S1 (7 telas, 3 componentes e o shell, D41) | 30/10–05/11 | U1 | Fluxo cadastro → carteira → compra → venda → posição completo, mais catálogo → lançar operação e edição pelo histórico |
+| U3 | Alta fidelidade com os estados de `claude/handoff-ux.md`, um frame por tela, componente e estado | 06/11–12/11 | U2 | Estados de cada componente especificados |
 | U4 | Textos de ajuda: "como foi calculado" para PM, custo e lucro | 13/11–14/11 | U3 | Tabela salva no projeto |
 | U5 | Revisão por Nielsen e WCAG AA (plugin Design: crítica de design e revisão de acessibilidade); handoff para o frontend em `claude/handoff-ux.md` | 15/11–16/11 | U4 | Sem pendência de contraste ou de foco; `claude/handoff-ux.md` com o link do frame de cada tela |
 
@@ -74,16 +76,16 @@ O catálogo de referência do S1 (setores, emissores, ativos, corretoras) vem do
 | K0 | `PositionCalculator` com TDD: domínio puro, sem banco (RN05–RN10, eventos corporativos), em segundo plano | 28/10–06/11 | F3 | 100% de ramos nos `.spec.ts`; casos de borda passando |
 | K1 | Esqueleto NestJS (api e worker): config validada, filtro RFC 7807, Jest (unitário em paralelo; integração e E2E com Testcontainers em série, migrations pelo Prisma da raiz), job `backend` no `ci.yml` (D40) | 28/10–03/11 | F3, F4 | Jobs `database` e `backend` verdes em todo PR e exigidos na proteção da `main` |
 | K2 | Módulos auth e users (RN01), guard JWT, rate limit | 04/11–08/11 | D1, D2, K1 | E2E de cadastro e login passando |
-| K3 | reference-data (ativos, emissores, corretoras) e portfolios (RN02) | 09/11–13/11 | K2 | Carteira de outro usuário retorna 404 |
-| K4 | operations com recálculo transacional (RN04–RN12); OpenAPI versionado | 16/11–25/11 | K3, K0 | E2E compra → venda → posição; violação da RN10 identifica a operação |
+| K3 | reference-data (ativos, emissores, corretoras) e portfolios (RN02); `GET /portfolios` com `operationCount` (D41) | 09/11–13/11 | K2 | Carteira de outro usuário retorna 404; `operationCount` coberto por teste |
+| K4 | operations com recálculo transacional (RN04–RN12); posições abertas e encerradas (D41); OpenAPI versionado | 16/11–25/11 | K3, K0 | E2E compra → venda → posição; venda total aparece como posição encerrada com o lucro realizado; violação da RN10 identifica a operação |
 
 ## Frontend
 | ID | Tarefa | Datas | Depende de | Pronto quando |
 |---|---|---|---|---|
-| W1 | Esqueleto Angular, tokens no `tailwind.config` (conferidos com as variáveis do Figma), interceptors, specs com Vitest (limite de 80%), `@playwright/test` configurado, job `frontend` no `ci.yml` (D40) | 10/11–13/11 | U1, F3 | Job `frontend` (lint, specs, build) verde e exigido na proteção da `main` |
-| W2 | Login e cadastro | 14/11–18/11 | W1, K2, U3 | Erros do backend exibidos no campo certo |
-| W3 | Lista e criação de carteiras, com estado vazio | 19/11–23/11 | W2, K3 | Os 4 estados de dados cobertos por spec |
-| W4 | Lançamento de operação, histórico, posição e "como foi calculado" | 26/11–02/12 | W3, K4, U5 | Fluxo completo usando a API real |
+| W1 | Esqueleto Angular, tokens no `tailwind.config` (conferidos com as variáveis do Figma), interceptors, shell (frame L) com os estados globais (sessão expirada, 404, falha de conexão), specs com Vitest (limite de 80%), `@playwright/test` configurado, job `frontend` no `ci.yml` (D40) | 10/11–13/11 | U1, F3 | Job `frontend` (lint, specs, build) verde e exigido na proteção da `main` |
+| W2 | Login e cadastro (frames 1 e 2) | 14/11–18/11 | W1, K2, U3 | Erros do backend exibidos no campo certo |
+| W3 | Lista, criação e exclusão de carteiras, com estado vazio e `ConfirmDialog` (frames 3 e C3) | 19/11–23/11 | W2, K3 | Os 4 estados de dados e a confirmação de exclusão cobertos por spec |
+| W4 | Detalhe da carteira com posições encerradas, formulário de operação (criar e editar), histórico, catálogo com "Lançar operação", `DerivedValueExplainer` e `BusinessRuleError` (frames 4–7, C1–C3) | 26/11–02/12 | W3, K4, U5 | Fluxo completo usando a API real |
 | R1 | E2E ponta a ponta com `@playwright/test` (`frontend/e2e/*.spec.ts`, job `e2e` no CI contra a API e um PostgreSQL de serviço; na máquina, contra `carteira_test`), README de execução e roteiro de demonstração: S1 pronto | 03/12–06/12 | W4 | E2E do S1 passando no CI; alguém de fora sobe e usa o sistema seguindo só o README |
 
 ## Gatilhos de corte
@@ -93,7 +95,7 @@ O catálogo de referência do S1 (setores, emissores, ativos, corretoras) vem do
 | G-D1 | 20/10 (**aplicado em 24/10**) | Sem PostgreSQL local (F4 não pronto) | O agente de banco valida schema, migrations e seed num PostgreSQL no ambiente de nuvem do chat e entrega os arquivos para versionar; o P1 não atrasa |
 | G-K4 | 25/11 | K4 sem o E2E compra → venda → posição passando | O W4 entra só com lançamento e posição; edição e exclusão retroativa ficam no backend (RN10 testada), fora da tela |
 | G-U3 | 12/11 | Alta fidelidade (U3) não pronta | O W2 começa com os wireframes do U2 e os tokens do U1, com os links dos frames de wireframe já em `claude/handoff-ux.md`; o U3 vira ajuste visual depois |
-| G-W4 | 02/12 | W4 não pronto | Saem do frontend o filtro do histórico e o "como foi calculado" do lucro; o R1 começa em 03/12 de qualquer forma |
+| G-W4 | 02/12 | W4 não pronto | Saem do frontend o filtro do histórico, o "como foi calculado" do lucro e a ação "Lançar operação" do catálogo (o catálogo fica só como consulta); o R1 começa em 03/12 de qualquer forma |
 | G-P4 | 30/11 | Sempre | O relatório de BD tem prioridade sobre qualquer outra frente |
 | G-UX | Sempre | Uma tarefa de BD passou da data de término | O UX/UI pausa até a tarefa de BD voltar ao prazo |
 

@@ -56,7 +56,7 @@ Desativados neste projeto (via `enabledPlugins` em `.claude/settings.json`): `fr
 - Frentes ativas (replanejadas em 24/10/2026): todas, com datas em `claude/plano-de-acao.md` e nos prompts de cada agente. Os quatro prompts em `agentes/` foram reescritos em 05/10/2026, atualizados em 24/10/2026 e, todos os quatro, em 26/10/2026 (D38); o de banco também com o banco do sistema (D2, D39).
 
 ## Mudança de escopo ou de decisão
-- Qualquer mudança em decisão (D1–D40), no ER congelado (D14, 05/10/2026) ou nas regras de negócio (RN) é registrada em `claude/contexto-projeto.md`, na seção de decisões, antes de ser implementada.
+- Qualquer mudança em decisão (D1–D41), no ER congelado (D14, 05/10/2026) ou nas regras de negócio (RN) é registrada em `claude/contexto-projeto.md`, na seção de decisões, antes de ser implementada.
 - Mudança no ER atualiza, na mesma tarefa: `database/docs/modelo-er.md`, `database/docs/mapeamento.md`, os modelos no brModelo (`CarteiraB3_ER` e `CarteiraB3_Logico`) e o esquema da seção 7 de `claude/contexto-projeto.md`.
 - Mudança no plano atualiza, na mesma tarefa, o checklist interativo (link em `claude/plano-de-acao.md`) e o prompt da frente afetada.
 - Quando mudar uma RN, atualize os 4 prompts em `agentes/` e o `.claude/agents/` do repositório.
@@ -65,7 +65,7 @@ Desativados neste projeto (via `enabledPlugins` em `.claude/settings.json`): `fr
 ## Documentos do projeto
 | Documento | Para quê |
 |---|---|
-| `claude/contexto-projeto.md` | Visão geral, decisões (D1–D40), esquema relacional resumido, agentes, artefatos, pendências |
+| `claude/contexto-projeto.md` | Visão geral, decisões (D1–D41), esquema relacional resumido, agentes, artefatos, pendências |
 | `claude/arquitetura.md` | Arquitetura do sistema e do banco (schemas `public`/`ops`/`analytics`, ingestão, CQRS leve) |
 | `claude/plano-de-acao.md` | Tarefas, datas, dependências, gatilhos de corte; link do checklist interativo |
 | `claude/convencoes-equipe.md` | Este documento |
