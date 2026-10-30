@@ -164,6 +164,8 @@ sequenceDiagram
   end
 ```
 
+**Prévia (D42):** `POST /portfolios/:id/operations/preview` recebe o mesmo corpo do lançamento (no modo editar, mais `replacesOperationId`) e executa os mesmos passos de leitura e de `PositionCalculator`, **sem lock e sem gravar** (transação só de leitura). Responde 200 com o resumo em `DerivedValue` (valor da operação, total com custos ou valor líquido, posição e PM depois, lucro estimado na venda) e `violation` opcional com o mesmo corpo do 422 de RN07/RN10. O lançamento real refaz toda a validação.
+
 ### 6.2 Importação da planilha B3 (B12)
 1. Upload → `import_batches` (PENDING) + linhas interpretadas em `ops.import_rows`, com erro por linha.
 2. O frontend mostra a pré-visualização (linhas válidas, rejeitadas e dados faltantes, como custos e corretora).
@@ -253,6 +255,8 @@ Camadas por módulo (`domain` / `application` / `infrastructure` / `presentation
 | `income` | Proventos e proventos recebidos, agenda | income_distributions, received_income | S6 |
 | `tax` | Apuração, regras e DARF | tax_assessments, darfs; tax_categories e tax_rules só via seed | S7 |
 | `watchlist` | Favoritos e alertas | watchlist_items, price_alerts | S10 |
+| `planning` | Carteira ideal e metas (D43) | tabelas definidas na D3 | S10 |
+| `fixed-income`, `crypto` | Títulos de renda fixa e criptoativos (D44): catálogo, posição com quantidade fracionária; preços pelos adapters da ingestão | tabelas definidas na D3 | S11 |
 | `ingestion` | Orquestração: agenda, locks, bronze, runs. Cada fonte é um adapter na `infrastructure` do módulo dono, implementando a porta `SourceIngestor` | ops.ingestion_runs, ops.staging_* | S2 |
 
 Regras:
@@ -275,6 +279,7 @@ Regras:
 | Proveniência | Endpoint de dado externo retorna `source` e `referenceDate` (ex.: "B3 COTAHIST, 29/09/2026"; "CVM informe trimestral FII, 30/06/2026") |
 | Cache HTTP | Dado de mercado: `ETag` = id da última `ingestion_run` da fonte + `Cache-Control: max-age` até a próxima carga. Dado do usuário: `Cache-Control: no-store` |
 | Versão | Prefixo `/api/v1`; OpenAPI versionado no repositório gera o cliente do frontend |
+| Prévia (D42) | Endpoint `.../preview` nunca grava; mesmo corpo e mesmas regras do comando; `violation` em vez de 422 |
 
 ### 7.5 Frontend
 ```
@@ -288,7 +293,7 @@ src/app/
     screening/     ranking, filtros salvos, comparador
     valuation/     Graham, Bazin, checklist
     calculators/
-    income/  tax/  watchlist/
+    income/  tax/  watchlist/  planning/  fixed-income/  crypto/
 ```
 Fluxo de dados no front: componente de página → serviço `data-access` da feature (usa o cliente gerado) → estado em **signals** → componentes de apresentação (`input()`/`output()`).
 
@@ -297,6 +302,7 @@ Regras:
 - Valores chegam como string. A formatação pt-BR parte da string: `Intl.NumberFormat` aceita string decimal, ou decimal.js. **Exceção única:** converter para `number` só para plotar gráfico, nunca para conta.
 - O "como foi calculado" é **um único componente genérico** que lê `DerivedValue`. Os textos vêm da tabela de microcopy do UX, indexada por `formulaCode`.
 - Rotas das etapas futuras ficam previstas no layout, mas só aparecem quando a etapa é entregue.
+- Totais e efeitos de uma operação ainda não salva (valor, total com custos, PM depois) vêm da prévia do backend (D42), nunca de conta no front.
 - Telas, componentes e estados do S1 aprovados no U0 (D41): lista em `agentes/agente-ux-ui.md`, links dos frames em `claude/handoff-ux.md`. Componente usado em mais de uma tela é implementado uma vez em `shared/`.
 
 ### 7.6 Infraestrutura (docker-compose)

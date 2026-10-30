@@ -36,7 +36,8 @@ carteira-b3/
 │   ├── plano-de-acao.md
 │   ├── convencoes-equipe.md
 │   ├── estrutura-repositorio.md     este documento
-│   ├── handoff-ux.md                [U5] link do arquivo Figma e do frame de cada tela (modelo criado em 26/10)
+│   ├── handoff-ux.md                [U2/U3] link do arquivo Figma e do frame de cada tela (preenchido em 30/10)
+│   ├── design-tokens.md             [U1] tabela de tokens do design system (espelho das variáveis do Figma)
 │   └── enunciadoBancoDeDados.md
 ├── projetoEngSoftware.md            [ok] enunciado de Engenharia de Software
 │
@@ -147,6 +148,7 @@ carteira-b3/
 | Contrato da API | `backend/openapi/openapi.json` | Sim (gerado) |
 | Cliente da API no frontend | `frontend/src/app/api/` | Não (gerado) |
 | Handoff do UX (links do Figma) | `claude/handoff-ux.md` | Sim |
+| Tokens do design system | `claude/design-tokens.md` | Sim |
 | Testes E2E | `frontend/e2e/*.spec.ts` (+ `frontend/playwright.config.ts`) | Sim |
 | Plugins do Claude Code do projeto | `.claude/settings.json` (`enabledPlugins`) | Sim |
 | Arquivos brutos das fontes | `data/raw/` | Não |
@@ -159,6 +161,7 @@ carteira-b3/
 | `backend/` | agente backend | o frontend consome só o `openapi.json` |
 | `frontend/` | agente frontend | — |
 | `claude/handoff-ux.md` | agente UX/UI | o frontend só lê |
+| `claude/design-tokens.md` | agente UX/UI | o frontend só lê; o `tailwind.config` espelha a tabela |
 | `agentes/`, `.claude/agents/`, `claude/` | usuário (atualizados pelos agentes no chat do projeto) | `.claude/agents/*.md` e `agentes/*.md` mudam juntos |
 | `docker-compose.yml` | agente database (serviço postgres); agente backend (api e worker, a partir do K1) | — |
 | `.github/workflows/ci.yml` | um job por dono (D40): `database` → agente database; `backend` → agente backend; `frontend` e `e2e` → agente frontend | um agente não altera o job de outro |
