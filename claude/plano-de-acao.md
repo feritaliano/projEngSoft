@@ -8,6 +8,14 @@
 
 **Ajuste de 26/10/2026 (U0, D41):** lista de telas do S1 aprovada: 7 telas, 3 componentes com frame próprio (`DerivedValueExplainer`, `BusinessRuleError`, `ConfirmDialog`) e o shell, em `agentes/agente-ux-ui.md` e `claude/handoff-ux.md`. Efeitos no plano: U2 e U3 cobrem os 11 frames; W1 inclui os estados globais do shell; W3 inclui a exclusão com confirmação; W4 inclui o formulário em modo editar, a seção de posições encerradas e a ação "Lançar operação" do catálogo; K3 devolve `operationCount` em `GET /portfolios`; K4 devolve as posições encerradas. Datas inalteradas.
 
+**Ajuste de 30/10/2026 (UX):** U1 e U2 concluídos e U3 com os frames prontos no Figma (https://www.figma.com/design/71YUqOEoUNi1HIPcLZd0qo, time educacional ProjetosUnifesp): variáveis com modos Light e Dark, componentes, 7 telas e o shell com 39 frames de estado, protótipo navegável e prévia do tema escuro; links em `claude/handoff-ux.md`, tokens em `claude/design-tokens.md`. U1 terminou 1 dia depois da data (limite de chamadas do plano Starter do Figma, resolvido com o plano Education). O U3 espera a revisão do usuário; U4 e U5 mantêm as datas.
+
+**Ajuste de 30/10/2026 (D42):** prévia da operação calculada no backend. K4 ganha `POST /portfolios/:id/operations/preview` (0,5–1 dia dentro da janela); W4 ganha o Resumo da operação no formulário; U4 ganha os textos dos 3 novos `formulaCode`; a prévia é o primeiro corte do G-K4. Datas inalteradas.
+
+**Ajuste de 30/10/2026 (D43–D45):** carteira ideal e metas entram no ER (D43); renda fixa e cripto entram no escopo do produto, na etapa nova S11 (D44); ajustes de UX no S1 e página de roadmap no Figma (D45). Nova tarefa **D3** do agente de banco (31/10–04/11), antes do fim do P1, com o gatilho G-D3. K4 ganha o filtro `assetType`; W4 ganha guias, filtro por tipo, agrupamento por classe e avatar. Datas das demais tarefas inalteradas.
+
+**Ajuste de 30/10/2026 (D46, D47):** o Figma passa a ter uma página só, organizada por tela (S1 à esquerda, próximas etapas à direita); a D3 recebe os requisitos de dados das telas do produto completo, com prioridade A/B, e o G-D3 corta primeiro as linhas B. Datas inalteradas.
+
 **Frentes ativas:** todas.
 - 25–27/10: fundação (usuário).
 - 28/10 a meados de novembro: BD (P1–P2), UX/UI (U1–U5) e backend (K0–K3).
@@ -38,7 +46,8 @@
 | P0 | **Concluído (24/10).** Validar as regras de IR na legislação (Receita Federal): alíquotas, isenção de R$ 20 mil (só ações), compensação de prejuízo por categoria, código de receita, DARF mínimo, guias por mês | 06/10–10/10 | — | Regras com citação da norma em `database/docs/memoria-calculo.md`; `RegraIR` e `CategoriaIR` definidas |
 | G1 | **Concluído (24/10).** Glossário PT↔EN de tabelas e colunas | 06/10–08/10 | B5 | `database/docs/glossario.md` cobre as 29 tabelas e 183 colunas |
 | D1 | **Concluído (24/10; conferido com `prisma migrate diff` sem diferenças).** `schema.prisma` + migrations (29 tabelas, CHECK, UNIQUE, enums) + `ddl.sql` gerado | 13/10–24/10 (validação na nuvem, G-D1) | G1; PostgreSQL + Prisma (F4 ou ambiente de nuvem) | Migrations sobem do zero; `ddl.sql` bate 1:1 com `mapeamento.md` |
-| P1 | `inserts.sql` (≥ 10 tuplas por tabela, ≥ 290 no total) + memória de cálculo | 25/10–07/11 | D1, P0 (K0 opcional, para conferir posições) | Seed idempotente; posições nunca negativas; proventos batem com a posição na data-com; apurações batem com as operações |
+| D3 | ER e schema das decisões D43 (carteira ideal, metas) e D44 (renda fixa, cripto), com os requisitos de dados das telas do D47 (prioridade A obrigatória; B se couber): brModelo, `modelo-er.md`, `mapeamento.md`, `glossario.md`, `schema.prisma` + migration, `ddl.sql` e testes de restrição | 31/10–04/11 | D1, D43, D44 | Migrations sobem do zero; `db:drift` sem diferenças; `ddl.sql` bate com o mapeamento novo; testes das novas restrições passando |
+| P1 | `inserts.sql` (≥ 10 tuplas por tabela, ≥ 290 no total, mais as tabelas da D3) + memória de cálculo | 25/10–07/11 | D1, P0, D3 (para as tabelas novas) (K0 opcional, para conferir posições) | Seed idempotente; posições nunca negativas; proventos batem com a posição na data-com; apurações batem com as operações |
 | P2 | `queries.sql`: 10 com junção, 3 LEFT/RIGHT JOIN, 5 com agregação + GROUP BY/HAVING/ORDER BY, cada uma com enunciado | 08/11–14/11 | P1 | 18 consultas respondendo perguntas reais do domínio |
 | P3 | Script de resultados + listagem completa de cada tabela | 15/11–17/11 | P2 | Arquivos em `database/results/` |
 | P4 | Relatório final: título, integrantes, SGBD (PostgreSQL, PostgreSQL Global Development Group), texto e ER corrigidos com o retorno da Parte 1, DDL + inserts (.sql), listagens, consultas com enunciado, SQL e resultado | 18/11–28/11 | P3, retorno da Parte 1 | Enviado até 30/11 (prazo 07/12) |
@@ -64,10 +73,11 @@ O catálogo de referência do S1 (setores, emissores, ativos, corretoras) vem do
 | ID | Tarefa | Datas | Depende de | Pronto quando |
 |---|---|---|---|---|
 | U0 | **Concluído (26/10), D41.** Aprovar a lista de telas do S1 proposta em `agentes/agente-ux-ui.md` | 25/10 | — | Lista aprovada pelo usuário e registrada no projeto (`agentes/agente-ux-ui.md`, `claude/handoff-ux.md`) |
-| U1 | Design system: cores claro/escuro, tipografia, espaçamento, componentes base como tokens Tailwind | 26/10–29/10 | U0, B3 | Tokens no Figma (variáveis com os nomes dos tokens) e em tabela no projeto; link do arquivo Figma na seção 10 do contexto |
-| U2 | Fluxos e wireframes dos 11 frames do S1 (7 telas, 3 componentes e o shell, D41) | 30/10–05/11 | U1 | Fluxo cadastro → carteira → compra → venda → posição completo, mais catálogo → lançar operação e edição pelo histórico |
-| U3 | Alta fidelidade com os estados de `claude/handoff-ux.md`, um frame por tela, componente e estado | 06/11–12/11 | U2 | Estados de cada componente especificados |
-| U4 | Textos de ajuda: "como foi calculado" para PM, custo e lucro | 13/11–14/11 | U3 | Tabela salva no projeto |
+| U1 | **Concluído (30/10).** Design system: cores claro/escuro, tipografia, espaçamento, componentes base como tokens Tailwind | 26/10–29/10 | U0, B3 | Tokens no Figma (variáveis com os nomes dos tokens) e em tabela no projeto; link do arquivo Figma na seção 10 do contexto |
+| U2 | **Concluído (30/10).** Fluxos e wireframes dos 11 frames do S1 (7 telas, 3 componentes e o shell, D41) | 30/10–05/11 | U1 | Fluxo cadastro → carteira → compra → venda → posição completo, mais catálogo → lançar operação e edição pelo histórico |
+| U3 | **Frames prontos (30/10), em revisão pelo usuário.** Alta fidelidade com os estados de `claude/handoff-ux.md`, um frame por tela, componente e estado | 06/11–12/11 | U2 | Estados de cada componente especificados |
+| U4 | Textos de ajuda: "como foi calculado" para PM, custo, lucro e resumo da operação (D42) | 13/11–14/11 | U3 | Tabela salva no projeto |
+| U6 | **Concluído (30/10), D45.** Ajustes de UX no S1 (guias, filtro por tipo, agrupamento por classe, avatar) e página "Produto completo (roadmap)" no Figma, fora do handoff do S1 | 30/10 | U3 | Frames e protótipo navegável; links no `claude/handoff-ux.md` |
 | U5 | Revisão por Nielsen e WCAG AA (plugin Design: crítica de design e revisão de acessibilidade); handoff para o frontend em `claude/handoff-ux.md` | 15/11–16/11 | U4 | Sem pendência de contraste ou de foco; `claude/handoff-ux.md` com o link do frame de cada tela |
 
 ## Backend
@@ -77,7 +87,7 @@ O catálogo de referência do S1 (setores, emissores, ativos, corretoras) vem do
 | K1 | Esqueleto NestJS (api e worker): config validada, filtro RFC 7807, Jest (unitário em paralelo; integração e E2E com Testcontainers em série, migrations pelo Prisma da raiz), job `backend` no `ci.yml` (D40) | 28/10–03/11 | F3, F4 | Jobs `database` e `backend` verdes em todo PR e exigidos na proteção da `main` |
 | K2 | Módulos auth e users (RN01), guard JWT, rate limit | 04/11–08/11 | D1, D2, K1 | E2E de cadastro e login passando |
 | K3 | reference-data (ativos, emissores, corretoras) e portfolios (RN02); `GET /portfolios` com `operationCount` (D41) | 09/11–13/11 | K2 | Carteira de outro usuário retorna 404; `operationCount` coberto por teste |
-| K4 | operations com recálculo transacional (RN04–RN12); posições abertas e encerradas (D41); OpenAPI versionado | 16/11–25/11 | K3, K0 | E2E compra → venda → posição; venda total aparece como posição encerrada com o lucro realizado; violação da RN10 identifica a operação |
+| K4 | operations com recálculo transacional (RN04–RN12); posições abertas e encerradas (D41); prévia da operação sem gravar (D42); filtro `assetType` no histórico (D45); OpenAPI versionado | 16/11–25/11 | K3, K0 | E2E compra → venda → posição; venda total aparece como posição encerrada com o lucro realizado; violação da RN10 identifica a operação |
 
 ## Frontend
 | ID | Tarefa | Datas | Depende de | Pronto quando |
@@ -85,7 +95,7 @@ O catálogo de referência do S1 (setores, emissores, ativos, corretoras) vem do
 | W1 | Esqueleto Angular, tokens no `tailwind.config` (conferidos com as variáveis do Figma), interceptors, shell (frame L) com os estados globais (sessão expirada, 404, falha de conexão), specs com Vitest (limite de 80%), `@playwright/test` configurado, job `frontend` no `ci.yml` (D40) | 10/11–13/11 | U1, F3 | Job `frontend` (lint, specs, build) verde e exigido na proteção da `main` |
 | W2 | Login e cadastro (frames 1 e 2) | 14/11–18/11 | W1, K2, U3 | Erros do backend exibidos no campo certo |
 | W3 | Lista, criação e exclusão de carteiras, com estado vazio e `ConfirmDialog` (frames 3 e C3) | 19/11–23/11 | W2, K3 | Os 4 estados de dados e a confirmação de exclusão cobertos por spec |
-| W4 | Detalhe da carteira com posições encerradas, formulário de operação (criar e editar), histórico, catálogo com "Lançar operação", `DerivedValueExplainer` e `BusinessRuleError` (frames 4–7, C1–C3) | 26/11–02/12 | W3, K4, U5 | Fluxo completo usando a API real |
+| W4 | Detalhe da carteira com guias Resumo e Histórico, posições agrupadas por classe com `AssetAvatar` e posições encerradas (D45), formulário de operação (criar e editar) com Resumo da operação (D42), histórico com filtro por tipo, catálogo com "Lançar operação", `DerivedValueExplainer` e `BusinessRuleError` (frames 4–7, C1–C3) | 26/11–02/12 | W3, K4, U5 | Fluxo completo usando a API real |
 | R1 | E2E ponta a ponta com `@playwright/test` (`frontend/e2e/*.spec.ts`, job `e2e` no CI contra a API e um PostgreSQL de serviço; na máquina, contra `carteira_test`), README de execução e roteiro de demonstração: S1 pronto | 03/12–06/12 | W4 | E2E do S1 passando no CI; alguém de fora sobe e usa o sistema seguindo só o README |
 
 ## Gatilhos de corte
@@ -93,9 +103,10 @@ O catálogo de referência do S1 (setores, emissores, ativos, corretoras) vem do
 |---|---|---|---|
 | G-P0 | 10/10 | Alguma regra de IR sem confirmação na norma | Registrar a regra com a citação disponível e marcar como "a confirmar" na memória de cálculo; o seed de IR usa só as regras confirmadas |
 | G-D1 | 20/10 (**aplicado em 24/10**) | Sem PostgreSQL local (F4 não pronto) | O agente de banco valida schema, migrations e seed num PostgreSQL no ambiente de nuvem do chat e entrega os arquivos para versionar; o P1 não atrasa |
-| G-K4 | 25/11 | K4 sem o E2E compra → venda → posição passando | O W4 entra só com lançamento e posição; edição e exclusão retroativa ficam no backend (RN10 testada), fora da tela |
+| G-K4 | 25/11 | K4 sem o E2E compra → venda → posição passando | Primeiro corte: sai a prévia (D42) e o formulário fica sem o Resumo da operação. Se não bastar, o W4 entra só com lançamento e posição; edição e exclusão retroativa ficam no backend (RN10 testada), fora da tela |
 | G-U3 | 12/11 | Alta fidelidade (U3) não pronta | O W2 começa com os wireframes do U2 e os tokens do U1, com os links dos frames de wireframe já em `claude/handoff-ux.md`; o U3 vira ajuste visual depois |
 | G-W4 | 02/12 | W4 não pronto | Saem do frontend o filtro do histórico, o "como foi calculado" do lucro e a ação "Lançar operação" do catálogo (o catálogo fica só como consulta); o R1 começa em 03/12 de qualquer forma |
+| G-D3 | 04/11 | D3 não concluída | Primeiro saem as linhas B do D47 (o rótulo correspondente sai da tela). Se não bastar, renda fixa e cripto (D44) saem do ER da Parte 2 e ficam registradas só como escopo do produto; carteira ideal e metas (D43) continuam. O P1 não passa de 07/11 por causa da D3 |
 | G-P4 | 30/11 | Sempre | O relatório de BD tem prioridade sobre qualquer outra frente |
 | G-UX | Sempre | Uma tarefa de BD passou da data de término | O UX/UI pausa até a tarefa de BD voltar ao prazo |
 

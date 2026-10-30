@@ -4,9 +4,9 @@ Plataforma gratuita e sem fins lucrativos de análise e gestão de investimentos
 
 ## Leia antes de qualquer tarefa
 Ordem de precedência em caso de conflito:
-1. `claude/contexto-projeto.md` — documento-mestre: escopo, decisões D1–D41, esquema relacional, pendências.
+1. `claude/contexto-projeto.md` — documento-mestre: escopo, decisões D1–D47, esquema relacional, pendências.
 2. `claude/arquitetura.md` — arquitetura de dados e da aplicação.
-3. `database/docs/modelo-er.md` — modelo ER congelado (27 entidades, 33 relacionamentos, 29 tabelas).
+3. `database/docs/modelo-er.md` — modelo ER congelado (27 entidades, 33 relacionamentos, 29 tabelas); em revisão na tarefa D3 (D43, D44).
 4. Prompts dos agentes em `agentes/` (espelhados em `.claude/agents/`).
 
 Onde cada arquivo fica, o que é gerado e o que vai para o Git: `claude/estrutura-repositorio.md`. Arquivo novo segue essa estrutura; mudança nela só com registro no contexto (D37).

@@ -1,6 +1,6 @@
 # Agente de Banco de Dados — PostgreSQL + Prisma
 
-> Atualizado em 05/10/2026; banco do sistema (D2, D39) e ferramentas (D38) em 26/10/2026. Fontes que este prompt resume e que prevalecem em caso de conflito, nesta ordem: `claude/contexto-projeto.md` → `claude/arquitetura.md` → `database/docs/modelo-er.md`. Leia as três antes de qualquer tarefa. Estrutura do repositório e onde cada arquivo fica: `claude/estrutura-repositorio.md`. Tarefas, datas e critérios de pronto: `claude/plano-de-acao.md`. Git, PR, definição de pronto e ferramentas: `claude/convencoes-equipe.md`.
+> Atualizado em 05/10/2026; banco do sistema (D2, D39) e ferramentas (D38) em 26/10/2026; tarefa D3 (D43, D44) e requisitos de dados das telas (D47) em 30/10/2026. Fontes que este prompt resume e que prevalecem em caso de conflito, nesta ordem: `claude/contexto-projeto.md` → `claude/arquitetura.md` → `database/docs/modelo-er.md`. Leia as três antes de qualquer tarefa. Estrutura do repositório e onde cada arquivo fica: `claude/estrutura-repositorio.md`. Tarefas, datas e critérios de pronto: `claude/plano-de-acao.md`. Git, PR, definição de pronto e ferramentas: `claude/convencoes-equipe.md`.
 
 ## Contexto do projeto
 Um único sistema atende duas disciplinas da UNIFESP/ICT:
@@ -41,6 +41,21 @@ No chat do projeto (claude.ai), os entregáveis de BD (texto, relatório, memór
 - No brModelo Web: conceitual `CarteiraB3_ER`, lógico `CarteiraB3_Logico`. Convenção do conversor: o rótulo junto à entidade E conta ocorrências de E; a FK sai no lado com máximo n.
 - Nomes da entrega de BD em português (`Usuario`, `Operacao`…); nomes físicos em inglês, `snake_case`, plural (`users`, `operations`…). A correspondência fica no glossário.
 - Mudança no ER só com decisão registrada em `claude/contexto-projeto.md`.
+- **Exceção registrada em 30/10/2026 (D43, D44), tarefa D3:** o ER ganha entidades para (a) **carteira ideal**: percentual-alvo por classe de ativo em cada carteira, soma 100% por carteira; (b) **metas** por carteira: tipo (patrimônio ou renda mensal com proventos), valor-alvo e prazo opcional; (c) **renda fixa**: título sem ticker B3, com indexador, taxa, vencimento e série de preço unitário de fonte própria (dados abertos do Tesouro Nacional); (d) **cripto**: quantidade fracionária e preço de referência diário (fonte a definir), operação possivelmente em exchange fora da B3. Alocação atual e progresso de metas são **derivados** (D4), nunca colunas. Você decide nomes, chaves, cardinalidades, CHECK e se renda fixa e cripto estendem `Ativo`/`Operacao`/`Cotacao` ou viram entidades próprias; justifique na 3FN. Regras de IR dessas classes ficam **fora** da D3 até serem validadas na legislação.
+- **Requisitos de dados das telas do produto completo (D47, 30/10/2026), entrada da D3.** O Figma tem todas as telas na página "Telas — produto completo" (D46); à direita do traço vertical de cada faixa estão as próximas etapas, e a faixa 8 é a página do ativo. A lista abaixo compara essas telas com o ER congelado. Antes de modelar, abra cada tela pelo link de `claude/handoff-ux.md` (seção "Roadmap") e confira na fonte primária os campos marcados "conferir na fonte". Prioridade **A** = obrigatório na D3; **B** = entra se couber e é o primeiro corte do G-D3, antes de renda fixa e cripto.
+
+| Prio. | Tela (frame) | Dado exibido | Situação no ER hoje | O que a D3 precisa decidir |
+|---|---|---|---|---|
+| A | Carteira ideal (editar; erro de soma) | percentual-alvo por classe: Ações, FIIs, ETFs, BDRs, Renda fixa, Cripto | não existe (D43) | entidade por (carteira, classe); soma = 100% por carteira (CHECK ou validação: um CHECK de linha não soma linhas, justifique); a classe usa **o mesmo domínio** de `Ativo.tipo`, ampliado para renda fixa e cripto |
+| A | Metas; nova meta | tipo {patrimônio, renda mensal com proventos}, valor-alvo, prazo em mês/ano (opcional), criada em | não existe (D43) | entidade por carteira; uma carteira pode ter as duas metas (decidir se no máximo uma por tipo); progresso, "falta", aporte mensal e média de proventos são derivados |
+| A | Página do ativo · Renda fixa; guia Preços e taxas | indexador (IPCA, Selic, prefixado), vencimento, com ou sem cupom; série diária de **taxa de compra, taxa de venda, PU de compra e PU de venda** | não existe (D44) | atributos do título e série de preço própria (a `Cotacao` do COTAHIST tem OHLC e volume, que o Tesouro não publica); título não tem ticker B3 (decidir identificador; o ISIN existe para títulos públicos — conferir na fonte); colunas do arquivo de preços e taxas do Tesouro Direto (dados abertos do Tesouro Nacional) — conferir na fonte |
+| A | Histórico completo; página do ativo · Cripto | quantidade fracionária (até 8 casas), preço de referência diário, operação em exchange | não existe (D44) | quantidade em `NUMERIC` com CHECK por classe (inteira para ação, FII, ETF e BDR; RN04); cripto sem ISIN (`Ativo.isin` hoje é único e obrigatório); exchange como `Corretora` exige `cnpj` opcional (hoje único) ou entidade própria |
+| A | Catálogo completo; filtros por classe no Histórico e no Resumo | classes Ações, FIIs, ETFs, BDRs, Renda fixa, Cripto | `Ativo.tipo` = {ACAO, FII, ETF, BDR} | ampliar o domínio; o ticker deixa de ser obrigatório para renda fixa e cripto ou ganha formato próprio (hoje é "ticker maiúsculo no formato B3") |
+| B | Página do ativo · FII (HGLG11 "Tijolo · logística"; MXRF11 "Papel · recebíveis") | segmento e tipo do fundo (tijolo, papel, híbrido) | não existe; `Setor` hoje classifica empresas | se o informe mensal da CVM traz segmento e mandato do fundo (conferir na fonte), modelar como atributo do informe ou classificação; sem fonte, o rótulo sai da tela |
+| B | Página do ativo · ETF; guia Rentabilidade | índice de referência do ETF (BOVA11 → Ibovespa); taxa de administração | não existe; `IndiceEconomico` tem só CDI, SELIC, IPCA, IBOV | relacionamento opcional ETF → índice; outros índices da B3 só se houver série de fonte primária; taxa de administração só com fonte estruturada (conferir); sem fonte, sai da tela |
+| B | Catálogo e página do ativo · BDR (AAPL34 "DRN") | tipo de programa do BDR (patrocinado nível I, II, III ou não patrocinado) | `Ativo.classe` = {ON, PN, PNA, PNB, UNIT} | ampliar o domínio de classe ou atributo próprio, se a fonte (cadastro da B3) trouxer; sem fonte, o rótulo sai da tela |
+
+Já cobertos pelo ER, sem mudança: lista de observação ("Observar"; `observa`), indicadores e demonstrações (`Demonstracao`, `LinhaDemonstracao`, `Indicador`), dividendos, JCP e rendimentos (`Provento`, `ProventoRecebido`), imóveis, vacância e inadimplência (`ImovelInforme`), PL e cotistas de FII (`InformeMensalFII`), comunicados por categoria (`Comunicado`), séries de CDI, IPCA e Ibovespa (`ValorIndice`), "também negocia" (ativos do mesmo emissor). Derivados, nunca colunas: patrimônio, rentabilidade de 12 meses e total, variação de 12 meses, DY, payout, médias, alocação atual, situação "a pagar/pago" de um provento, contagem de imóveis.
 
 Decisões que não podem ser desfeitas sem justificativa registrada:
 - **Dado derivado nunca vira coluna** (D4, D17, D32): posição, preço médio, lucro realizado, indicadores, VP por cota, vacância do fundo, nível do setor, base de cálculo e imposto do IR, valor devido e vencimento do DARF.
@@ -62,8 +77,8 @@ Padrões físicos:
 ## Regras de negócio da carteira (fase S1)
 - RN01 Cadastro com nome, e-mail único (sem diferenciar maiúsculas) e senha (mín. 8 caracteres), guardada só como hash (argon2).
 - RN02 Usuário tem N carteiras; nome único por usuário; acesso só às próprias carteiras.
-- RN03 Ativo: ticker único (maiúsculo, formato B3), tipo ∈ {STOCK, FII, ETF, BDR}; pertence a um emissor, que pode ter setor.
-- RN04 Operação: tipo ∈ {BUY, SELL}, corretora obrigatória, data não futura, quantidade inteira > 0, preço unitário > 0, custos ≥ 0.
+- RN03 Ativo: ticker único (maiúsculo, formato B3), tipo ∈ {STOCK, FII, ETF, BDR} no S1 (renda fixa e cripto entram com a D3, D44); pertence a um emissor, que pode ter setor.
+- RN04 Operação: tipo ∈ {BUY, SELL}, corretora obrigatória, data não futura, quantidade inteira > 0, preço unitário > 0, custos ≥ 0. Na D3 (D44), a quantidade passa a aceitar fração para cripto e renda fixa; ações, FIIs, ETFs e BDRs continuam inteiras (CHECK por classe).
 - RN05 Compra: PM_novo = (qtd_atual × PM_atual + qtd × preço + custos) / (qtd_atual + qtd).
 - RN06 Venda não altera o PM. Lucro realizado = qtd × preço − custos − qtd × PM_atual.
 - RN07 Venda maior que a posição na data é rejeitada.
@@ -98,6 +113,13 @@ Além das 29 tabelas do ER, o sistema precisa de objetos nos schemas `ops` e `an
 - PDF `BD_Parte1_CarteiraB3.pdf`: capa, texto, diagrama ER vetorial (A3), entidades, relacionamentos, regras de mapeamento e as 29 tabelas.
 
 ### Parte 2 — até 07/12/2026 (alvo 30/11)
+
+| ID | Tarefa | Datas | Depende de | Pronto quando |
+|---|---|---|---|---|
+| D3 | ER e schema das decisões D43 (carteira ideal, metas) e D44 (renda fixa, cripto), com os requisitos de dados das telas (D47, tabela acima; prioridade A obrigatória, B se couber): brModelo, `modelo-er.md`, `mapeamento.md`, `glossario.md`, `schema.prisma` + migration, `ddl.sql`, testes de restrição | 31/10–04/11 | D1, D43, D44, D47 | Migrations sobem do zero; `db:drift` sem diferenças; `ddl.sql` bate com o mapeamento novo; testes novos passando; cada linha A da tabela D47 resolvida no ER e cada linha B resolvida ou registrada como "sai da tela" |
+
+Gatilho G-D3 (04/11): primeiro saem as linhas B da tabela D47 (o rótulo correspondente sai da tela, registrado no contexto). Se ainda assim a D3 não fechar, renda fixa e cripto saem do ER da Parte 2 (ficam só como escopo do produto) e carteira ideal e metas continuam; o P1 não passa de 07/11 por causa da D3. No seed das tabelas novas: carteira com carteira ideal completa e carteira sem carteira ideal (LEFT JOIN); meta de cada tipo, com e sem prazo; título de renda fixa com série de preços; cripto com quantidade fracionária.
+
 Situação em 24/10/2026: P0 (regras de IR em `database/docs/memoria-calculo.md`), G1 (`database/docs/glossario.md`) e D1 (schema, migration `20261024000000_init`, `ddl.sql`, `database/tests/constraints.sql`) concluídos e conferidos pelo Prisma. Próximas: P1 seed 25/10–07/11, P2 consultas 08–14/11, P3 resultados 15–17/11, P4 relatório 18–28/11. Pendente com o usuário: `tax_categories` e `economic_indexes` têm só 4 registros reais cada (enunciado pede ±10 tuplas por tabela).
 
 1. `ddl.sql` (gerado) e `inserts.sql`.

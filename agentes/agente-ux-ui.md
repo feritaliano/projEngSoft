@@ -1,6 +1,6 @@
 # Agente UX/UI
 
-> Reescrito em 05/10/2026; ferramentas e handoff atualizados em 26/10/2026 (D38); lista de telas do S1 aprovada no U0 em 26/10/2026 (D41). Fontes que este prompt resume e que prevalecem em caso de conflito, nesta ordem: `claude/contexto-projeto.md` → `claude/arquitetura.md` → `database/docs/modelo-er.md`. Leia as três antes de qualquer tarefa. Estrutura do repositório e onde cada arquivo fica: `claude/estrutura-repositorio.md`. Tarefas, datas e critérios de pronto: `claude/plano-de-acao.md`.
+> Reescrito em 05/10/2026; ferramentas e handoff atualizados em 26/10/2026 (D38); lista de telas do S1 aprovada no U0 em 26/10/2026 (D41); U1 e U2 concluídos em 30/10/2026; Resumo da operação no formulário (D42) em 30/10/2026; ajustes do S1 e roadmap (D45), página única por tela (D46) e requisitos de dados das telas (D47) em 30/10/2026. Fontes que este prompt resume e que prevalecem em caso de conflito, nesta ordem: `claude/contexto-projeto.md` → `claude/arquitetura.md` → `database/docs/modelo-er.md`. Leia as três antes de qualquer tarefa. Estrutura do repositório e onde cada arquivo fica: `claude/estrutura-repositorio.md`. Tarefas, datas e critérios de pronto: `claude/plano-de-acao.md`.
 
 ## Contexto do projeto
 Um único sistema atende duas disciplinas da UNIFESP/ICT:
@@ -51,14 +51,18 @@ Itens do produto cobertos: A1–A2, B1–B7, B13, C1. São 7 telas, 3 componente
 | 1 | Login | Tela | A2 | e-mail, senha, link para o cadastro | padrão, credencial inválida, carregando, sessão expirada | W2 |
 | 2 | Cadastro | Tela | A1 | nome, e-mail, senha; a regra de mín. 8 caracteres aparece antes do erro | padrão, erro de campo (e-mail já cadastrado no campo e-mail), carregando | W2 |
 | 3 | Lista de carteiras | Tela inicial após o login | B1 | listar, criar (nome duplicado indicado no campo), excluir | vazio que guia a criação da primeira, carregando, erro, com dados, confirmação de exclusão (C3) | W3 |
-| 4 | Detalhe da carteira | Tela | B6, B7, B13 | totais da carteira no topo; posições abertas (quantidade, PM, custo total, lucro realizado), somando as corretoras; seção **Posições encerradas** (quantidade 0, lucro realizado ≠ 0) recolhida por padrão; atalhos "Lançar operação" e "Histórico" | vazio (sem operações), carregando, erro, com dados; cards no mobile | W4 |
-| 5 | Formulário de operação | Tela | B2, B3, B4, C1 | modos **criar** e **editar**; compra ou venda; ativo (busca por ticker ou emissor, com sugestões), corretora, data até hoje, quantidade, preço, custos | padrão, erro de campo, rejeição RN07 (C2), rejeição RN10 no modo editar (C2), sucesso | W4 |
-| 6 | Histórico de operações | Tela | B4, B5 | lista cronológica; filtros por ativo e corretora; editar (abre o frame 5 no modo editar) e excluir por linha | vazio, filtro sem resultado, carregando, erro, confirmação (C3), rejeição RN10 (C2) | W4 |
+| 4 | Detalhe da carteira | Tela | B6, B7, B13 | totais da carteira no topo; posições abertas (quantidade, PM, custo total, lucro realizado), somando as corretoras; seção **Posições encerradas** (quantidade 0, lucro realizado ≠ 0) recolhida por padrão; guias **Resumo e Histórico** (`PortfolioTabs`, D45); posições **agrupadas por classe** com `AssetAvatar` (D45); atalho "Lançar operação" | vazio (sem operações), carregando, erro, com dados; cards no mobile | W4 |
+| 5 | Formulário de operação | Tela | B2, B3, B4, C1 | modos **criar** e **editar**; compra ou venda; ativo (busca por ticker ou emissor, com sugestões), corretora, data até hoje, quantidade, preço, custos; **Resumo da operação** (D42) ao lado do formulário: valor da operação, total com custos (ou valor líquido na venda), posição e preço médio antes → depois, lucro estimado na venda, tudo vindo da prévia do backend | padrão, compra preenchida com resumo, venda com lucro estimado, erro de campo, rejeição RN07 (C2, botão desabilitado), rejeição RN10 no modo editar (C2, botão desabilitado), sucesso | W4 |
+| 6 | Histórico de operações | Guia do Detalhe (D45) | B4, B5 | lista cronológica; filtros por ativo, corretora e **tipo de ativo** (D45); editar (abre o frame 5 no modo editar) e excluir por linha | vazio, filtrado por tipo, filtro sem resultado, carregando, erro, confirmação (C3), rejeição RN10 (C2) | W4 |
 | 7 | Catálogo de ativos | Tela | C1 | busca por ticker ou emissor; ticker, emissor, setor e tipo (ação, FII, ETF, BDR); ação **"Lançar operação"** em cada resultado, que abre o frame 5 com o ativo preenchido e pede a carteira quando houver mais de uma | inicial, carregando, sem resultado, com resultado, erro | W4 |
 | C1 | `DerivedValueExplainer` | Componente | B13 | fórmula, insumos com fonte e data, texto da tabela de microcopy (U4) | `AVG_PRICE_BUY`, `TOTAL_COST`, `REALIZED_PROFIT` | W4 |
 | C2 | `BusinessRuleError` | Componente | B3, B4 | operação que ficaria inválida, data, posição disponível vs. vendida, como resolver | RN07, RN10 | W4 |
 | C3 | `ConfirmDialog` | Componente | B1, B4 | consequência explícita da ação | excluir carteira (mostra quantas operações serão apagadas e exige digitar o nome da carteira), editar operação, excluir operação | W3, W4 |
 | L | Layout e navegação | Shell | — | cabeçalho; navegação só com itens que funcionam (Carteiras, Ativos); menu do usuário com "Sair"; grupos das etapas S2+ reservados no layout sem itens visíveis e sem "em breve" | desktop, mobile, 404, falha de conexão | W1 |
+
+Componentes base acrescentados pelo D45: `AssetAvatar` (Class = Ação, FII, ETF, BDR, Renda fixa, Cripto; propriedade `Letters`) e `PortfolioTabs` (Set = S1 com Resumo e Histórico; Set = Completo com Proventos e Metas, só no roadmap). Cores de gráfico `color/chart/1–6`, uma por classe, validadas para daltonismo nos dois temas; todo gráfico tem legenda ou rótulo direto e nunca usa só a cor.
+
+**Produto completo no Figma (D45, D46):** a página "Telas — produto completo" tem uma faixa por tela. À esquerda do traço vertical de cada faixa ficam os frames do S1 (implementar agora; só os que têm link na tabela "Frames do S1" de `claude/handoff-ux.md`); à direita, as próximas etapas (S2–S11: lista com patrimônio e rentabilidade, Resumo com gráficos e alocação contra a carteira ideal, guias Proventos e Metas, carteira ideal, catálogo completo). A faixa 8 é a página do ativo, toda de próximas etapas, uma linha por tipo com a Visão geral e as guias. Protótipo único, com fluxos do S1 e do produto completo. Toda tela nova de próxima etapa que mostre dado fora do ER vira linha na tabela D47 de `agentes/agente-banco-de-dados.md` antes de ir para o handoff.
 
 Motivos das decisões do U0:
 - **RN07 e RN10 são estados, não tela:** um único componente (C2) aparece no formulário e no histórico; dois frames gerariam duas implementações.
@@ -69,16 +73,18 @@ Motivos das decisões do U0:
 - **Exclusão de carteira irreversível:** `operations → portfolios` é ON DELETE CASCADE (arquitetura, seção 4); a confirmação mostra a contagem de operações e exige o nome digitado.
 - **Estados globais no shell:** sessão expirada (refresh recusado) volta ao login com aviso; 404 cobre também recurso de outro usuário (o backend não distingue); falha de conexão com ação de tentar de novo.
 
-Dependências do contrato da API (backend, K3 e K4; precisam estar no OpenAPI antes do U3): `GET /portfolios` devolve `operationCount` de cada carteira; `GET /portfolios/:id/positions` devolve também as posições encerradas (quantidade 0 e lucro realizado ≠ 0).
+Dependências do contrato da API (backend, K3 e K4; precisam estar no OpenAPI antes do U3): `GET /portfolios` devolve `operationCount` de cada carteira; `GET /portfolios/:id/positions` devolve também as posições encerradas (quantidade 0 e lucro realizado ≠ 0). Prévia da operação (D42): `POST /portfolios/:id/operations/preview`.
+- **Resumo da operação (D42):** o total da operação é calculado pelo backend, não pelo navegador (D5, D28); a prévia também antecipa o aviso de RN07/RN10.
 
 ## Tarefas do plano
 | ID | Tarefa | Datas | Depende de | Pronto quando |
 |---|---|---|---|---|
 | U0 | Aprovar com o usuário a lista de telas do S1 acima | **Concluído (26/10)**, D41 | — | Lista aprovada e registrada no projeto |
-| U1 | Design system: cores claro/escuro, tipografia, espaçamento, raios, sombras, componentes base como tokens Tailwind, em um arquivo Figma próprio | 26/10–29/10 | U0, B3 | Tokens no Figma (variáveis com os nomes dos tokens) e em tabela no projeto; **link do arquivo Figma registrado na seção 10 do contexto** |
-| U2 | Fluxos e wireframes das 7 telas, dos 3 componentes e do shell do S1 | 30/10–05/11 | U1 | Fluxo cadastro → carteira → compra → venda → posição completo, mais catálogo → lançar operação e edição pelo histórico |
-| U3 | Alta fidelidade com os estados da tabela acima, um frame por tela, componente e estado | 06/11–12/11 | U2 | Estados de cada componente especificados |
-| U4 | Tabela de microcopy: "como foi calculado" para PM, custo total e lucro realizado, indexada por `formulaCode` (`AVG_PRICE_BUY`, `TOTAL_COST`, `REALIZED_PROFIT`), e textos de conceitos (corretagem, custos, posição) | 13/11–14/11 | U3 | Tabela salva no projeto |
+| U1 | Design system: cores claro/escuro, tipografia, espaçamento, raios, sombras, componentes base como tokens Tailwind, em um arquivo Figma próprio | **Concluído (30/10)** | U0, B3 | Tokens no Figma (variáveis com os nomes dos tokens) e em tabela no projeto; **link do arquivo Figma registrado na seção 10 do contexto** |
+| U2 | Fluxos e wireframes das 7 telas, dos 3 componentes e do shell do S1 | **Concluído (30/10)** | U1 | Fluxo cadastro → carteira → compra → venda → posição completo, mais catálogo → lançar operação e edição pelo histórico |
+| U3 | Alta fidelidade com os estados da tabela acima, um frame por tela, componente e estado | 06/11–12/11; **frames prontos em 30/10, em revisão pelo usuário** | U2 | Estados de cada componente especificados |
+| U4 | Tabela de microcopy: "como foi calculado" para PM, custo total, lucro realizado e resumo da operação, indexada por `formulaCode` (`AVG_PRICE_BUY`, `TOTAL_COST`, `REALIZED_PROFIT`, `OPERATION_GROSS`, `OPERATION_TOTAL_BUY`, `OPERATION_NET_SELL`), e textos de conceitos (corretagem, custos, posição) | 13/11–14/11 | U3 | Tabela salva no projeto |
+| U6 | Ajustes do S1 (D45) e telas do produto completo no Figma, fora do handoff do S1; página única por tela (D46) | **Concluído (30/10)** | U3 | Frames e protótipos navegáveis; links em `claude/handoff-ux.md` |
 | U5 | Revisão por Nielsen e WCAG AA (crítica de design e revisão de acessibilidade do plugin Design); handoff para o frontend em `claude/handoff-ux.md` (especificação de handoff do plugin Design) | 15/11–16/11 | U4 | Sem pendência de contraste ou de foco; `claude/handoff-ux.md` com o link do frame de cada tela |
 
 O frontend começa em 10/11 (W1 depende do U1; W2 do U3; W4 do U5). Gatilho G-U3 (12/11): se a alta fidelidade não estiver pronta, o frontend começa o W2 com os wireframes do U2 e os tokens do U1; nesse caso, os links dos frames de wireframe entram no `claude/handoff-ux.md` já no dia 12/11. Gatilho G-UX: se uma tarefa de BD passar da data de término, o UX pausa até ela voltar ao prazo.
@@ -97,7 +103,8 @@ O frontend começa em 10/11 (W1 depende do U1; W2 do U3; W4 do U5). Gatilho G-U3
 ## Entregáveis
 - Telas no Figma, editáveis, para revisão e alteração pelo dono do projeto, **um frame por tela e por estado relevante**, com nome igual ao da tabela de handoff.
 - Para cada tela: objetivo, estrutura, componentes, todos os estados e observações de implementação.
-- Design system mínimo e mantido atualizado, nomeado para virar tokens do Tailwind 1:1 (as variáveis do Figma usam exatamente os nomes dos tokens); tabela de tokens salva no projeto.
+- Design system mínimo e mantido atualizado, nomeado para virar tokens do Tailwind 1:1 (as variáveis do Figma usam exatamente os nomes dos tokens); tabela de tokens em `claude/design-tokens.md`.
+- Arquivo Figma: https://www.figma.com/design/71YUqOEoUNi1HIPcLZd0qo (time educacional ProjetosUnifesp). Páginas Telas — produto completo (D46), Componentes e Fundamentos; a massa de dados dos frames está nas notas de `claude/handoff-ux.md` e deve ser mantida coerente entre telas.
 - Tabela de microcopy centralizada (U4), indexada por `formulaCode`, que o frontend consome sem copiar textos para os templates.
 - **Handoff (U5): `claude/handoff-ux.md`**, documento do projeto (copiado também para o repositório), com:
   - link do arquivo Figma;

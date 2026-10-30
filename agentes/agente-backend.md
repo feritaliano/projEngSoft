@@ -1,6 +1,6 @@
 # Agente Backend — NestJS
 
-> Reescrito em 05/10/2026; ferramentas atualizadas em 26/10/2026 (D38); contrato ajustado às telas aprovadas no U0 em 26/10/2026 (D41). Fontes que este prompt resume e que prevalecem em caso de conflito, nesta ordem: `claude/contexto-projeto.md` → `claude/arquitetura.md` → `database/docs/modelo-er.md`. Leia as três antes de qualquer tarefa. Estrutura do repositório e onde cada arquivo fica: `claude/estrutura-repositorio.md`. Tarefas, datas e critérios de pronto: `claude/plano-de-acao.md`. Git, PR, definição de pronto e ferramentas: `claude/convencoes-equipe.md`.
+> Reescrito em 05/10/2026; ferramentas atualizadas em 26/10/2026 (D38); contrato ajustado às telas aprovadas no U0 em 26/10/2026 (D41) e à prévia da operação em 30/10/2026 (D42); filtro por tipo e etapas S10/S11 em 30/10/2026 (D43–D45); telas do produto completo e requisitos de dados (D46, D47) em 30/10/2026. Fontes que este prompt resume e que prevalecem em caso de conflito, nesta ordem: `claude/contexto-projeto.md` → `claude/arquitetura.md` → `database/docs/modelo-er.md`. Leia as três antes de qualquer tarefa. Estrutura do repositório e onde cada arquivo fica: `claude/estrutura-repositorio.md`. Tarefas, datas e critérios de pronto: `claude/plano-de-acao.md`. Git, PR, definição de pronto e ferramentas: `claude/convencoes-equipe.md`.
 
 ## Contexto do projeto
 Um único sistema atende duas disciplinas da UNIFESP/ICT:
@@ -40,7 +40,8 @@ O banco cobre o produto completo (27 entidades, 29 tabelas, ER congelado em 05/1
 | S3 — Fundamentos | C4–C6 | `fundamentals` |
 | S4 — Valuation e ranking | D1–D4, C10 | `screening`, `valuation` |
 | S5 — Calculadoras | H1–H4 | `calculators` |
-| S6–S10 | Proventos, IR, FIIs e comunicados, carteira avançada, acompanhamento | `income`, `tax`, `imports`, `watchlist` |
+| S6–S10 | Proventos, IR, FIIs e comunicados, carteira avançada, acompanhamento e planejamento (carteira ideal e metas, D43) | `income`, `tax`, `imports`, `watchlist`, `planning` |
+| S11 | Renda fixa e cripto (D44) | `fixed-income`, `crypto` (preços por adapters da ingestão) |
 
 Nenhum módulo cria repositório, endpoint ou escrita para tabela de etapa não iniciada. O código do S1 não pode bloquear as etapas seguintes (ver "Decisões que as etapas futuras exigem").
 
@@ -51,9 +52,9 @@ Nenhum módulo cria repositório, endpoint ou escrita para tabela de etapa não 
 | K1 | Esqueleto NestJS (api e worker): config validada com zod, filtro RFC 7807, lint de camadas, Jest (unitário em paralelo; integração e E2E com Testcontainers em série), job `backend` no `.github/workflows/ci.yml` ao lado do job `database` já existente (D40) | 28/10–03/11 | F3, F4 | Jobs `database` e `backend` verdes em todo PR |
 | K2 | `auth` e `users` (RN01): JWT de acesso curto + refresh rotativo em cookie httpOnly (`ops.user_sessions`), guard global, rate limit | 04/11–08/11 | D1, D2, K1 | E2E de cadastro e login passando |
 | K3 | `reference-data` (ativos, emissores, setores, corretoras; leitura) e `portfolios` (RN02); `GET /portfolios` com `operationCount` (D41) | 09/11–13/11 | K2 | Carteira de outro usuário retorna 404; `operationCount` coberto por teste |
-| K4 | `operations` com recálculo transacional (RN04–RN12); posições abertas e encerradas e totais com `DerivedValue` (D41); OpenAPI versionado | 16/11–25/11 | K3, K0 | E2E compra → venda → posição; venda total aparece como posição encerrada com o lucro realizado; violação da RN10 identifica a operação |
+| K4 | `operations` com recálculo transacional (RN04–RN12); posições abertas e encerradas e totais com `DerivedValue` (D41); prévia da operação `POST /portfolios/:id/operations/preview` (D42); filtro `assetType` no histórico (D45); OpenAPI versionado | 16/11–25/11 | K3, K0 | E2E compra → venda → posição; venda total aparece como posição encerrada com o lucro realizado; violação da RN10 identifica a operação |
 
-Gatilho G-K4 (25/11): sem o E2E compra → venda → posição passando, o frontend entra só com lançamento e posição; edição e exclusão retroativa ficam no backend, testadas (RN10), fora da tela.
+Gatilho G-K4 (25/11): o primeiro corte é a prévia (D42): o formulário fica sem o Resumo da operação. Se ainda assim o E2E compra → venda → posição não passar, o frontend entra só com lançamento e posição; edição e exclusão retroativa ficam no backend, testadas (RN10), fora da tela.
 
 ## Regras de negócio do S1
 - RN01 Cadastro com nome, e-mail único (sem diferenciar maiúsculas, `citext`) e senha (mín. 8 caracteres), guardada só como hash (argon2).
@@ -103,13 +104,14 @@ src/modules/<modulo>/
   - `POST /auth/register`, `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout`;
   - `GET /assets?search=&page=&pageSize=` (ticker ou nome do emissor), `GET /assets/:ticker`, `GET /brokers`;
   - `GET|POST /portfolios`, `DELETE /portfolios/:id`; cada carteira de `GET /portfolios` traz `operationCount` (inteiro, contado na consulta, nunca coluna), usado na confirmação de exclusão (D41: a exclusão apaga as operações em cascata);
-  - `GET|POST /portfolios/:id/operations` (filtro por ativo e corretora), `GET|PATCH|DELETE /portfolios/:id/operations/:operationId` (o `GET` alimenta o formulário no modo editar);
+  - `GET|POST /portfolios/:id/operations` (filtro por ativo, corretora e tipo de ativo `assetType`, D45), `GET|PATCH|DELETE /portfolios/:id/operations/:operationId` (o `GET` alimenta o formulário no modo editar);
+  - `POST /portfolios/:id/operations/preview` (D42): mesmo corpo do `POST` (e `replacesOperationId` opcional para o modo editar); **nunca grava** (transação só de leitura, sem lock); 200 com `{ grossAmount, netAmount, positionBefore, positionAfter, averagePriceBefore, averagePriceAfter, realizedProfit?, violation? }`, valores em `DerivedValue`; `violation` tem o mesmo corpo do 422 de RN07/RN10; 400 para corpo inválido;
   - `GET /portfolios/:id/positions`: posições abertas (quantidade > 0) **e encerradas** (quantidade 0 e lucro realizado ≠ 0), cada uma com `status` ∈ {`OPEN`, `CLOSED`} (D41); a soma do lucro realizado das linhas bate com o total de `GET /portfolios/:id/summary` (totais).
 - Status: 201 criação, 204 exclusão, 400 validação, 401 sem autenticação, **404 para recurso inexistente ou de outro usuário**, 409 conflito, 422 regra de negócio.
 - Erros em RFC 7807 (`application/problem+json`) por exception filter global; nenhum stack trace vaza. Na RN10, o corpo identifica a operação que ficaria inválida (id, data, quantidade disponível vs. vendida).
 - `ValidationPipe` global (`whitelist`, `forbidNonWhitelisted`, `transform`).
 - Decimais como string; datas ISO 8601 (`YYYY-MM-DD`); paginação `?page=&pageSize=` com `items` e `total`.
-- **`DerivedValue`** (D26) em todo número derivado: `{ value, formulaCode, inputs: [{ name, value, source, referenceDate }], asOf }`. Códigos de fórmula de domínio no S1: `AVG_PRICE_BUY`, `REALIZED_PROFIT`, `TOTAL_COST` (os textos ficam na tabela de microcopy do UX, indexada por `formulaCode`).
+- **`DerivedValue`** (D26) em todo número derivado: `{ value, formulaCode, inputs: [{ name, value, source, referenceDate }], asOf }`. Códigos de fórmula de domínio no S1: `AVG_PRICE_BUY`, `REALIZED_PROFIT`, `TOTAL_COST`, `OPERATION_GROSS` (quantidade × preço), `OPERATION_TOTAL_BUY` (+ custos), `OPERATION_NET_SELL` (− custos) (D42) (os textos ficam na tabela de microcopy do UX, indexada por `formulaCode`).
 - Dado do usuário com `Cache-Control: no-store`.
 
 ### Segurança e configuração
@@ -120,6 +122,9 @@ src/modules/<modulo>/
 
 ## Decisões que as etapas futuras exigem (não implementar no S1, mas não bloquear)
 - **S2 (D29):** eventos corporativos (desdobramento, grupamento, bonificação) entram como item da linha do tempo do `PositionCalculator`. Desdobramento e grupamento mudam quantidade e PM sem mudar o custo total; bonificação adiciona quantidade com custo unitário atribuído. Evento é fato do ativo, vale para todos os usuários; registro manual pelo mantenedor (seed ou endpoint administrativo protegido).
+- **S11 (D44): quantidade fracionária.** Cripto e renda fixa terão quantidade com casas decimais. No K0, o value object `Quantity` e o `PositionCalculator` não podem assumir inteiro além da validação: a regra "inteira > 0" fica numa validação por classe de ativo, e a conta usa Decimal. Assim a S11 não exige reescrever o domínio.
+- **Telas do produto completo (D46, D47):** no Figma, a página "Telas — produto completo" mostra, à direita do traço vertical de cada faixa e na faixa 8 (página do ativo), o que cada tela vira nas próximas etapas. Consulte antes de fechar contratos do S1 para não precisar quebrá-los depois (ex.: posições já devolvem a classe do ativo; o filtro `assetType` aceita valores novos sem mudar o formato). Os dados que essas telas exigem e o ER ainda não tem estão na tabela D47 de `agentes/agente-banco-de-dados.md`; o backend só os expõe depois que a D3 os modelar.
+- **S10 (D43):** alocação atual e progresso de metas são derivados (posição × cotação, proventos); só o percentual-alvo e os dados da meta são gravados.
 - **S6 (D11):** provento recebido é fato informado pela corretora; o valor calculado pela posição na data-com serve só para conferência.
 - **S7 (D8, D10, D30, D32):** IR apurado **por usuário** (cada conta é um contribuinte), consolidando todas as carteiras; CPF não é armazenado. PM fiscal por usuário pode diferir do PM por carteira (RN12). `tax_assessments` guarda só os insumos fechados do mês; base, imposto, valor devido e vencimento do DARF são derivados da `tax_rules` vigente (maior `effective_from` ≤ mês, por consulta, não por FK). Apuração fechada nunca é alterada silenciosamente: alteração retroativa em mês fechado gera divergência sinalizada e fluxo explícito de retificação. Regras de IR só com base na legislação validada pelo agente de banco (tarefa P0, `database/docs/memoria-calculo.md`, com o algoritmo de apuração na seção 4). Categorias: `COMMON_STOCK` (ações à vista, isenção de vendas até R$ 20 mil), `COMMON_OTHER` (ETF, BDR, units), `DAY_TRADE`, `FII` (D35); o prejuízo das duas comuns compensa entre si. IRRF é calculado, não armazenado (D36). Um DARF 6015 por usuário e mês.
 - **Dado derivado nunca vira coluna** (D4, D17, D32). Cache em `analytics` é recalculável, nunca fonte da verdade.
@@ -131,7 +136,7 @@ src/modules/<modulo>/
 - Testcontainers (D40): o global setup (`backend/test/global-setup.ts`) sobe um PostgreSQL 16, define `DATABASE_URL` com a URL dele e roda `npx prisma migrate deploy` **a partir da raiz do repositório** (onde estão o Prisma CLI e o `prisma.config.ts`; o `schema.prisma` é do agente de banco). Nunca `migrate dev` nem `db push` em teste. Integração e E2E rodam em série (`--runInBand`, config `backend/test/jest-e2e.config.ts`); antes de cada teste, `TRUNCATE ... CASCADE` das tabelas de `public` e `ops`, e cada teste cria os próprios dados com os builders de `backend/test/factories/`.
 - Unitários rodam em paralelo, sem banco e sem Docker.
 - CI: job `backend` no `.github/workflows/ci.yml` (lint, unitário, integração e E2E, cobertura); o job `database` já existe e não é alterado por você.
-- E2E (Supertest): cadastro → login → carteira → compra → venda → posição; venda total → posição `CLOSED` com o lucro realizado, e soma das linhas igual ao total do `summary` (D41); `operationCount` correto após lançar e excluir operações; acesso à carteira de outro usuário → 404; RN10 → 422 com a operação infratora.
+- E2E (Supertest): cadastro → login → carteira → compra → venda → posição; venda total → posição `CLOSED` com o lucro realizado, e soma das linhas igual ao total do `summary` (D41); `operationCount` correto após lançar e excluir operações; prévia (D42) não altera nada no banco (contagem de operações igual antes e depois), devolve os mesmos números que o lançamento real gera e a mesma `violation` que o 422; acesso à carteira de outro usuário → 404; RN10 → 422 com a operação infratora.
 - Nome de cada teste cita a RN ou decisão coberta quando houver (ex.: `rejects sell above position (RN07)`).
 - Casos de borda obrigatórios do cálculo: venda total; venda maior que a posição; recompra após zerar; operação retroativa que invalida venda futura; exclusão de compra que deixa a posição negativa; mesmo ativo em corretoras diferentes na mesma carteira; custos zero; preços com muitas casas decimais; desdobramento, grupamento e bonificação antes e depois de vendas, preservando o custo total.
 - O seed (`database/sql/inserts.sql`, do agente de banco) deve produzir as posições esperadas: manter um teste de integração que carrega o seed e confere o resultado.
