@@ -1,6 +1,6 @@
 // Carteira B3 — schema Prisma único, com três schemas PostgreSQL (D22).
-// `public` = domínio. Fonte: database/docs/modelo-er.md (ER congelado em 05/10/2026, D14) e database/docs/glossario.md (PT ↔ EN).
-// 27 entidades + 2 relacionamentos N:N = 29 tabelas. Dado derivado nunca vira coluna (D4, D17, D32).
+// `public` = domínio. Fonte: database/docs/modelo-er.md (ER congelado em 05/10/2026, D14; revisto na D3, D50) e database/docs/glossario.md (PT ↔ EN).
+// 34 entidades + 2 relacionamentos N:N = 36 tabelas. Dado derivado nunca vira coluna (D4, D17, D32).
 // `ops` = técnico, fora do ER e do ddl.sql de BD (D39). `analytics` entra quando houver o primeiro objeto (S3).
 // CHECK constraints e a extensão citext ficam no SQL das migrations (o Prisma não os expressa).
 
@@ -37,6 +37,7 @@ enum IssuerKind {
   COMPANY
   FUND
   FOREIGN
+  GOVERNMENT
 
   @@map("issuer_kind")
   @@schema("public")
@@ -47,6 +48,8 @@ enum AssetType {
   FII
   ETF
   BDR
+  FIXED_INCOME
+  CRYPTO
 
   @@map("asset_type")
   @@schema("public")
@@ -63,11 +66,25 @@ enum ShareClass {
   @@schema("public")
 }
 
+// Programa do BDR como publicado pela B3 (COTAHIST, campo ESPECI; cadastro de instrumentos, SpcfctnCd):
+// DRN = não patrocinado; DR1, DR2, DR3 = patrocinado nível I, II, III; DRE = BDR de ETF (D50).
+enum BdrProgram {
+  DRN
+  DR1
+  DR2
+  DR3
+  DRE
+
+  @@map("bdr_program")
+  @@schema("public")
+}
+
 enum IndexCode {
   CDI
   SELIC
   IPCA
   IBOV
+  IGPM
 
   @@map("index_code")
   @@schema("public")
@@ -198,6 +215,14 @@ enum SortDirection {
   @@schema("public")
 }
 
+enum GoalType {
+  NET_WORTH
+  MONTHLY_INCOME
+
+  @@map("goal_type")
+  @@schema("public")
+}
+
 // ---------------------------------------------------------------- conta e carteira
 
 model User {
@@ -220,9 +245,9 @@ model User {
 }
 
 model Broker {
-  id   String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name String @db.VarChar(150)
-  cnpj String @unique @db.Char(14)
+  id   String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name String  @db.VarChar(150)
+  cnpj String? @unique @db.Char(14)
 
   operations     Operation[]
   receivedIncome ReceivedIncome[]
@@ -237,10 +262,12 @@ model Portfolio {
   name      String   @db.VarChar(150)
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
-  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  importBatches  ImportBatch[]
-  operations     Operation[]
-  receivedIncome ReceivedIncome[]
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  importBatches     ImportBatch[]
+  operations        Operation[]
+  receivedIncome    ReceivedIncome[]
+  targetAllocations TargetAllocation[]
+  goals             PortfolioGoal[]
 
   @@unique([userId, name], map: "portfolios_user_id_name_key")
   @@map("portfolios")
@@ -273,7 +300,7 @@ model Operation {
   importBatchId String?       @map("import_batch_id") @db.Uuid
   type          OperationType
   tradeDate     DateTime      @map("trade_date") @db.Date
-  quantity      Int
+  quantity      Decimal       @db.Decimal(20, 8)
   unitPrice     Decimal       @map("unit_price") @db.Decimal(20, 8)
   fees          Decimal       @db.Decimal(18, 2)
   sequence      BigInt        @unique @default(autoincrement())
@@ -325,16 +352,21 @@ model Issuer {
   @@schema("public")
 }
 
+// Ticker, ISIN e emissor obrigatórios ou não conforme o tipo (CHECK na migration, D50): renda fixa
+// sem ticker; cripto sem ISIN e sem emissor. Especializações: FixedIncomeBond e CryptoAsset.
 model Asset {
   id         String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  issuerId   String      @map("issuer_id") @db.Uuid
-  ticker     String      @unique @db.VarChar(12)
-  isin       String      @unique @db.Char(12)
+  issuerId   String?     @map("issuer_id") @db.Uuid
+  ticker     String?     @unique @db.VarChar(12)
+  isin       String?     @unique @db.Char(12)
   type       AssetType
   shareClass ShareClass? @map("share_class")
+  bdrProgram BdrProgram? @map("bdr_program")
   isActive   Boolean     @default(true) @map("is_active")
 
-  issuer              Issuer               @relation(fields: [issuerId], references: [id], onDelete: Restrict)
+  issuer              Issuer?              @relation(fields: [issuerId], references: [id], onDelete: Restrict)
+  fixedIncomeBond     FixedIncomeBond?
+  cryptoAsset         CryptoAsset?
   operations          Operation[]
   quotes              Quote[]
   corporateEvents     CorporateEvent[]
@@ -374,7 +406,8 @@ model EconomicIndex {
   unit        IndexUnit
   source      String           @db.VarChar(100)
 
-  values IndexValue[]
+  values           IndexValue[]
+  fixedIncomeTypes FixedIncomeType[]
 
   @@map("economic_indexes")
   @@schema("public")
@@ -694,6 +727,112 @@ model ScreenCriterion {
   @@id([savedScreenId, indicatorId])
   @@index([indicatorId], map: "screen_criteria_indicator_id_idx")
   @@map("screen_criteria")
+  @@schema("public")
+}
+
+// ---------------------------------------------------------------- planejamento da carteira (D43, D50)
+
+// Carteira ideal: percentual-alvo (fração 0–1) por classe de ativo. A soma de 100% por carteira é
+// validada no backend, numa transação que grava todas as classes da carteira (um CHECK não soma linhas).
+model TargetAllocation {
+  portfolioId   String    @map("portfolio_id") @db.Uuid
+  assetClass    AssetType @map("asset_class")
+  targetPercent Decimal   @map("target_percent") @db.Decimal(10, 8)
+
+  portfolio Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@id([portfolioId, assetClass])
+  @@map("target_allocations")
+  @@schema("public")
+}
+
+// Meta da carteira: no máximo uma por tipo. Prazo em mês/ano (1º dia do mês), opcional.
+// Progresso, falta e aporte mensal são derivados (D4).
+model PortfolioGoal {
+  portfolioId  String    @map("portfolio_id") @db.Uuid
+  type         GoalType
+  targetAmount Decimal   @map("target_amount") @db.Decimal(18, 2)
+  targetMonth  DateTime? @map("target_month") @db.Date
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  portfolio Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@id([portfolioId, type])
+  @@map("portfolio_goals")
+  @@schema("public")
+}
+
+// ---------------------------------------------------------------- renda fixa e cripto (D44, D50)
+
+// Tipo de título como publicado pelo Tesouro Nacional (coluna "Tipo Titulo" do arquivo de preços e taxas).
+// O indexador e o pagamento de juros semestrais dependem do tipo, não do título (3FN). Indexador nulo = prefixado.
+model FixedIncomeType {
+  id                 String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  economicIndexId    String? @map("economic_index_id") @db.Uuid
+  name               String  @unique @db.VarChar(100)
+  semiannualInterest Boolean @map("semiannual_interest")
+
+  economicIndex EconomicIndex?    @relation(fields: [economicIndexId], references: [id], onDelete: Restrict)
+  bonds         FixedIncomeBond[]
+
+  @@map("fixed_income_types")
+  @@schema("public")
+}
+
+// Especialização de Asset para título de renda fixa; identificado na fonte por (tipo, vencimento).
+model FixedIncomeBond {
+  assetId           String   @id @map("asset_id") @db.Uuid
+  fixedIncomeTypeId String   @map("fixed_income_type_id") @db.Uuid
+  maturityDate      DateTime @map("maturity_date") @db.Date
+
+  asset           Asset              @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  fixedIncomeType FixedIncomeType    @relation(fields: [fixedIncomeTypeId], references: [id], onDelete: Restrict)
+  prices          FixedIncomePrice[]
+
+  @@unique([fixedIncomeTypeId, maturityDate], map: "fixed_income_bonds_type_maturity_key")
+  @@map("fixed_income_bonds")
+  @@schema("public")
+}
+
+// Série diária de taxas (fração ao ano) e preços unitários do Tesouro Direto. Valores ausentes na fonte
+// (título fora de oferta, vencimento próximo) ficam nulos.
+model FixedIncomePrice {
+  assetId   String   @map("asset_id") @db.Uuid
+  baseDate  DateTime @map("base_date") @db.Date
+  buyRate   Decimal? @map("buy_rate") @db.Decimal(10, 8)
+  sellRate  Decimal? @map("sell_rate") @db.Decimal(10, 8)
+  buyPrice  Decimal? @map("buy_price") @db.Decimal(20, 8)
+  sellPrice Decimal? @map("sell_price") @db.Decimal(20, 8)
+
+  bond FixedIncomeBond @relation(fields: [assetId], references: [assetId], onDelete: Restrict)
+
+  @@id([assetId, baseDate])
+  @@map("fixed_income_prices")
+  @@schema("public")
+}
+
+// Especialização de Asset para criptoativo (sem emissor; o nome fica aqui).
+model CryptoAsset {
+  assetId String @id @map("asset_id") @db.Uuid
+  name    String @db.VarChar(100)
+
+  asset  Asset         @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  prices CryptoPrice[]
+
+  @@map("crypto_assets")
+  @@schema("public")
+}
+
+// Preço de referência diário em reais; fonte a definir (D44).
+model CryptoPrice {
+  assetId        String   @map("asset_id") @db.Uuid
+  priceDate      DateTime @map("price_date") @db.Date
+  referencePrice Decimal  @map("reference_price") @db.Decimal(20, 8)
+
+  cryptoAsset CryptoAsset @relation(fields: [assetId], references: [assetId], onDelete: Restrict)
+
+  @@id([assetId, priceDate])
+  @@map("crypto_prices")
   @@schema("public")
 }
 

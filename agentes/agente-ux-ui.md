@@ -96,7 +96,7 @@ O frontend começa em 10/11 (W1 depende do U1; W2 do U3; W4 do U5). Gatilho G-U3
 ## Regras de negócio que as telas precisam refletir (S1)
 - RN01 Cadastro com nome, e-mail único e senha com mín. 8 caracteres.
 - RN02 Várias carteiras por usuário; nome único; o usuário só vê as próprias.
-- RN04 Operação: compra ou venda, corretora obrigatória, data não futura, quantidade inteira > 0, preço > 0, custos ≥ 0.
+- RN04 Operação: compra ou venda, corretora obrigatória, data não futura, quantidade > 0 (inteira em ação, FII, ETF e BDR; fracionária em renda fixa e cripto, a partir do S11; D50), preço > 0, custos ≥ 0.
 - RN05 Compra recalcula o PM: (qtd_atual × PM_atual + qtd × preço + custos) / (qtd_atual + qtd).
 - RN06 Venda não altera o PM; lucro realizado = qtd × preço − custos − qtd × PM_atual.
 - RN07 Venda acima da posição na data é rejeitada.

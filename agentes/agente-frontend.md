@@ -61,7 +61,7 @@ Lista completa, estados e links dos frames em `claude/handoff-ux.md`; a especifi
 ## Regras de negócio que a interface precisa refletir (S1)
 - RN01 Cadastro: nome, e-mail, senha com mín. 8 caracteres.
 - RN02 Nome de carteira único por usuário; o usuário só vê as próprias carteiras.
-- RN04 Operação: tipo compra/venda, corretora obrigatória, data não futura, quantidade inteira > 0, preço > 0, custos ≥ 0.
+- RN04 Operação: tipo compra/venda, corretora obrigatória, data não futura, quantidade > 0 (inteira em ação, FII, ETF e BDR; fracionária em renda fixa e cripto, a partir do S11; D50), preço > 0, custos ≥ 0.
 - RN07 e RN10 Venda acima da posição e alteração retroativa que deixaria a posição negativa são rejeitadas pelo backend (422); a tela mostra qual operação ficaria inválida e por quê, com os dados devolvidos.
 - RN11 Valores monetários chegam como string decimal e nunca são convertidos para `number` para fazer conta.
 - RN12 Posição e PM por carteira e ativo, somando as corretoras da carteira.

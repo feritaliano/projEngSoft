@@ -73,8 +73,8 @@ Desativados neste projeto (via `enabledPlugins` em `.claude/settings.json`): `fr
 | `claude/handoff-ux.md` | Handoff do UX para o frontend: link do arquivo Figma e do frame de cada tela (preenchido em 30/10; revisado no U5) |
 | `claude/design-tokens.md` | Tokens do design system (cores claro/escuro, espaçamento, raio, tipografia), espelhados no `tailwind.config` |
 | `claude/microcopy.md` | Textos do "como foi calculado" por `formulaCode` e chaves dos insumos do `DerivedValue` (U4) |
-| `database/docs/modelo-er.md` | Modelo ER congelado: 27 entidades, 33 relacionamentos, verificação 3FN |
-| `database/docs/mapeamento.md` | Mapeamento ER→relacional: regras aplicadas e as 29 tabelas |
+| `database/docs/modelo-er.md` | Modelo ER: 34 entidades, 39 relacionamentos + 1 especialização, verificação 3FN, roteiro do brModelo (D50) |
+| `database/docs/mapeamento.md` | Mapeamento ER→relacional: regras aplicadas e as 36 tabelas |
 | `database/docs/descricao-problema.md` | Texto do problema + ODS (BD Parte 1) |
 | `agentes/*.md` | Prompts de cada agente (banco, backend, frontend, UX/UI) |
 | `claude/enunciadoBancoDeDados.md` | Enunciado de Banco de Dados |

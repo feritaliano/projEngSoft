@@ -44,7 +44,7 @@ No repositório (Claude Code, `@database`):
 No chat do projeto (claude.ai), os entregáveis de BD (texto, relatório, memória de cálculo) não usam plugins; o que vai para o repositório é versionado pelo Claude Code.
 
 ## Modelo de dados (congelado em 05/10/2026, D14)
-- **27 entidades** (5 fracas), **33 relacionamentos nomeados**, **29 tabelas**, todas na **3FN**. Especificação completa em `database/docs/modelo-er.md`; tabelas, tipos, PK, FK e regras de mapeamento em `database/docs/mapeamento.md`; esquema resumido na seção 7 de `claude/contexto-projeto.md`.
+- **34 entidades** (9 fracas, 2 especializações de Ativo), **39 relacionamentos nomeados** + 1 especialização, **36 tabelas**, **210 colunas**, todas na **3FN** (revisão da D3 em 31/10/2026, D50; congelado antes com 27 entidades e 29 tabelas). Especificação completa em `database/docs/modelo-er.md`; tabelas, tipos, PK, FK e regras de mapeamento em `database/docs/mapeamento.md`; esquema resumido na seção 7 de `claude/contexto-projeto.md`.
 - No brModelo Web: conceitual `CarteiraB3_ER`, lógico `CarteiraB3_Logico`. Convenção do conversor: o rótulo junto à entidade E conta ocorrências de E; a FK sai no lado com máximo n.
 - Nomes da entrega de BD em português (`Usuario`, `Operacao`…); nomes físicos em inglês, `snake_case`, plural (`users`, `operations`…). A correspondência fica no glossário.
 - Mudança no ER só com decisão registrada em `claude/contexto-projeto.md`.
@@ -72,7 +72,7 @@ Decisões que não podem ser desfeitas sem justificativa registrada:
 - FII: `InformeTrimestralFII` + `ImovelInforme` (um item por linha do informe da CVM; não existe identidade estável do imóvel entre trimestres) (D31).
 - `ProventoRecebido` é fato informado pela corretora (D11).
 - Regras de IR só com base na legislação da Receita Federal; validadas no P0 em `database/docs/memoria-calculo.md` (pontos "a confirmar" listados lá). Operações comuns separadas em `COMMON_STOCK` (isenção de R$ 20 mil) e `COMMON_OTHER` (D35); IRRF não é armazenado (D36).
-- Schema `public` = exatamente as 183 colunas do ER, sem colunas técnicas (D34).
+- Schema `public` = exatamente as 210 colunas do ER (183 até a D3), sem colunas técnicas (D34, D50).
 
 Padrões físicos:
 - PK `uuid` gerada no banco para entidades fortes; PK composta natural para entidades fracas e N:N (D23).
@@ -84,8 +84,8 @@ Padrões físicos:
 ## Regras de negócio da carteira (fase S1)
 - RN01 Cadastro com nome, e-mail único (sem diferenciar maiúsculas) e senha (mín. 8 caracteres), guardada só como hash (argon2).
 - RN02 Usuário tem N carteiras; nome único por usuário; acesso só às próprias carteiras.
-- RN03 Ativo: ticker único (maiúsculo, formato B3), tipo ∈ {STOCK, FII, ETF, BDR} no S1 (renda fixa e cripto entram com a D3, D44); pertence a um emissor, que pode ter setor.
-- RN04 Operação: tipo ∈ {BUY, SELL}, corretora obrigatória, data não futura, quantidade inteira > 0, preço unitário > 0, custos ≥ 0. Na D3 (D44), a quantidade passa a aceitar fração para cripto e renda fixa; ações, FIIs, ETFs e BDRs continuam inteiras (CHECK por classe).
+- RN03 Ativo: tipo ∈ {STOCK, FII, ETF, BDR, FIXED_INCOME, CRYPTO} (D50). Ticker único: formato B3 e obrigatório em ação, FII, ETF e BDR; símbolo `^[A-Z0-9]{2,10}$` na cripto; ausente na renda fixa (identificada por tipo de título + vencimento). ISIN obrigatório nas classes da B3, opcional na renda fixa, ausente na cripto. Pertence a um emissor, que pode ter setor; a cripto não tem emissor. BDR tem programa (DRN, DR1, DR2, DR3, DRE).
+- RN04 Operação: tipo ∈ {BUY, SELL}, corretora obrigatória (pode ser exchange sem CNPJ), data não futura, quantidade > 0 em NUMERIC(20,8): inteira para ação, FII, ETF e BDR; múltiplo de 0,01 para renda fixa; até 8 casas para cripto (validação por classe no backend, porque o tipo está em `assets`; D50); preço unitário > 0, custos ≥ 0.
 - RN05 Compra: PM_novo = (qtd_atual × PM_atual + qtd × preço + custos) / (qtd_atual + qtd).
 - RN06 Venda não altera o PM. Lucro realizado = qtd × preço − custos − qtd × PM_atual.
 - RN07 Venda maior que a posição na data é rejeitada.
@@ -103,7 +103,7 @@ Padrões físicos:
 - PostgreSQL local validado pelo usuário em 26/10 (F4). Se ele não estiver disponível, valide no ambiente de nuvem do chat e entregue os arquivos para versionar depois.
 
 ## Banco do sistema (fora da entrega de BD)
-Além das 29 tabelas do ER, o sistema precisa de objetos nos schemas `ops` e `analytics` (D22), criados por migrations do Prisma com `multiSchema` e nunca incluídos no `ddl.sql` de BD.
+Além das 36 tabelas do ER, o sistema precisa de objetos nos schemas `ops` e `analytics` (D22), criados por migrations do Prisma com `multiSchema` e nunca incluídos no `ddl.sql` de BD.
 
 | ID | Tarefa | Datas | Depende de | Pronto quando |
 |---|---|---|---|---|
@@ -123,7 +123,7 @@ Além das 29 tabelas do ER, o sistema precisa de objetos nos schemas `ops` e `an
 
 | ID | Tarefa | Datas | Depende de | Pronto quando |
 |---|---|---|---|---|
-| D3 | ER e schema das decisões D43 (carteira ideal, metas) e D44 (renda fixa, cripto), com os requisitos de dados das telas (D47, tabela acima; prioridade A obrigatória, B se couber): brModelo, `modelo-er.md`, `mapeamento.md`, `glossario.md`, `schema.prisma` + migration, `ddl.sql`, testes de restrição | 31/10–04/11 | D1, D43, D44, D47 | Migrations sobem do zero; `db:drift` sem diferenças; `ddl.sql` bate com o mapeamento novo; testes novos passando; cada linha A da tabela D47 resolvida no ER e cada linha B resolvida ou registrada como "sai da tela" |
+| D3 | **Concluído (31/10/2026, D50)**; brModelo com o usuário (seção 8 de `modelo-er.md`); seed das tabelas novas no P1 (lista na seção 11 do contexto). ER e schema das decisões D43 (carteira ideal, metas) e D44 (renda fixa, cripto), com os requisitos de dados das telas (D47, tabela acima; prioridade A obrigatória, B se couber): brModelo, `modelo-er.md`, `mapeamento.md`, `glossario.md`, `schema.prisma` + migration, `ddl.sql`, testes de restrição | 31/10–04/11 | D1, D43, D44, D47 | Migrations sobem do zero; `db:drift` sem diferenças; `ddl.sql` bate com o mapeamento novo; testes novos passando; cada linha A da tabela D47 resolvida no ER e cada linha B resolvida ou registrada como "sai da tela" |
 
 Gatilho G-D3 (04/11): primeiro saem as linhas B da tabela D47 (o rótulo correspondente sai da tela, registrado no contexto). Se ainda assim a D3 não fechar, renda fixa e cripto saem do ER da Parte 2 (ficam só como escopo do produto) e carteira ideal e metas continuam; o P1 não passa de 07/11 por causa da D3. No seed das tabelas novas: carteira com carteira ideal completa e carteira sem carteira ideal (LEFT JOIN); meta de cada tipo, com e sem prazo; título de renda fixa com série de preços; cripto com quantidade fracionária.
 

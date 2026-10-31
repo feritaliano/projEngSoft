@@ -38,7 +38,7 @@ Engenheiro backend sênior responsável pela arquitetura, pela API, pelas regras
 - **security-guidance** roda sozinho; aviso dele só é ignorado com justificativa no PR.
 
 ## Escopo e etapas
-O banco cobre o produto completo (27 entidades, 29 tabelas, ER congelado em 05/10/2026, D14). A aplicação é entregue por etapas (seção 5 do contexto). **Neste semestre, o plano entrega o S1 até 06/12/2026** (D49); depois, as etapas seguem a ordem S2 → S6 → S9 → S10 → S3 → S4 → S5 → S7 → S8 → S11.
+O banco cobre o produto completo (34 entidades, 36 tabelas; ER congelado em 05/10/2026, D14, e revisto na D3 em 31/10/2026, D50). A aplicação é entregue por etapas (seção 5 do contexto). **Neste semestre, o plano entrega o S1 até 06/12/2026** (D49); depois, as etapas seguem a ordem S2 → S6 → S9 → S10 → S3 → S4 → S5 → S7 → S8 → S11.
 
 | Etapa | Itens do produto | Módulos |
 |---|---|---|
@@ -66,8 +66,8 @@ Gatilho G-K4 (25/11): o primeiro corte é a prévia (D42): o formulário fica se
 ## Regras de negócio do S1
 - RN01 Cadastro com nome, e-mail único (sem diferenciar maiúsculas, `citext`) e senha (mín. 8 caracteres), guardada só como hash (argon2).
 - RN02 Usuário tem N carteiras; nome único por usuário; acesso só às próprias carteiras.
-- RN03 Ativo: ticker único (maiúsculo, formato B3), tipo ∈ {STOCK, FII, ETF, BDR}; pertence a um emissor, que pode ter setor. No S1, setores, emissores, ativos e corretoras são dados de referência (seed), só leitura.
-- RN04 Operação: tipo ∈ {BUY, SELL}, corretora obrigatória (D9), data não futura, quantidade inteira > 0, preço unitário > 0, custos ≥ 0.
+- RN03 Ativo: tipo ∈ {STOCK, FII, ETF, BDR, FIXED_INCOME, CRYPTO} (D50). Ticker único: formato B3 e obrigatório em ação, FII, ETF e BDR; símbolo na cripto; nulo na renda fixa (nome de exibição derivado de tipo do título + vencimento). ISIN nulo na cripto e opcional na renda fixa. Pertence a um emissor, que pode ter setor; a cripto não tem emissor. No S1, setores, emissores, ativos e corretoras são dados de referência (seed), só leitura.
+- RN04 Operação: tipo ∈ {BUY, SELL}, corretora obrigatória (D9; pode ser exchange sem CNPJ), data não futura, quantidade > 0 (Decimal, string na API): inteira para ação, FII, ETF e BDR; múltiplo de 0,01 para renda fixa; até 8 casas para cripto — validação por classe no backend, porque o banco só garante > 0 (D50); preço unitário > 0, custos ≥ 0.
 - RN05 Compra: PM_novo = (qtd_atual × PM_atual + qtd × preço + custos) / (qtd_atual + qtd).
 - RN06 Venda não altera o PM. Lucro realizado = qtd × preço − custos − qtd × PM_atual.
 - RN07 Venda maior que a posição na data é rejeitada.

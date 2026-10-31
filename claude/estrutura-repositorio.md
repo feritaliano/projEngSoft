@@ -54,17 +54,19 @@ carteira-b3/
 ├── database/                        dono: agente database (entregáveis de BD)
 │   ├── docs/
 │   │   ├── descricao-problema.md    [ok] Parte 1
-│   │   ├── modelo-er.md             [ok] ER congelado (D14)
+│   │   ├── modelo-er.md             [ok] ER congelado (D14), revisto na D3 (D50)
 │   │   ├── mapeamento.md            [ok]
 │   │   ├── glossario.md             [ok] G1
 │   │   ├── memoria-calculo.md       [ok] P0; o P1 acrescenta a conferência do seed
-│   │   └── diagrama-er.svg          [ok]
+│   │   ├── diagrama-er.svg, .png    [ok] conceitual do brModelo (D50)
+│   │   └── diagrama-logico.svg, .png [ok] lógico do brModelo (D50)
 │   ├── scripts/
 │   │   ├── export-ddl.mjs           [ok] npm run db:ddl
 │   │   └── run-sql.mjs              [ok] npm run db:test
 │   ├── tests/
 │   │   ├── constraints.sql          [ok] 25 testes das restrições de public
-│   │   └── ops-constraints.sql      [ok] 10 testes das restrições de ops (D2)
+│   │   ├── ops-constraints.sql      [ok] 10 testes das restrições de ops (D2)
+│   │   └── full-product-constraints.sql [ok] 35 testes das restrições da D3 (D50)
 │   ├── sql/
 │   │   ├── ddl.sql                  [ok] gerado (pg_dump --schema-only --schema=public)
 │   │   ├── inserts.sql              [P1] seed
@@ -128,6 +130,7 @@ carteira-b3/
 ├── .env                             fora do Git: credenciais locais (copiado do .env.example)
 ├── .env.example                     [ok] modelo do .env, sem segredos
 ├── .gitignore                       [ok]
+├── .gitattributes                   [ok] `* text=auto eol=lf`: texto sempre com quebra de linha LF no Git, mesmo editado no Windows (31/10/2026)
 ├── package.json                     [ok] scripts db:* e Prisma
 ├── package-lock.json                [ok]
 ├── CLAUDE.md                        [ok] instruções para o Claude Code, incluindo a seção de ferramentas (D38)

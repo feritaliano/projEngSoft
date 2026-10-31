@@ -46,7 +46,21 @@ CREATE TYPE public.asset_type AS ENUM (
     'STOCK',
     'FII',
     'ETF',
-    'BDR'
+    'BDR',
+    'FIXED_INCOME',
+    'CRYPTO'
+);
+
+--
+-- Name: bdr_program; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.bdr_program AS ENUM (
+    'DRN',
+    'DR1',
+    'DR2',
+    'DR3',
+    'DRE'
 );
 
 --
@@ -78,6 +92,15 @@ CREATE TYPE public.filing_type AS ENUM (
 );
 
 --
+-- Name: goal_type; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.goal_type AS ENUM (
+    'NET_WORTH',
+    'MONTHLY_INCOME'
+);
+
+--
 -- Name: import_batch_status; Type: TYPE; Schema: public; Owner: -
 --
 
@@ -105,7 +128,8 @@ CREATE TYPE public.index_code AS ENUM (
     'CDI',
     'SELIC',
     'IPCA',
-    'IBOV'
+    'IBOV',
+    'IGPM'
 );
 
 --
@@ -156,7 +180,8 @@ CREATE TYPE public.indicator_unit AS ENUM (
 CREATE TYPE public.issuer_kind AS ENUM (
     'COMPANY',
     'FUND',
-    'FOREIGN'
+    'FOREIGN',
+    'GOVERNMENT'
 );
 
 --
@@ -239,15 +264,28 @@ SET default_table_access_method = heap;
 
 CREATE TABLE public.assets (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
-    issuer_id uuid NOT NULL,
-    ticker character varying(12) NOT NULL,
-    isin character(12) NOT NULL,
+    issuer_id uuid,
+    ticker character varying(12),
+    isin character(12),
     type public.asset_type NOT NULL,
     share_class public.share_class,
     is_active boolean DEFAULT true NOT NULL,
-    CONSTRAINT assets_isin_check CHECK ((isin ~ '^[A-Z]{2}[A-Z0-9]{9}[0-9]$'::text)),
+    bdr_program public.bdr_program,
+    CONSTRAINT assets_bdr_program_check CHECK (((bdr_program IS NOT NULL) = (type = 'BDR'::public.asset_type))),
+    CONSTRAINT assets_isin_check CHECK ((((isin IS NULL) OR (isin ~ '^[A-Z]{2}[A-Z0-9]{9}[0-9]$'::text)) AND
+CASE type
+    WHEN 'FIXED_INCOME'::public.asset_type THEN true
+    WHEN 'CRYPTO'::public.asset_type THEN (isin IS NULL)
+    ELSE (isin IS NOT NULL)
+END)),
+    CONSTRAINT assets_issuer_check CHECK (((issuer_id IS NULL) = (type = 'CRYPTO'::public.asset_type))),
     CONSTRAINT assets_share_class_check CHECK (((share_class IS NULL) OR (type = 'STOCK'::public.asset_type))),
-    CONSTRAINT assets_ticker_check CHECK (((ticker)::text ~ '^[A-Z0-9]{4}[0-9]{1,2}$'::text))
+    CONSTRAINT assets_ticker_check CHECK (
+CASE type
+    WHEN 'FIXED_INCOME'::public.asset_type THEN (ticker IS NULL)
+    WHEN 'CRYPTO'::public.asset_type THEN ((ticker IS NOT NULL) AND ((ticker)::text ~ '^[A-Z0-9]{2,10}$'::text))
+    ELSE ((ticker IS NOT NULL) AND ((ticker)::text ~ '^[A-Z0-9]{4}[0-9]{1,2}$'::text))
+END)
 );
 
 --
@@ -257,8 +295,8 @@ CREATE TABLE public.assets (
 CREATE TABLE public.brokers (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     name character varying(150) NOT NULL,
-    cnpj character(14) NOT NULL,
-    CONSTRAINT brokers_cnpj_check CHECK ((cnpj ~ '^[0-9]{14}$'::text))
+    cnpj character(14),
+    CONSTRAINT brokers_cnpj_check CHECK (((cnpj IS NULL) OR (cnpj ~ '^[0-9]{14}$'::text)))
 );
 
 --
@@ -292,6 +330,26 @@ CREATE TABLE public.corporate_filings (
     delivered_at timestamp(3) with time zone NOT NULL,
     document_url character varying(500) NOT NULL,
     cvm_protocol character varying(30) NOT NULL
+);
+
+--
+-- Name: crypto_assets; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.crypto_assets (
+    asset_id uuid NOT NULL,
+    name character varying(100) NOT NULL
+);
+
+--
+-- Name: crypto_prices; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.crypto_prices (
+    asset_id uuid NOT NULL,
+    price_date date NOT NULL,
+    reference_price numeric(20,8) NOT NULL,
+    CONSTRAINT crypto_prices_reference_price_check CHECK ((reference_price > (0)::numeric))
 );
 
 --
@@ -395,6 +453,43 @@ CREATE TABLE public.financial_statements (
 );
 
 --
+-- Name: fixed_income_bonds; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.fixed_income_bonds (
+    asset_id uuid NOT NULL,
+    fixed_income_type_id uuid NOT NULL,
+    maturity_date date NOT NULL
+);
+
+--
+-- Name: fixed_income_prices; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.fixed_income_prices (
+    asset_id uuid NOT NULL,
+    base_date date NOT NULL,
+    buy_rate numeric(10,8),
+    sell_rate numeric(10,8),
+    buy_price numeric(20,8),
+    sell_price numeric(20,8),
+    CONSTRAINT fixed_income_prices_any_value_check CHECK ((num_nonnulls(buy_rate, sell_rate, buy_price, sell_price) >= 1)),
+    CONSTRAINT fixed_income_prices_prices_check CHECK ((((buy_price IS NULL) OR (buy_price > (0)::numeric)) AND ((sell_price IS NULL) OR (sell_price > (0)::numeric)))),
+    CONSTRAINT fixed_income_prices_rates_check CHECK ((((buy_rate IS NULL) OR ((buy_rate >= ('-1'::integer)::numeric) AND (buy_rate <= (1)::numeric))) AND ((sell_rate IS NULL) OR ((sell_rate >= ('-1'::integer)::numeric) AND (sell_rate <= (1)::numeric)))))
+);
+
+--
+-- Name: fixed_income_types; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.fixed_income_types (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    economic_index_id uuid,
+    name character varying(100) NOT NULL,
+    semiannual_interest boolean NOT NULL
+);
+
+--
 -- Name: import_batches; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -478,12 +573,12 @@ CREATE TABLE public.operations (
     import_batch_id uuid,
     type public.operation_type NOT NULL,
     trade_date date NOT NULL,
-    quantity integer NOT NULL,
+    quantity numeric(20,8) NOT NULL,
     unit_price numeric(20,8) NOT NULL,
     fees numeric(18,2) NOT NULL,
     sequence bigint NOT NULL,
     CONSTRAINT operations_fees_check CHECK ((fees >= (0)::numeric)),
-    CONSTRAINT operations_quantity_check CHECK ((quantity > 0)),
+    CONSTRAINT operations_quantity_check CHECK ((quantity > (0)::numeric)),
     CONSTRAINT operations_unit_price_check CHECK ((unit_price > (0)::numeric))
 );
 
@@ -503,6 +598,20 @@ CREATE SEQUENCE public.operations_sequence_seq
 --
 
 ALTER SEQUENCE public.operations_sequence_seq OWNED BY public.operations.sequence;
+
+--
+-- Name: portfolio_goals; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.portfolio_goals (
+    portfolio_id uuid NOT NULL,
+    type public.goal_type NOT NULL,
+    target_amount numeric(18,2) NOT NULL,
+    target_month date,
+    created_at timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT portfolio_goals_target_amount_check CHECK ((target_amount > (0)::numeric)),
+    CONSTRAINT portfolio_goals_target_month_check CHECK (((target_month IS NULL) OR ((target_month = (date_trunc('month'::text, (target_month)::timestamp with time zone))::date) AND (target_month >= (date_trunc('month'::text, (created_at AT TIME ZONE 'America/Sao_Paulo'::text)))::date))))
+);
 
 --
 -- Name: portfolios; Type: TABLE; Schema: public; Owner: -
@@ -615,6 +724,17 @@ CREATE TABLE public.statement_lines (
 );
 
 --
+-- Name: target_allocations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.target_allocations (
+    portfolio_id uuid NOT NULL,
+    asset_class public.asset_type NOT NULL,
+    target_percent numeric(10,8) NOT NULL,
+    CONSTRAINT target_allocations_percent_check CHECK (((target_percent >= (0)::numeric) AND (target_percent <= (1)::numeric)))
+);
+
+--
 -- Name: tax_assessments; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -713,6 +833,20 @@ ALTER TABLE ONLY public.corporate_filings
     ADD CONSTRAINT corporate_filings_pkey PRIMARY KEY (id);
 
 --
+-- Name: crypto_assets crypto_assets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.crypto_assets
+    ADD CONSTRAINT crypto_assets_pkey PRIMARY KEY (asset_id);
+
+--
+-- Name: crypto_prices crypto_prices_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.crypto_prices
+    ADD CONSTRAINT crypto_prices_pkey PRIMARY KEY (asset_id, price_date);
+
+--
 -- Name: darfs darfs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -755,6 +889,27 @@ ALTER TABLE ONLY public.financial_statements
     ADD CONSTRAINT financial_statements_pkey PRIMARY KEY (id);
 
 --
+-- Name: fixed_income_bonds fixed_income_bonds_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fixed_income_bonds
+    ADD CONSTRAINT fixed_income_bonds_pkey PRIMARY KEY (asset_id);
+
+--
+-- Name: fixed_income_prices fixed_income_prices_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fixed_income_prices
+    ADD CONSTRAINT fixed_income_prices_pkey PRIMARY KEY (asset_id, base_date);
+
+--
+-- Name: fixed_income_types fixed_income_types_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fixed_income_types
+    ADD CONSTRAINT fixed_income_types_pkey PRIMARY KEY (id);
+
+--
 -- Name: import_batches import_batches_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -795,6 +950,13 @@ ALTER TABLE ONLY public.issuers
 
 ALTER TABLE ONLY public.operations
     ADD CONSTRAINT operations_pkey PRIMARY KEY (id);
+
+--
+-- Name: portfolio_goals portfolio_goals_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portfolio_goals
+    ADD CONSTRAINT portfolio_goals_pkey PRIMARY KEY (portfolio_id, type);
 
 --
 -- Name: portfolios portfolios_pkey; Type: CONSTRAINT; Schema: public; Owner: -
@@ -851,6 +1013,13 @@ ALTER TABLE ONLY public.sectors
 
 ALTER TABLE ONLY public.statement_lines
     ADD CONSTRAINT statement_lines_pkey PRIMARY KEY (financial_statement_id, scope, account_code);
+
+--
+-- Name: target_allocations target_allocations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.target_allocations
+    ADD CONSTRAINT target_allocations_pkey PRIMARY KEY (portfolio_id, asset_class);
 
 --
 -- Name: tax_assessments tax_assessments_pkey; Type: CONSTRAINT; Schema: public; Owner: -
@@ -958,6 +1127,18 @@ CREATE UNIQUE INDEX fii_quarterly_reports_issuer_id_reference_date_key ON public
 --
 
 CREATE UNIQUE INDEX financial_statements_issuer_id_period_end_key ON public.financial_statements USING btree (issuer_id, period_end);
+
+--
+-- Name: fixed_income_bonds_type_maturity_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX fixed_income_bonds_type_maturity_key ON public.fixed_income_bonds USING btree (fixed_income_type_id, maturity_date);
+
+--
+-- Name: fixed_income_types_name_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX fixed_income_types_name_key ON public.fixed_income_types USING btree (name);
 
 --
 -- Name: import_batches_portfolio_id_file_sha256_key; Type: INDEX; Schema: public; Owner: -
@@ -1101,6 +1282,20 @@ ALTER TABLE ONLY public.corporate_filings
     ADD CONSTRAINT corporate_filings_issuer_id_fkey FOREIGN KEY (issuer_id) REFERENCES public.issuers(id) ON UPDATE CASCADE ON DELETE RESTRICT;
 
 --
+-- Name: crypto_assets crypto_assets_asset_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.crypto_assets
+    ADD CONSTRAINT crypto_assets_asset_id_fkey FOREIGN KEY (asset_id) REFERENCES public.assets(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+--
+-- Name: crypto_prices crypto_prices_asset_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.crypto_prices
+    ADD CONSTRAINT crypto_prices_asset_id_fkey FOREIGN KEY (asset_id) REFERENCES public.crypto_assets(asset_id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+--
 -- Name: darfs darfs_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1134,6 +1329,34 @@ ALTER TABLE ONLY public.fii_report_properties
 
 ALTER TABLE ONLY public.financial_statements
     ADD CONSTRAINT financial_statements_issuer_id_fkey FOREIGN KEY (issuer_id) REFERENCES public.issuers(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+--
+-- Name: fixed_income_bonds fixed_income_bonds_asset_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fixed_income_bonds
+    ADD CONSTRAINT fixed_income_bonds_asset_id_fkey FOREIGN KEY (asset_id) REFERENCES public.assets(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+--
+-- Name: fixed_income_bonds fixed_income_bonds_fixed_income_type_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fixed_income_bonds
+    ADD CONSTRAINT fixed_income_bonds_fixed_income_type_id_fkey FOREIGN KEY (fixed_income_type_id) REFERENCES public.fixed_income_types(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+--
+-- Name: fixed_income_prices fixed_income_prices_asset_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fixed_income_prices
+    ADD CONSTRAINT fixed_income_prices_asset_id_fkey FOREIGN KEY (asset_id) REFERENCES public.fixed_income_bonds(asset_id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+--
+-- Name: fixed_income_types fixed_income_types_economic_index_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fixed_income_types
+    ADD CONSTRAINT fixed_income_types_economic_index_id_fkey FOREIGN KEY (economic_index_id) REFERENCES public.economic_indexes(id) ON UPDATE CASCADE ON DELETE RESTRICT;
 
 --
 -- Name: import_batches import_batches_portfolio_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
@@ -1190,6 +1413,13 @@ ALTER TABLE ONLY public.operations
 
 ALTER TABLE ONLY public.operations
     ADD CONSTRAINT operations_portfolio_id_fkey FOREIGN KEY (portfolio_id) REFERENCES public.portfolios(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+--
+-- Name: portfolio_goals portfolio_goals_portfolio_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portfolio_goals
+    ADD CONSTRAINT portfolio_goals_portfolio_id_fkey FOREIGN KEY (portfolio_id) REFERENCES public.portfolios(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 --
 -- Name: portfolios portfolios_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
@@ -1281,6 +1511,13 @@ ALTER TABLE ONLY public.sectors
 
 ALTER TABLE ONLY public.statement_lines
     ADD CONSTRAINT statement_lines_financial_statement_id_fkey FOREIGN KEY (financial_statement_id) REFERENCES public.financial_statements(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+--
+-- Name: target_allocations target_allocations_portfolio_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.target_allocations
+    ADD CONSTRAINT target_allocations_portfolio_id_fkey FOREIGN KEY (portfolio_id) REFERENCES public.portfolios(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 --
 -- Name: tax_assessments tax_assessments_darf_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -

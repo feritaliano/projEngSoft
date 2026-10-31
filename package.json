@@ -9,7 +9,7 @@
     "db:drift": "prisma migrate diff --from-migrations prisma/migrations --to-schema prisma/schema.prisma --exit-code",
     "db:reset": "prisma migrate reset",
     "db:ddl": "node database/scripts/export-ddl.mjs",
-    "db:test": "node database/scripts/run-sql.mjs database/tests/constraints.sql && node database/scripts/run-sql.mjs database/tests/ops-constraints.sql",
+    "db:test": "node database/scripts/run-sql.mjs database/tests/constraints.sql && node database/scripts/run-sql.mjs database/tests/ops-constraints.sql && node database/scripts/run-sql.mjs database/tests/full-product-constraints.sql",
     "db:generate": "prisma generate"
   },
   "devDependencies": {

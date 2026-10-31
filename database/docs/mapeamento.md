@@ -6,14 +6,15 @@
 
 | Situação no ER | Regra | Onde ocorre |
 |---|---|---|
-| Entidade forte | Vira tabela; o identificador vira PK (`id_<entidade>`) | 22 entidades fortes |
-| Relacionamento 1:N | FK no lado N, referenciando a PK do lado 1. Se a cardinalidade mínima do lado 1 é 0, a FK aceita nulo | 25 relacionamentos (R01–R06, R08, R09, R12, R14–R23, R25–R28, R30, R32) |
+| Entidade forte | Vira tabela; o identificador vira PK (`id_<entidade>`) | 23 entidades fortes |
+| Relacionamento 1:N | FK no lado N, referenciando a PK do lado 1. Se a cardinalidade mínima do lado 1 é 0, a FK aceita nulo | 27 relacionamentos (R01–R06, R08, R09, R12, R14–R23, R25–R28, R30, R32, R36, R37) |
 | Autorrelacionamento 1:N | FK na própria tabela, referenciando a sua PK | R07 subdivide (Setor) |
-| Entidade fraca | Vira tabela com PK composta pela PK do dono (FK) e pelo identificador parcial | 5 relacionamentos identificadores (R10, R11, R13, R31, R33): Cotação, Valor do índice, Linha de demonstração, Imóvel do informe, Regra de IR |
+| Entidade fraca | Vira tabela com PK composta pela PK do dono (FK) e pelo identificador parcial | 9 relacionamentos identificadores (R10, R11, R13, R31, R33, R34, R35, R38, R39): Cotação, Valor do índice, Linha de demonstração, Imóvel do informe, Regra de IR, Alocação-alvo, Meta, Preço e taxa do título, Preço da cripto |
+| Especialização (parcial, exclusiva) | Uma tabela por entidade: a superclasse mantém a sua tabela; cada subclasse vira tabela com PK = PK da superclasse, que também é FK para ela (D50) | Ativo ⊃ TituloRendaFixa, Criptoativo |
 | Relacionamento N:N | Vira tabela própria, com PK composta pelas FKs das duas entidades e os atributos do relacionamento | R24 observa, R29 critério |
 | Atributo opcional (0,1) | Coluna que aceita nulo | Indicado em cada tabela |
 
-Resultado: **29 tabelas** (27 entidades + 2 relacionamentos N:N).
+Resultado: **36 tabelas** (34 entidades + 2 relacionamentos N:N), **210 colunas**. Revisão da D3 em 31/10/2026 (D50): 7 tabelas novas (3.30–3.36) e mudanças em Corretora, Operacao e Ativo.
 
 Notação: `Tabela (__chave primária__, *chave estrangeira*, atributo)`.
 
@@ -26,7 +27,7 @@ Notação: `Tabela (__chave primária__, *chave estrangeira*, atributo)`.
 - Operacao (__id_operacao__, *id_carteira*, *id_ativo*, *id_corretora*, *id_lote*, tipo, data_pregao, quantidade, preco_unitario, custos, sequencia)
 - Setor (__id_setor__, *id_setor_pai*, nome)
 - Emissor (__id_emissor__, *id_setor*, nome, tipo, cnpj, codigo_cvm)
-- Ativo (__id_ativo__, *id_emissor*, ticker, isin, tipo, classe, negociado)
+- Ativo (__id_ativo__, *id_emissor*, ticker, isin, tipo, classe, negociado, programa_bdr)
 - Cotacao (*__id_ativo__*, __data__, abertura, maxima, minima, fechamento, volume, negocios)
 - IndiceEconomico (__id_indice__, codigo, nome, periodicidade, unidade, fonte)
 - ValorIndice (*__id_indice__*, __data_referencia__, valor)
@@ -48,6 +49,13 @@ Notação: `Tabela (__chave primária__, *chave estrangeira*, atributo)`.
 - FiltroSalvo (__id_filtro__, *id_usuario*, *id_indicador_ordenacao*, nome, tipo_ativo, direcao_ordenacao)
 - observa (*__id_usuario__*, *__id_ativo__*, incluido_em)
 - criterio (*__id_filtro__*, *__id_indicador__*, valor_minimo, valor_maximo)
+- AlocacaoAlvo (*__id_carteira__*, __classe__, percentual_alvo)
+- Meta (*__id_carteira__*, __tipo__, valor_alvo, prazo, criada_em)
+- TipoTituloRF (__id_tipo_titulo__, *id_indice*, nome, juros_semestrais)
+- TituloRendaFixa (*__id_ativo__*, *id_tipo_titulo*, data_vencimento)
+- PrecoTaxaTitulo (*__id_ativo__*, __data_base__, taxa_compra, taxa_venda, pu_compra, pu_venda)
+- Criptoativo (*__id_ativo__*, nome)
+- PrecoCripto (*__id_ativo__*, __data__, preco_referencia)
 
 ## 3. Tabelas em detalhe
 
@@ -70,9 +78,10 @@ Notação: `Tabela (__chave primária__, *chave estrangeira*, atributo)`.
 |---|---|---|
 | id_corretora | UUID | PK |
 | nome | VARCHAR(150) | NOT NULL |
-| cnpj | CHAR(14) | NOT NULL, UNIQUE |
+| cnpj | CHAR(14) | nulo permitido, UNIQUE |
 
 - **PK:** (id_corretora)
+- Desde a D3 (D50), o CNPJ é opcional: a exchange estrangeira de cripto não tem CNPJ.
 - **Regra aplicada:** Entidade forte → tabela própria; o identificador vira PK.
 
 ### 3.3 Carteira
@@ -118,7 +127,7 @@ Notação: `Tabela (__chave primária__, *chave estrangeira*, atributo)`.
 | id_lote | UUID | FK, nulo permitido |
 | tipo | VARCHAR(20) | NOT NULL |
 | data_pregao | DATE | NOT NULL |
-| quantidade | INT | NOT NULL |
+| quantidade | NUMERIC(20,8) | NOT NULL |
 | preco_unitario | NUMERIC(20,8) | NOT NULL |
 | custos | NUMERIC(18,2) | NOT NULL |
 | sequencia | BIGINT | NOT NULL |
@@ -163,16 +172,18 @@ Notação: `Tabela (__chave primária__, *chave estrangeira*, atributo)`.
 | Coluna | Tipo | Restrições |
 |---|---|---|
 | id_ativo | UUID | PK |
-| id_emissor | UUID | FK, NOT NULL |
-| ticker | VARCHAR(12) | NOT NULL, UNIQUE |
-| isin | CHAR(12) | NOT NULL, UNIQUE |
+| id_emissor | UUID | FK, nulo permitido |
+| ticker | VARCHAR(12) | nulo permitido, UNIQUE |
+| isin | CHAR(12) | nulo permitido, UNIQUE |
 | tipo | VARCHAR(20) | NOT NULL |
 | classe | VARCHAR(20) | nulo permitido |
 | negociado | BOOLEAN | NOT NULL |
+| programa_bdr | VARCHAR(20) | nulo permitido |
 
 - **PK:** (id_ativo)
 - **FK:** id_emissor → Emissor(id_emissor)
-- **Regra aplicada:** Entidade forte → tabela própria; o identificador vira PK. R09 emite (1:N) → FK `id_emissor` no lado N, referenciando Emissor.
+- **Regra aplicada:** Entidade forte → tabela própria; o identificador vira PK. R09 emite (1:N) → FK `id_emissor` no lado N, referenciando Emissor. Opcional (aceita nulo), porque a cardinalidade mínima do lado 1 é 0 (cripto não tem emissor). Superclasse da especialização em TituloRendaFixa e Criptoativo (3.33, 3.35).
+- Desde a D3 (D50), `ticker`, `isin` e `id_emissor` são obrigatórios ou não conforme o tipo (CHECK no DDL; modelo ER, seção 4); `programa_bdr` só no BDR.
 
 ### 3.9 Cotacao (Cotação)
 
@@ -511,3 +522,94 @@ Notação: `Tabela (__chave primária__, *chave estrangeira*, atributo)`.
 - **FK:** id_filtro → FiltroSalvo(id_filtro)
 - **FK:** id_indicador → Indicador(id_indicador)
 - **Regra aplicada:** Relacionamento N:N R29 entre FiltroSalvo e Indicador → tabela própria, com PK composta pelas FKs das duas entidades e os atributos do relacionamento (valor_minimo, valor_maximo).
+
+### 3.30 AlocacaoAlvo (Alocação-alvo da carteira ideal)
+
+| Coluna | Tipo | Restrições |
+|---|---|---|
+| id_carteira | UUID | PK, FK |
+| classe | VARCHAR(20) | PK |
+| percentual_alvo | NUMERIC(10,8) | NOT NULL |
+
+- **PK:** (id_carteira, classe)
+- **FK:** id_carteira → Carteira(id_carteira)
+- **Regra aplicada:** Entidade fraca de Carteira (relacionamento identificador R34 define) → tabela própria com PK composta pela PK do dono (FK) e pelo identificador parcial (classe). `classe` usa o domínio de `Ativo.tipo`.
+
+### 3.31 Meta
+
+| Coluna | Tipo | Restrições |
+|---|---|---|
+| id_carteira | UUID | PK, FK |
+| tipo | VARCHAR(20) | PK |
+| valor_alvo | NUMERIC(18,2) | NOT NULL |
+| prazo | DATE | nulo permitido |
+| criada_em | TIMESTAMP | NOT NULL |
+
+- **PK:** (id_carteira, tipo)
+- **FK:** id_carteira → Carteira(id_carteira)
+- **Regra aplicada:** Entidade fraca de Carteira (relacionamento identificador R35 almeja) → tabela própria com PK composta pela PK do dono (FK) e pelo identificador parcial (tipo); por isso há no máximo uma meta de cada tipo por carteira.
+
+### 3.32 TipoTituloRF (Tipo de título de renda fixa)
+
+| Coluna | Tipo | Restrições |
+|---|---|---|
+| id_tipo_titulo | UUID | PK |
+| id_indice | UUID | FK, nulo permitido |
+| nome | VARCHAR(100) | NOT NULL, UNIQUE |
+| juros_semestrais | BOOLEAN | NOT NULL |
+
+- **PK:** (id_tipo_titulo)
+- **FK:** id_indice → IndiceEconomico(id_indice)
+- **Regra aplicada:** Entidade forte → tabela própria; o identificador vira PK. R36 indexa (1:N) → FK `id_indice` no lado N, referenciando IndiceEconomico. Opcional (aceita nulo), porque a cardinalidade mínima do lado 1 é 0 (título prefixado).
+
+### 3.33 TituloRendaFixa (Título de renda fixa)
+
+| Coluna | Tipo | Restrições |
+|---|---|---|
+| id_ativo | UUID | PK, FK |
+| id_tipo_titulo | UUID | FK, NOT NULL |
+| data_vencimento | DATE | NOT NULL |
+
+- **PK:** (id_ativo)
+- **FK:** id_ativo → Ativo(id_ativo)
+- **FK:** id_tipo_titulo → TipoTituloRF(id_tipo_titulo)
+- **UNIQUE:** (id_tipo_titulo, data_vencimento)
+- **Regra aplicada:** Especialização de Ativo → tabela própria com PK = PK da superclasse, que também é FK para Ativo. R37 caracteriza (1:N) → FK `id_tipo_titulo` no lado N, referenciando TipoTituloRF.
+
+### 3.34 PrecoTaxaTitulo (Preço e taxa do título)
+
+| Coluna | Tipo | Restrições |
+|---|---|---|
+| id_ativo | UUID | PK, FK |
+| data_base | DATE | PK |
+| taxa_compra | NUMERIC(10,8) | nulo permitido |
+| taxa_venda | NUMERIC(10,8) | nulo permitido |
+| pu_compra | NUMERIC(20,8) | nulo permitido |
+| pu_venda | NUMERIC(20,8) | nulo permitido |
+
+- **PK:** (id_ativo, data_base)
+- **FK:** id_ativo → TituloRendaFixa(id_ativo)
+- **Regra aplicada:** Entidade fraca de TituloRendaFixa (relacionamento identificador R38 precifica) → tabela própria com PK composta pela PK do dono (FK) e pelo identificador parcial (data_base).
+
+### 3.35 Criptoativo
+
+| Coluna | Tipo | Restrições |
+|---|---|---|
+| id_ativo | UUID | PK, FK |
+| nome | VARCHAR(100) | NOT NULL |
+
+- **PK:** (id_ativo)
+- **FK:** id_ativo → Ativo(id_ativo)
+- **Regra aplicada:** Especialização de Ativo → tabela própria com PK = PK da superclasse, que também é FK para Ativo.
+
+### 3.36 PrecoCripto (Preço de referência da cripto)
+
+| Coluna | Tipo | Restrições |
+|---|---|---|
+| id_ativo | UUID | PK, FK |
+| data | DATE | PK |
+| preco_referencia | NUMERIC(20,8) | NOT NULL |
+
+- **PK:** (id_ativo, data)
+- **FK:** id_ativo → Criptoativo(id_ativo)
+- **Regra aplicada:** Entidade fraca de Criptoativo (relacionamento identificador R39 referencia) → tabela própria com PK composta pela PK do dono (FK) e pelo identificador parcial (data).
