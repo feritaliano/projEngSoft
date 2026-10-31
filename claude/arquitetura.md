@@ -300,7 +300,7 @@ Fluxo de dados no front: componente de página → serviço `data-access` da fea
 Regras:
 - **Nenhum cálculo de negócio no front.** Isso inclui as calculadoras, que ficam no backend (D28) para que as regras de Decimal, testes e trace sejam únicos.
 - Valores chegam como string. A formatação pt-BR parte da string: `Intl.NumberFormat` aceita string decimal, ou decimal.js. **Exceção única:** converter para `number` só para plotar gráfico, nunca para conta.
-- O "como foi calculado" é **um único componente genérico** que lê `DerivedValue`. Os textos vêm da tabela de microcopy do UX, indexada por `formulaCode`.
+- O "como foi calculado" é **um único componente genérico** que lê `DerivedValue`. Os textos vêm da tabela de microcopy do UX, indexada por `formulaCode` (`claude/microcopy.md`, U4).
 - Rotas das etapas futuras ficam previstas no layout, mas só aparecem quando a etapa é entregue.
 - Totais e efeitos de uma operação ainda não salva (valor, total com custos, PM depois) vêm da prévia do backend (D42), nunca de conta no front.
 - Telas, componentes e estados do S1 aprovados no U0 (D41): lista em `agentes/agente-ux-ui.md`, links dos frames em `claude/handoff-ux.md`. Componente usado em mais de uma tela é implementado uma vez em `shared/`.

@@ -31,7 +31,7 @@ Engenheiro backend sênior responsável pela arquitetura, pela API, pelas regras
 - **security-guidance** roda sozinho; aviso dele só é ignorado com justificativa no PR.
 
 ## Escopo e etapas
-O banco cobre o produto completo (27 entidades, 29 tabelas, ER congelado em 05/10/2026, D14). A aplicação é entregue por etapas (seção 5 do contexto). **Neste semestre, o plano entrega o S1 até 06/12/2026**; S2–S5 dependem da aprovação do escopo do semestre.
+O banco cobre o produto completo (27 entidades, 29 tabelas, ER congelado em 05/10/2026, D14). A aplicação é entregue por etapas (seção 5 do contexto). **Neste semestre, o plano entrega o S1 até 06/12/2026** (D49); depois, as etapas seguem a ordem S2 → S6 → S9 → S10 → S3 → S4 → S5 → S7 → S8 → S11.
 
 | Etapa | Itens do produto | Módulos |
 |---|---|---|
@@ -111,7 +111,7 @@ src/modules/<modulo>/
 - Erros em RFC 7807 (`application/problem+json`) por exception filter global; nenhum stack trace vaza. Na RN10, o corpo identifica a operação que ficaria inválida (id, data, quantidade disponível vs. vendida).
 - `ValidationPipe` global (`whitelist`, `forbidNonWhitelisted`, `transform`).
 - Decimais como string; datas ISO 8601 (`YYYY-MM-DD`); paginação `?page=&pageSize=` com `items` e `total`.
-- **`DerivedValue`** (D26) em todo número derivado: `{ value, formulaCode, inputs: [{ name, value, source, referenceDate }], asOf }`. Códigos de fórmula de domínio no S1: `AVG_PRICE_BUY`, `REALIZED_PROFIT`, `TOTAL_COST`, `OPERATION_GROSS` (quantidade × preço), `OPERATION_TOTAL_BUY` (+ custos), `OPERATION_NET_SELL` (− custos) (D42) (os textos ficam na tabela de microcopy do UX, indexada por `formulaCode`).
+- **`DerivedValue`** (D26) em todo número derivado: `{ value, formulaCode, inputs: [{ name, value, source, referenceDate }], asOf }`. Códigos de fórmula de domínio no S1: `AVG_PRICE_BUY`, `REALIZED_PROFIT`, `TOTAL_COST`, `OPERATION_GROSS` (quantidade × preço), `OPERATION_TOTAL_BUY` (+ custos), `OPERATION_NET_SELL` (− custos) (D42); para os totais, `POSITION_REALIZED_PROFIT`, `PORTFOLIO_TOTAL_COST`, `PORTFOLIO_REALIZED_PROFIT` (U4). As chaves `name` de `inputs[]` de cada código estão em `claude/microcopy.md`, seção 3, e são contrato com o frontend (os textos ficam na tabela de microcopy do UX, indexada por `formulaCode`).
 - Dado do usuário com `Cache-Control: no-store`.
 
 ### Segurança e configuração
