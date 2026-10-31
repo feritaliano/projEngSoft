@@ -16,6 +16,10 @@
 
 **Ajuste de 30/10/2026 (D46, D47):** o Figma passa a ter uma página só, organizada por tela (S1 à esquerda, próximas etapas à direita); a D3 recebe os requisitos de dados das telas do produto completo, com prioridade A/B, e o G-D3 corta primeiro as linhas B. Datas inalteradas.
 
+**Ajuste de 31/10/2026 (D48):** Lista e Detalhe da carteira têm versão única no Figma; W3 e W4 implementam esse layout mostrando só o que tem dado no S1 (lista no `claude/handoff-ux.md`). Tabela de posições com custo total e lucro realizado por ativo. Datas inalteradas.
+
+**Ajuste de 31/10/2026 (U3–U5):** U3 aprovado, U4 (`claude/microcopy.md`) e U5 (especificação de handoff e revisão WCAG/Nielsen em `claude/handoff-ux.md`) concluídos; a trilha de UX do S1 está fechada antes das datas. O W2 já não depende do gatilho G-U3 e o W4 já tem o U5. O R1 ganha a verificação de acessibilidade. Datas inalteradas.
+
 **Frentes ativas:** todas.
 - 25–27/10: fundação (usuário).
 - 28/10 a meados de novembro: BD (P1–P2), UX/UI (U1–U5) e backend (K0–K3).
@@ -24,7 +28,7 @@
 **Prazos fixos:** BD Parte 1 em **19/10/2026** · BD Parte 2 em **07/12/2026** (Google Classroom).
 **Alvos:** BD Parte 1 enviada em 19/10 (feito) · handoff de UX em 16/11 · BD Parte 2 enviada até 30/11 · S1 (núcleo da carteira) pronto em 06/12.
 
-**Escopo de Engenharia de Software nestas datas:** só o **S1** (A1–A2, B1–B7, B13, C1). S2–S5 não cabem até 06/12; a proposta da seção 5 do contexto continua pendente de aprovação. Testes em TypeScript, arquivos `.spec.ts` (D33).
+**Escopo de Engenharia de Software nestas datas:** só o **S1** (A1–A2, B1–B7, B13, C1), aprovado em 31/10/2026 (D49). Depois de 06/12: S2 → S6 → S9 → S10 → S3 → S4 → S5 → S7 → S8 → S11.
 
 **Prompts dos agentes:** os quatro em `agentes/` foram reescritos em 05/10/2026 e trazem as tarefas e datas da própria frente; mudança neste plano atualiza também o prompt da frente afetada.
 
@@ -75,10 +79,10 @@ O catálogo de referência do S1 (setores, emissores, ativos, corretoras) vem do
 | U0 | **Concluído (26/10), D41.** Aprovar a lista de telas do S1 proposta em `agentes/agente-ux-ui.md` | 25/10 | — | Lista aprovada pelo usuário e registrada no projeto (`agentes/agente-ux-ui.md`, `claude/handoff-ux.md`) |
 | U1 | **Concluído (30/10).** Design system: cores claro/escuro, tipografia, espaçamento, componentes base como tokens Tailwind | 26/10–29/10 | U0, B3 | Tokens no Figma (variáveis com os nomes dos tokens) e em tabela no projeto; link do arquivo Figma na seção 10 do contexto |
 | U2 | **Concluído (30/10).** Fluxos e wireframes dos 11 frames do S1 (7 telas, 3 componentes e o shell, D41) | 30/10–05/11 | U1 | Fluxo cadastro → carteira → compra → venda → posição completo, mais catálogo → lançar operação e edição pelo histórico |
-| U3 | **Frames prontos (30/10), em revisão pelo usuário.** Alta fidelidade com os estados de `claude/handoff-ux.md`, um frame por tela, componente e estado | 06/11–12/11 | U2 | Estados de cada componente especificados |
-| U4 | Textos de ajuda: "como foi calculado" para PM, custo, lucro e resumo da operação (D42) | 13/11–14/11 | U3 | Tabela salva no projeto |
-| U6 | **Concluído (30/10), D45.** Ajustes de UX no S1 (guias, filtro por tipo, agrupamento por classe, avatar) e página "Produto completo (roadmap)" no Figma, fora do handoff do S1 | 30/10 | U3 | Frames e protótipo navegável; links no `claude/handoff-ux.md` |
-| U5 | Revisão por Nielsen e WCAG AA (plugin Design: crítica de design e revisão de acessibilidade); handoff para o frontend em `claude/handoff-ux.md` | 15/11–16/11 | U4 | Sem pendência de contraste ou de foco; `claude/handoff-ux.md` com o link do frame de cada tela |
+| U3 | **Concluído (31/10), aprovado pelo usuário.** Alta fidelidade com os estados de `claude/handoff-ux.md`, um frame por tela, componente e estado | 06/11–12/11 | U2 | Estados de cada componente especificados |
+| U4 | **Concluído (31/10).** Textos de ajuda: "como foi calculado" para PM, custo, lucro, totais da carteira e resumo da operação (D42), em `claude/microcopy.md` | 13/11–14/11 | U3 | Tabela salva no projeto |
+| U6 | **Concluído (30/10), D45.** Ajustes de UX no S1 (guias, filtro por tipo, agrupamento por classe, avatar) e página "Produto completo (roadmap)" no Figma (hoje faixas da página única, D46), fora do handoff do S1 | 30/10 | U3 | Frames e protótipo navegável; links no `claude/handoff-ux.md` |
+| U5 | **Concluído (31/10).** Revisão por Nielsen e WCAG AA (plugin Design: crítica de design e revisão de acessibilidade); handoff para o frontend em `claude/handoff-ux.md` | 15/11–16/11 | U4 | Sem pendência de contraste ou de foco; `claude/handoff-ux.md` com o link do frame de cada tela |
 
 ## Backend
 | ID | Tarefa | Datas | Depende de | Pronto quando |
@@ -96,7 +100,7 @@ O catálogo de referência do S1 (setores, emissores, ativos, corretoras) vem do
 | W2 | Login e cadastro (frames 1 e 2) | 14/11–18/11 | W1, K2, U3 | Erros do backend exibidos no campo certo |
 | W3 | Lista, criação e exclusão de carteiras, com estado vazio e `ConfirmDialog` (frames 3 e C3) | 19/11–23/11 | W2, K3 | Os 4 estados de dados e a confirmação de exclusão cobertos por spec |
 | W4 | Detalhe da carteira com guias Resumo e Histórico, posições agrupadas por classe com `AssetAvatar` e posições encerradas (D45), formulário de operação (criar e editar) com Resumo da operação (D42), histórico com filtro por tipo, catálogo com "Lançar operação", `DerivedValueExplainer` e `BusinessRuleError` (frames 4–7, C1–C3) | 26/11–02/12 | W3, K4, U5 | Fluxo completo usando a API real |
-| R1 | E2E ponta a ponta com `@playwright/test` (`frontend/e2e/*.spec.ts`, job `e2e` no CI contra a API e um PostgreSQL de serviço; na máquina, contra `carteira_test`), README de execução e roteiro de demonstração: S1 pronto | 03/12–06/12 | W4 | E2E do S1 passando no CI; alguém de fora sobe e usa o sistema seguindo só o README |
+| R1 | E2E ponta a ponta com `@playwright/test` (`frontend/e2e/*.spec.ts`, job `e2e` no CI contra a API e um PostgreSQL de serviço; na máquina, contra `carteira_test`), verificação de acessibilidade com `@axe-core/playwright` nas telas do S1 (temas claro e escuro, sem violação séria ou crítica) e fluxo principal só com teclado (U5), README de execução e roteiro de demonstração: S1 pronto | 03/12–06/12 | W4 | E2E do S1 passando no CI; alguém de fora sobe e usa o sistema seguindo só o README |
 
 ## Gatilhos de corte
 | # | Data | Condição | Ação |
@@ -111,7 +115,7 @@ O catálogo de referência do S1 (setores, emissores, ativos, corretoras) vem do
 | G-UX | Sempre | Uma tarefa de BD passou da data de término | O UX/UI pausa até a tarefa de BD voltar ao prazo |
 
 ## Planejamento (pendente)
-- Aprovar a entrega do semestre de ES. Estas datas cobrem só o S1; S2–S5 ficam para depois de 06/12, salvo corte de escopo decidido antes.
+- ~~Aprovar a entrega do semestre de ES.~~ Aprovada em 31/10/2026 (D49): S1 até 06/12; depois S2 → S6 → S9 → S10 → S3 → S4 → S5 → S7 → S8 → S11.
 - Obter o calendário de entregas incrementais de ES e encaixar K2, K4 e R1 como marcos.
 
 ## Riscos
