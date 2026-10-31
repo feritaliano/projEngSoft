@@ -62,7 +62,7 @@ jobs:
       - name: Schema and migrations in sync
         run: npm run db:drift
 
-      - name: Constraint tests (public and ops)
+      - name: Constraint tests (public, ops and D3)
         run: npm run db:test
 
       - name: ddl.sql matches the migrated database

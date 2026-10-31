@@ -1,7 +1,7 @@
 # Glossário PT ↔ EN — Carteira B3 (tarefa G1)
 
 > Correspondência entre os nomes do modelo ER (português, usados na entrega de BD) e os nomes físicos do banco (inglês, `snake_case`), usados em `prisma/schema.prisma`, nas migrations e em `database/sql/ddl.sql`.
-> Gerado em 24/10/2026 a partir do banco migrado; conferido contra o modelo lógico do brModelo: **29 tabelas e 183 colunas, na mesma ordem do mapeamento**.
+> Gerado em 24/10/2026 a partir do banco migrado; conferido contra o modelo lógico do brModelo. **Revisto na D3 em 31/10/2026 (D50): 36 tabelas e 210 colunas, na mesma ordem do mapeamento.**
 
 ## Convenções
 
@@ -44,6 +44,13 @@
 | 27 | Filtro salvo (`FiltroSalvo`) | `saved_screens` | `SavedScreen` |
 | 28 | observa (N:N) (`observa`) | `watchlist_items` | `WatchlistItem` |
 | 29 | critério (N:N) (`criterio`) | `screen_criteria` | `ScreenCriterion` |
+| 30 | Alocação-alvo da carteira ideal (`AlocacaoAlvo`) | `target_allocations` | `TargetAllocation` |
+| 31 | Meta (`Meta`) | `portfolio_goals` | `PortfolioGoal` |
+| 32 | Tipo de título de renda fixa (`TipoTituloRF`) | `fixed_income_types` | `FixedIncomeType` |
+| 33 | Título de renda fixa (`TituloRendaFixa`) | `fixed_income_bonds` | `FixedIncomeBond` |
+| 34 | Preço e taxa do título (`PrecoTaxaTitulo`) | `fixed_income_prices` | `FixedIncomePrice` |
+| 35 | Criptoativo (`Criptoativo`) | `crypto_assets` | `CryptoAsset` |
+| 36 | Preço de referência da cripto (`PrecoCripto`) | `crypto_prices` | `CryptoPrice` |
 
 ## 2. Colunas por tabela
 
@@ -65,7 +72,7 @@ Tipo e nulidade lidos do banco migrado. *Nulo* = coluna que aceita nulo (atribut
 |---|---|---|---|---|
 | id_corretora | `id` | uuid | não | PK |
 | nome | `name` | varchar(150) | não |  |
-| cnpj | `cnpj` | char(14) | não |  |
+| cnpj | `cnpj` | char(14) | sim |  |
 
 ### 2.3 Carteira → `portfolios`
 
@@ -100,7 +107,7 @@ Tipo e nulidade lidos do banco migrado. *Nulo* = coluna que aceita nulo (atribut
 | id_lote | `import_batch_id` | uuid | sim | FK → import_batches |
 | tipo | `type` | operation_type | não |  |
 | data_pregao | `trade_date` | date | não |  |
-| quantidade | `quantity` | integer | não |  |
+| quantidade | `quantity` | numeric(20,8) | não |  |
 | preco_unitario | `unit_price` | numeric(20,8) | não |  |
 | custos | `fees` | numeric(18,2) | não |  |
 | sequencia | `sequence` | bigint | não |  |
@@ -129,12 +136,13 @@ Tipo e nulidade lidos do banco migrado. *Nulo* = coluna que aceita nulo (atribut
 | Coluna (ER) | Coluna física | Tipo | Nulo | Chave |
 |---|---|---|---|---|
 | id_ativo | `id` | uuid | não | PK |
-| id_emissor | `issuer_id` | uuid | não | FK → issuers |
-| ticker | `ticker` | varchar(12) | não |  |
-| isin | `isin` | char(12) | não |  |
+| id_emissor | `issuer_id` | uuid | sim | FK → issuers |
+| ticker | `ticker` | varchar(12) | sim |  |
+| isin | `isin` | char(12) | sim |  |
 | tipo | `type` | asset_type | não |  |
 | classe | `share_class` | share_class | sim |  |
 | negociado | `is_active` | boolean | não |  |
+| programa_bdr | `bdr_program` | bdr_program | sim |  |
 
 ### 2.9 Cotacao → `quotes`
 
@@ -377,16 +385,78 @@ Tipo e nulidade lidos do banco migrado. *Nulo* = coluna que aceita nulo (atribut
 | valor_minimo | `min_value` | numeric(20,8) | sim |  |
 | valor_maximo | `max_value` | numeric(20,8) | sim |  |
 
+### 2.30 AlocacaoAlvo → `target_allocations`
+
+| Coluna (ER) | Coluna física | Tipo | Nulo | Chave |
+|---|---|---|---|---|
+| id_carteira | `portfolio_id` | uuid | não | PK, FK → portfolios |
+| classe | `asset_class` | asset_type | não | PK |
+| percentual_alvo | `target_percent` | numeric(10,8) | não |  |
+
+### 2.31 Meta → `portfolio_goals`
+
+| Coluna (ER) | Coluna física | Tipo | Nulo | Chave |
+|---|---|---|---|---|
+| id_carteira | `portfolio_id` | uuid | não | PK, FK → portfolios |
+| tipo | `type` | goal_type | não | PK |
+| valor_alvo | `target_amount` | numeric(18,2) | não |  |
+| prazo | `target_month` | date | sim |  |
+| criada_em | `created_at` | timestamptz | não |  |
+
+### 2.32 TipoTituloRF → `fixed_income_types`
+
+| Coluna (ER) | Coluna física | Tipo | Nulo | Chave |
+|---|---|---|---|---|
+| id_tipo_titulo | `id` | uuid | não | PK |
+| id_indice | `economic_index_id` | uuid | sim | FK → economic_indexes |
+| nome | `name` | varchar(100) | não |  |
+| juros_semestrais | `semiannual_interest` | boolean | não |  |
+
+### 2.33 TituloRendaFixa → `fixed_income_bonds`
+
+| Coluna (ER) | Coluna física | Tipo | Nulo | Chave |
+|---|---|---|---|---|
+| id_ativo | `asset_id` | uuid | não | PK, FK → assets |
+| id_tipo_titulo | `fixed_income_type_id` | uuid | não | FK → fixed_income_types |
+| data_vencimento | `maturity_date` | date | não |  |
+
+### 2.34 PrecoTaxaTitulo → `fixed_income_prices`
+
+| Coluna (ER) | Coluna física | Tipo | Nulo | Chave |
+|---|---|---|---|---|
+| id_ativo | `asset_id` | uuid | não | PK, FK → fixed_income_bonds |
+| data_base | `base_date` | date | não | PK |
+| taxa_compra | `buy_rate` | numeric(10,8) | sim |  |
+| taxa_venda | `sell_rate` | numeric(10,8) | sim |  |
+| pu_compra | `buy_price` | numeric(20,8) | sim |  |
+| pu_venda | `sell_price` | numeric(20,8) | sim |  |
+
+### 2.35 Criptoativo → `crypto_assets`
+
+| Coluna (ER) | Coluna física | Tipo | Nulo | Chave |
+|---|---|---|---|---|
+| id_ativo | `asset_id` | uuid | não | PK, FK → assets |
+| nome | `name` | varchar(100) | não |  |
+
+### 2.36 PrecoCripto → `crypto_prices`
+
+| Coluna (ER) | Coluna física | Tipo | Nulo | Chave |
+|---|---|---|---|---|
+| id_ativo | `asset_id` | uuid | não | PK, FK → crypto_assets |
+| data | `price_date` | date | não | PK |
+| preco_referencia | `reference_price` | numeric(20,8) | não |  |
+
 ## 3. Domínios (ENUM)
 
 | Atributo no ER | Tipo no banco | Valores (ER → banco) |
 |---|---|---|
 | LoteImportacao.situacao | `import_batch_status` | PENDENTE → PENDING; CONFIRMADO → CONFIRMED; DESCARTADO → DISCARDED |
 | Operacao.tipo | `operation_type` | COMPRA → BUY; VENDA → SELL |
-| Emissor.tipo | `issuer_kind` | EMPRESA → COMPANY; FUNDO → FUND; ESTRANGEIRO → FOREIGN |
-| Ativo.tipo | `asset_type` | ACAO → STOCK; FII; ETF; BDR |
+| Emissor.tipo | `issuer_kind` | EMPRESA → COMPANY; FUNDO → FUND; ESTRANGEIRO → FOREIGN; GOVERNO → GOVERNMENT (D50) |
+| Ativo.tipo / AlocacaoAlvo.classe | `asset_type` | ACAO → STOCK; FII; ETF; BDR; RENDA_FIXA → FIXED_INCOME; CRIPTO → CRYPTO (D50) |
 | Ativo.classe | `share_class` | ON; PN; PNA; PNB; UNIT |
-| IndiceEconomico.codigo | `index_code` | CDI; SELIC; IPCA; IBOV |
+| Ativo.programa_bdr | `bdr_program` | DRN; DR1; DR2; DR3; DRE (códigos da B3, D50) |
+| IndiceEconomico.codigo | `index_code` | CDI; SELIC; IPCA; IBOV; IGPM (D50) |
 | IndiceEconomico.periodicidade | `index_periodicity` | DIARIA → DAILY; MENSAL → MONTHLY |
 | IndiceEconomico.unidade | `index_unit` | TAXA_PERCENTUAL → RATE_PERCENT; PONTOS → POINTS |
 | Demonstracao.tipo_documento | `filing_type` | DFP; ITR |
@@ -401,13 +471,14 @@ Tipo e nulidade lidos do banco migrado. *Nulo* = coluna que aceita nulo (atribut
 | Indicador.aplica_a / FiltroSalvo.tipo_ativo | `analysis_asset_type` | ACAO → STOCK; FII |
 | AlertaPreco.direcao | `price_direction` | ACIMA → ABOVE; ABAIXO → BELOW |
 | FiltroSalvo.direcao_ordenacao | `sort_direction` | ASC; DESC |
+| Meta.tipo | `goal_type` | PATRIMONIO → NET_WORTH; RENDA_MENSAL → MONTHLY_INCOME (D50) |
 
 ## 4. Colunas físicas sem atributo correspondente no ER
 
-Nenhuma. O banco tem exatamente as 183 colunas do ER; não há colunas técnicas (como `updated_at`) no schema `public` (decisão D34).
+Nenhuma. O banco tem exatamente as 210 colunas do ER (183 até a D3); não há colunas técnicas (como `updated_at`) no schema `public` (decisão D34).
 
 ## 5. Objetos do banco sem entidade no ER
 
 - Extensão `citext` (tipo do `users.email`).
-- 42 restrições CHECK com nome `<tabela>_<regra>_check`, que materializam as restrições da seção 4 do modelo ER.
+- 51 restrições CHECK com nome `<tabela>_<regra>_check`, que materializam as restrições da seção 4 do modelo ER (42 da migration inicial; a da D3 recria 3 com regra nova e acrescenta 9).
 - Índices de apoio (`*_idx`) em chaves estrangeiras usadas em consultas e o índice da linha do tempo da carteira (`operations_timeline_idx`).

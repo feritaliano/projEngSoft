@@ -53,7 +53,7 @@ flowchart LR
       SES[user_sessions]
     end
     subgraph PUB[schema public: núcleo 3FN = modelo ER de BD, prata]
-      CORE[29 tabelas]
+      CORE[36 tabelas]
     end
     subgraph ANA[schema analytics: derivado recalculável, ouro]
       GOLD[quarterly_financials, asset_indicator_values, portfolio_daily_values]
@@ -80,7 +80,7 @@ flowchart LR
 
 ## 4. Núcleo relacional (schema `public`)
 
-São 29 tabelas: 27 entidades e 2 relacionamentos N:N com atributos (`watchlist_items`, `screen_criteria`). Todas na 3FN (verificação em `database/docs/modelo-er.md`, seção 6). O detalhamento conceitual (nomes em português, relacionamentos nomeados e cardinalidades) está em `database/docs/modelo-er.md`.
+São 36 tabelas: 34 entidades (2 delas especializações de `assets`: `fixed_income_bonds` e `crypto_assets`) e 2 relacionamentos N:N com atributos (`watchlist_items`, `screen_criteria`); revisão da D3 em 31/10/2026 (D50). Todas na 3FN (verificação em `database/docs/modelo-er.md`, seção 6). O detalhamento conceitual (nomes em português, relacionamentos nomeados e cardinalidades) está em `database/docs/modelo-er.md`.
 
 **Padrões:**
 - PK `uuid` gerada no banco para entidades com identidade própria.
@@ -351,7 +351,7 @@ Testes ligados aos dados:
 | R5 | CVM: reapresentações (versões), escala MIL/UNIDADE, ITR acumulado × trimestral, plano de contas livre abaixo dos níveis fixos | Indicadores errados | Normalização na ingestão; mapeamento só de contas padronizadas; D18 exclui financeiras |
 | R6 | Fonte da vacância de FII | C8 | **Resolvido (D31):** informe trimestral estruturado da CVM. Conferido em 05/10 nos dados de 2025: cada linha é um item declarado, sem identidade estável do imóvel entre trimestres, por isso o modelo guarda informe + itens e não uma série por imóvel |
 | R7 | BD Parte 1: desenhar o ER no brModelo até 16/10 | Prazo | **Resolvido:** 27 entidades e 33 relacionamentos no brModelo Web (revisão de 05/10/2026) |
-| R8 | Seed da Parte 2: ≥ 10 tuplas coerentes em 29 tabelas, incluindo IR com memória de cálculo | Esforço concentrado em novembro | O IR usa as regras validadas na legislação antes do P1; sem isso, `tax_rules`, `tax_assessments` e `darfs` não podem ser semeados com consistência |
+| R8 | Seed da Parte 2: ≥ 10 tuplas coerentes em 36 tabelas (29 + 7 da D3, D50), incluindo IR com memória de cálculo | Esforço concentrado em novembro | O IR usa as regras validadas na legislação antes do P1; sem isso, `tax_rules`, `tax_assessments` e `darfs` não podem ser semeados com consistência |
 
 ## 11. Decisões (registradas como D20–D28 em 30/09/2026)
 | # | Decisão | Motivo |
