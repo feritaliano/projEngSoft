@@ -65,7 +65,7 @@
 | F4 | **Concluído (26/10, validado na máquina do usuário).** `docker-compose.yml` com PostgreSQL 16 (bancos dev, test e shadow) e `.env.example` | 27/10 (usuário) | F3 | `docker compose up` sobe os bancos; `npm run db:migrate` e `npm run db:test` passam |
 
 ## Banco do sistema (fora da entrega de BD)
-O que o sistema precisa no banco além das 29 tabelas do ER. Não entra no `ddl.sql` nem no relatório de BD (D22).
+O que o sistema precisa no banco além das 36 tabelas do ER (29 até a D3). Não entra no `ddl.sql` nem no relatório de BD (D22).
 
 | ID | Tarefa | Datas | Depende de | Pronto quando |
 |---|---|---|---|---|
@@ -127,4 +127,4 @@ O catálogo de referência do S1 (setores, emissores, ativos, corretoras) vem do
 - **Seed com tabelas de poucos registros reais.** `tax_categories` e `economic_indexes` têm 4 registros reais cada, abaixo das ±10 tuplas do enunciado; decisão do usuário pendente antes do fim do P1.
 - Mudança no ER depois do congelamento atrasa schema, seed e telas (D14). Ajustes do retorno da Parte 1 entram como decisão registrada e são aplicados antes do P1 se chegarem a tempo.
 - Seed de IR sem regra validada gera apurações inconsistentes: por isso o P0 vem antes do P1.
-- Volume do seed: 29 tabelas × 10 tuplas coerentes entre si; por isso o P1 tem a janela mais longa de BD.
+- Volume do seed: 36 tabelas × 10 tuplas (29 do ER inicial + 7 da D3) coerentes entre si; por isso o P1 tem a janela mais longa de BD.
