@@ -124,3 +124,27 @@ jobs:
           npm run openapi:generate
           git diff --exit-code -- openapi/openapi.json
           test -z "$(git status --porcelain -- openapi)" || { echo "openapi/ has untracked or changed files; run npm run openapi:generate and commit"; git status --porcelain -- openapi; exit 1; }
+
+      # Docker (chore/K1-backend-docker): builds the image and runs the real stack (postgres, migrate, api, worker)
+      # from the .env.example, as a user would with docker compose --profile app up.
+      - name: Docker stack smoke test (migrate, api, worker)
+        working-directory: .
+        run: |
+          cp .env.example .env
+          docker compose --profile app up -d --build
+          curl --fail --silent --show-error --retry 30 --retry-delay 2 --retry-all-errors \
+            http://localhost:3000/api/v1/health
+          echo
+          test "$(docker inspect -f '{{.State.ExitCode}}' carteira-b3-migrate)" = 0
+          test "$(docker inspect -f '{{.State.Running}}' carteira-b3-worker)" = true
+          test "$(docker inspect -f '{{.State.Running}}' carteira-b3-api)" = true
+
+      - name: Docker stack logs (on failure)
+        if: failure()
+        working-directory: .
+        run: docker compose --profile app logs --no-color
+
+      - name: Stop the Docker stack
+        if: always()
+        working-directory: .
+        run: docker compose --profile app down -v

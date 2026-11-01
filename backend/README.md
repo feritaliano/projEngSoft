@@ -20,6 +20,9 @@ API NestJS (adapter Fastify) e worker, a partir do mesmo código (D24, D52). Arq
 | `npm run build` | compila para `dist/` |
 | `npm run openapi:generate` | regenera `openapi/openapi.json`; commite o arquivo junto com toda mudança de contrato (o CI confere) |
 
+## Docker
+Na raiz: `docker compose --profile app up -d --build` sobe PostgreSQL, `migrate` (aplica as migrations existentes e termina), `api` e `worker` com a imagem de `backend/Dockerfile` (estágios `migrate`, `build` e `runtime`; contexto de build = raiz do repositório). Os serviços leem o `.env` da raiz; `DATABASE_HOST=postgres` faz o `docker/db-host-entrypoint.sh` trocar só o host do `DATABASE_URL`. Na imagem, os logs saem em JSON (o `pino-pretty` só é usado num terminal interativo). O CI constrói a imagem e testa o stack.
+
 ## Endpoints do K1
 - `GET /api/v1/health`: 200 com o PostgreSQL respondendo; 503 em `application/problem+json` quando não responde.
 - Qualquer erro (inclusive rota inexistente) volta em RFC 7807 (`application/problem+json`).

@@ -1,5 +1,7 @@
-# Carteira B3 — PostgreSQL 16 local (bancos dev e test)
-# Uso: copie .env.example para .env, ajuste a senha e rode: docker compose up -d
+# Carteira B3 — PostgreSQL 16 local (bancos dev e test) e, no perfil "app", o backend (api e worker)
+# Uso: copie .env.example para .env e ajuste a senha.
+#   docker compose up -d                         só o PostgreSQL (desenvolvimento e db:test)
+#   docker compose --profile app up -d --build   PostgreSQL + migrations + api + worker
 services:
   postgres:
     image: postgres:16
@@ -19,6 +21,72 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
+  # ---- Backend (agente backend, perfil "app"): mesma imagem para api e worker (D24) ----
+  # Os serviços leem o .env da raiz. DATABASE_HOST faz o entrypoint trocar só o host de DATABASE_URL e
+  # SHADOW_DATABASE_URL (localhost -> postgres, a rede do Compose); usuário, senha e banco ficam como no .env.
+  migrate:
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      target: migrate
+    image: carteira-b3-migrate
+    container_name: carteira-b3-migrate
+    env_file: .env
+    environment:
+      DATABASE_HOST: postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      target: runtime
+    image: carteira-b3-backend
+    container_name: carteira-b3-api
+    env_file: .env
+    environment:
+      DATABASE_HOST: postgres
+    ports:
+      - "${API_PORT:-3000}:${API_PORT:-3000}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:' + (process.env.API_PORT || 3000) + '/api/v1/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
+      interval: 10s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+  worker:
+    profiles: [app]
+    # Mesma imagem da api, construída uma vez pelo serviço api.
+    image: carteira-b3-backend
+    pull_policy: never
+    container_name: carteira-b3-worker
+    command: ["node", "dist/main.worker.js"]
+    env_file: .env
+    environment:
+      DATABASE_HOST: postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
 
 volumes:
   pgdata:
