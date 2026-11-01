@@ -25,6 +25,7 @@ O conteúdo de `.claude/agents/*.md` é o mesmo de `agentes/*.md`; ao alterar um
 
 ## Ambiente local
 - PostgreSQL 16 via Docker: `docker compose up -d` (serviço `postgres`, contêiner `carteira-b3-db`, porta 5432).
+- Backend no Docker: `docker compose --profile app up -d --build` (serviços `migrate`, `api` e `worker`; Swagger UI em `http://localhost:<API_PORT>/api/docs`).
 - Bancos: `carteira_dev` (desenvolvimento) e `carteira_test` (testes). Credenciais em `.env`, criado a partir de `.env.example`.
 - Acesso: `docker exec -it carteira-b3-db psql -U <POSTGRES_USER> -d carteira_dev`.
 - Recriar do zero (apaga os dados): `docker compose down -v && docker compose up -d`. Só com autorização do usuário.
