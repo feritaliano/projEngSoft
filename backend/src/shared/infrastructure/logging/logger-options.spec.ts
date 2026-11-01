@@ -7,11 +7,12 @@ import { buildLoggerParams } from './logger-options';
 
 function pinoOptionsFor(
   nodeEnv: 'development' | 'test' | 'production',
+  interactiveTerminal = false,
 ): LoggerOptions {
-  const { pinoHttp } = buildLoggerParams({
-    NODE_ENV: nodeEnv,
-    LOG_LEVEL: 'info',
-  });
+  const { pinoHttp } = buildLoggerParams(
+    { NODE_ENV: nodeEnv, LOG_LEVEL: 'info' },
+    interactiveTerminal,
+  );
   return pinoHttp as LoggerOptions;
 }
 
@@ -134,12 +135,16 @@ describe('logger options (D52)', () => {
     expect(line.user).toEqual({ id: 'u-1' });
   });
 
-  it('uses pino-pretty only in development', () => {
-    expect(pinoOptionsFor('development').transport).toEqual({
+  it('uses pino-pretty only in development on an interactive terminal', () => {
+    expect(pinoOptionsFor('development', true).transport).toEqual({
       target: 'pino-pretty',
       options: { singleLine: true },
     });
-    expect(pinoOptionsFor('production').transport).toBeUndefined();
-    expect(pinoOptionsFor('test').transport).toBeUndefined();
+    expect(pinoOptionsFor('production', true).transport).toBeUndefined();
+    expect(pinoOptionsFor('test', true).transport).toBeUndefined();
+  });
+
+  it('writes JSON in containers (development without a TTY), where pino-pretty is not installed', () => {
+    expect(pinoOptionsFor('development', false).transport).toBeUndefined();
   });
 });

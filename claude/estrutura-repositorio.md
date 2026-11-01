@@ -78,7 +78,8 @@ carteira-b3/
 │   └── postgres/
 │       └── init/
 │           └── 01-create-test-db.sql   [ok] cria carteira_test e carteira_shadow na primeira subida
-├── docker-compose.yml               [ok] serviço postgres; api e worker entram antes do R1 (adiados do K1)
+├── docker-compose.yml               [ok] serviço postgres; perfil `app` com migrate, api e worker (chore/K1-backend-docker)
+├── .dockerignore                    contexto de build das imagens: exclui .env, node_modules, builds e pastas que não entram na imagem
 │
 ├── backend/                         [K1] criado pelo Nest CLI; dono: agente backend
 │   ├── package.json
@@ -88,7 +89,9 @@ carteira-b3/
 │   ├── eslint.config.mjs            inclui a regra de fronteira entre camadas (eslint-plugin-boundaries)
 │   ├── jest.config.ts               unitários (em paralelo), com os limites de cobertura
 │   ├── README.md                    comandos do backend
-│   ├── Dockerfile                   [antes do R1] imagem única; api e worker mudam só o entrypoint
+│   ├── Dockerfile                   imagem única (estágios migrate, build, runtime); api e worker mudam só o comando
+│   ├── docker/
+│   │   └── db-host-entrypoint.sh    troca o host do DATABASE_URL para o serviço postgres dentro do Compose
 │   ├── openapi/
 │   │   └── openapi.json             [K1] gerado pelo @nestjs/swagger (npm run openapi:generate) e versionado; o CI confere; o frontend gera o cliente a partir dele (D52)
 │   ├── src/
@@ -147,7 +150,7 @@ carteira-b3/
 | Credenciais (`POSTGRES_*`, `DATABASE_URL`, `SHADOW_DATABASE_URL`, `DATABASE_URL_TEST`; a partir do K1, `NODE_ENV`, `CORS_ORIGIN`, `API_PORT` e `LOG_LEVEL`; a partir do K2, segredos do JWT) | `.env` na raiz | Não |
 | Modelo das variáveis | `.env.example` na raiz | Sim |
 | Banco local | `docker-compose.yml` na raiz + `docker/postgres/init/` | Sim |
-| Imagem da API e do worker | `backend/Dockerfile` (antes do R1) | Sim |
+| Imagem da API e do worker | `backend/Dockerfile` (contexto = raiz) + `.dockerignore` na raiz; serviços `migrate`, `api` e `worker` no perfil `app` do `docker-compose.yml` | Sim |
 | CI (GitHub Actions) | `.github/workflows/ci.yml`; banco do CI é um serviço PostgreSQL 16 descartável, com senha fixa só do CI | Sim |
 | Relatórios do Playwright e cobertura | `playwright-report/`, `test-results/`, `coverage/` | Não |
 | Schema e migrations | `prisma/` | Sim |

@@ -1,0 +1,22 @@
+# Contexto de build das imagens (raiz do repositório). Segredos nunca entram na imagem.
+.env
+.env.*
+!.env.example
+
+.git
+.github
+.claude
+**/node_modules
+**/dist
+**/coverage
+**/*.tsbuildinfo
+backend/src/generated
+
+data
+database
+docker
+frontend
+agentes
+claude
+*.md
+!backend/README.md

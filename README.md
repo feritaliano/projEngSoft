@@ -22,5 +22,20 @@ docker compose ps           # o serviço postgres deve ficar "healthy"
 
 Bancos criados: `carteira_dev` e `carteira_test` (PostgreSQL 16, porta 5432).
 
+## Backend no Docker (API e worker)
+Sem instalar Node: o perfil `app` do Compose constrói a imagem do backend, aplica as migrations e sobe a API e o worker, usando o mesmo `.env`.
+
+```bash
+docker compose --profile app up -d --build
+docker compose --profile app ps          # migrate "Exited (0)", api "healthy", worker "Up"
+```
+
+- API: `http://localhost:3000/api/v1/health` (porta do `API_PORT`).
+- Swagger UI, para testar cada endpoint: `http://localhost:3000/api/docs` (só com `NODE_ENV` diferente de `production`).
+- Logs: `docker compose --profile app logs -f api worker`. Parar: `docker compose --profile app down` (o volume do banco fica).
+- Sem `--profile app`, `docker compose up -d` continua subindo só o PostgreSQL.
+
+Para desenvolver o backend fora do Docker (modo watch, testes), veja `backend/README.md`.
+
 ## Stack
 PostgreSQL 16 + Prisma · NestJS (TypeScript) · Angular + Tailwind CSS · testes em `.spec.ts`.

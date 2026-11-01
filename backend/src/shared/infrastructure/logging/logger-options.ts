@@ -32,8 +32,13 @@ interface SerializableResponse {
   statusCode?: number;
 }
 
+/**
+ * pino-pretty (a dev dependency) only for a developer's interactive terminal in development; everywhere else,
+ * including containers (no TTY), logs are JSON lines.
+ */
 export function buildLoggerParams(
   env: Pick<WorkerEnv, 'NODE_ENV' | 'LOG_LEVEL'>,
+  interactiveTerminal: boolean = process.stdout.isTTY === true,
 ): Params {
   return {
     pinoHttp: {
@@ -49,7 +54,7 @@ export function buildLoggerParams(
         res: (res: SerializableResponse) => ({ statusCode: res.statusCode }),
       },
       transport:
-        env.NODE_ENV === 'development'
+        env.NODE_ENV === 'development' && interactiveTerminal
           ? { target: 'pino-pretty', options: { singleLine: true } }
           : undefined,
     },
