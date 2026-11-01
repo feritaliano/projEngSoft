@@ -233,6 +233,8 @@ flowchart LR
 - **Por que não microsserviços:** 1–2 pessoas, um banco, sem requisito de escala independente. O custo operacional não se paga.
 - **Por que dois processos:** o parse de arquivos da CVM e da B3 (dezenas a centenas de MB) bloqueia o event loop do Node e degradaria a API. Os dois processos compartilham os mesmos módulos e sobem como dois serviços no `docker-compose`.
 - **Sem fila externa (Redis/BullMQ):** a coordenação usa `ops.ingestion_runs` + advisory locks do PostgreSQL. Uma fila é reavaliada só se houver mais de um worker.
+- **HTTP com Fastify (D52):** a API usa o adapter `@nestjs/platform-fastify`, com `@fastify/helmet` e `@fastify/cookie`. O frontend fala com o backend **só** pela API REST `/api/v1`: não lê o banco, `data/raw` nem JSON local com dados de negócio. CORS aceita só a origem do frontend (`CORS_ORIGIN` no `.env`).
+- **Observabilidade do S1 (D52):** logs estruturados em JSON com `nestjs-pino` nos dois processos, sem dado pessoal nem token (cabeçalhos `authorization`, `cookie` e `set-cookie` fora do log; corpo da requisição não é registrado); `GET /api/v1/health` com `@nestjs/terminus` checa o PostgreSQL. Grafana e métricas ficam fora do S1.
 
 ### 7.2 Módulos (contextos) e camadas
 Camadas por módulo (`domain` / `application` / `infrastructure` / `presentation`) e regra de dependência verificada por lint, como no prompt do backend.
@@ -279,6 +281,9 @@ Regras:
 | Proveniência | Endpoint de dado externo retorna `source` e `referenceDate` (ex.: "B3 COTAHIST, 29/09/2026"; "CVM informe trimestral FII, 30/06/2026") |
 | Cache HTTP | Dado de mercado: `ETag` = id da última `ingestion_run` da fonte + `Cache-Control: max-age` até a próxima carga. Dado do usuário: `Cache-Control: no-store` |
 | Versão | Prefixo `/api/v1`; OpenAPI versionado no repositório gera o cliente do frontend |
+| Canal único (D52) | O frontend acessa dados só pela API REST `/api/v1`; CORS restrito à origem do frontend (`CORS_ORIGIN`), com credenciais para o cookie do refresh |
+| OpenAPI (D52) | Gerado pelo `@nestjs/swagger` e exportado por `npm run openapi:generate` para `backend/openapi/openapi.json` (versionado); Swagger UI em `/api/docs` só fora de produção; o CI falha se o arquivo salvo divergir do gerado |
+| Saúde (D52) | `GET /api/v1/health` (`@nestjs/terminus`): 200 com o PostgreSQL respondendo; 503 em problem+json quando não responde. Rota pública, `Cache-Control: no-store` |
 | Prévia (D42) | Endpoint `.../preview` nunca grava; mesmo corpo e mesmas regras do comando; `violation` em vez de 422 |
 
 ### 7.5 Frontend
@@ -306,7 +311,7 @@ Regras:
 - Telas, componentes e estados do S1 aprovados no U0 (D41): lista em `agentes/agente-ux-ui.md`, links dos frames em `claude/handoff-ux.md`. Componente usado em mais de uma tela é implementado uma vez em `shared/`.
 
 ### 7.6 Infraestrutura (docker-compose)
-Serviços: `postgres` (bancos `carteira_dev`, `carteira_test` e `carteira_shadow`), `api`, `worker`, volume `data/raw`. Configuração é validada com zod no boot dos dois processos. Onde cada teste roda e o CI: seção 9 (D40).
+Serviços: `postgres` (bancos `carteira_dev`, `carteira_test` e `carteira_shadow`), `api`, `worker`, volume `data/raw`. Configuração é validada com zod no boot dos dois processos, a partir do `.env` único da raiz; com variável ausente ou inválida o processo não sobe. Onde cada teste roda e o CI: seção 9 (D40).
 
 ## 8. Invariantes (valem para todos os agentes)
 1. Operações (e eventos corporativos) são a fonte da posição; a posição nunca é gravada (D4).
@@ -331,7 +336,7 @@ Todos os testes são escritos em TypeScript, em arquivos `.spec.ts` (D33). Cada 
 
 **Migrations no Testcontainers:** o global setup do Jest sobe o contêiner, define `DATABASE_URL` com a URL dele e roda `npx prisma migrate deploy` **a partir da raiz do repositório** (onde estão o Prisma CLI e o `prisma.config.ts`); o Prisma Client gerado em `backend/src/generated/prisma` conecta na mesma URL. Teste nunca usa `migrate dev`, `db push` nem o banco `carteira_dev`.
 
-**CI (`.github/workflows/ci.yml`):** job `database` desde 26/10/2026 (migrations do zero, `db:drift`, `db:test`, `ddl.sql` igual ao regerado); `backend` no K1 (lint, unitário, integração e E2E, cobertura); `frontend` no W1 (lint, specs com cobertura, build); `e2e` no R1 (Playwright contra a API e um PostgreSQL de serviço). Cada job vira verificação obrigatória da proteção da `main` assim que existir.
+**CI (`.github/workflows/ci.yml`):** job `database` desde 26/10/2026 (migrations do zero, `db:drift`, `db:test`, `ddl.sql` igual ao regerado); `backend` no K1 (lint com fronteira de camadas, unitário com cobertura, integração e E2E, build, `openapi.json` igual ao regerado, D52); `frontend` no W1 (lint, specs com cobertura, build); `e2e` no R1 (Playwright contra a API e um PostgreSQL de serviço). Cada job vira verificação obrigatória da proteção da `main` assim que existir.
 
 Testes ligados aos dados:
 

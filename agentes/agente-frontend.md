@@ -1,6 +1,6 @@
 # Agente Frontend — Angular + Tailwind
 
-> Reescrito em 05/10/2026; ferramentas e testes E2E atualizados em 26/10/2026 (D38, D40); telas do S1 aprovadas no U0 em 26/10/2026 (D41); prévia da operação em 30/10/2026 (D42); guias, filtro por tipo, agrupamento por classe e avatar em 30/10/2026 (D45); telas do produto completo numa página só em 30/10/2026 (D46); Lista e Detalhe com versão única em 31/10/2026 (D48); ações de linha e de cartão como ícones com tooltip em 31/10/2026 (D51). Fontes que este prompt resume e que prevalecem em caso de conflito, nesta ordem: `claude/contexto-projeto.md` → `claude/arquitetura.md` → `database/docs/modelo-er.md`. Leia as três antes de qualquer tarefa. Estrutura do repositório e onde cada arquivo fica: `claude/estrutura-repositorio.md`. Tarefas, datas e critérios de pronto: `claude/plano-de-acao.md`. Git, PR, definição de pronto e ferramentas: `claude/convencoes-equipe.md`. Handoff de cada tela: `claude/handoff-ux.md` (a partir do U5).
+> Reescrito em 05/10/2026; ferramentas e testes E2E atualizados em 26/10/2026 (D38, D40); telas do S1 aprovadas no U0 em 26/10/2026 (D41); prévia da operação em 30/10/2026 (D42); guias, filtro por tipo, agrupamento por classe e avatar em 30/10/2026 (D45); telas do produto completo numa página só em 30/10/2026 (D46); Lista e Detalhe com versão única em 31/10/2026 (D48); ações de linha e de cartão como ícones com tooltip em 31/10/2026 (D51); canal único pela API REST e CORS em 01/11/2026 (D52). Fontes que este prompt resume e que prevalecem em caso de conflito, nesta ordem: `claude/contexto-projeto.md` → `claude/arquitetura.md` → `database/docs/modelo-er.md`. Leia as três antes de qualquer tarefa. Estrutura do repositório e onde cada arquivo fica: `claude/estrutura-repositorio.md`. Tarefas, datas e critérios de pronto: `claude/plano-de-acao.md`. Git, PR, definição de pronto e ferramentas: `claude/convencoes-equipe.md`. Handoff de cada tela: `claude/handoff-ux.md` (a partir do U5).
 
 ## Contexto do projeto
 Um único sistema atende duas disciplinas da UNIFESP/ICT:
@@ -13,7 +13,9 @@ Um único sistema atende duas disciplinas da UNIFESP/ICT:
 
 ## Stack
 - Angular (standalone, TypeScript strict) + Tailwind CSS.
-- Cliente da API gerado do OpenAPI versionado pelo backend (`src/app/api/`, não editar à mão).
+- **Canal único (D52):** toda comunicação com o backend é pela API REST `/api/v1`. O frontend não acessa o banco, os arquivos de `data/raw` nem JSON local com dados de negócio (mock só dentro de spec, com `HttpTestingController`).
+- Cliente da API gerado de `backend/openapi/openapi.json`, versionado pelo backend desde o K1 (`src/app/api/`, não editar à mão); o backend não precisa estar rodando para gerar.
+- CORS: o backend aceita só a origem do frontend (`CORS_ORIGIN` no `.env` da raiz, ex.: `http://localhost:4200` na máquina); requisições com credenciais (`withCredentials`) por causa do cookie httpOnly do refresh. Swagger UI do backend em `/api/docs` fora de produção, para consulta.
 - Testes em TypeScript, arquivos `.spec.ts` (D33), com **Vitest**, o executor padrão do Angular CLI atual (D40). Karma não é usado.
 - Testes E2E com **`@playwright/test`**, em `frontend/e2e/*.spec.ts`, rodando no CI (D38).
 

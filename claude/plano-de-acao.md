@@ -22,6 +22,8 @@
 
 **Ajuste de 31/10/2026 (D51):** ações de linha e de cartão viram ícones com tooltip (`IconButton` + `Tooltip`) e botões de criar ganham o ícone +; o W3 (Lista) e o W4 (Histórico) usam o `IconButton` compartilhado, sem mudança de datas. Protótipo revisto com todo botão do fluxo ligado.
 
+**Ajuste de 01/11/2026 (D52, K1):** o `openapi.json` passa a ser versionado e conferido no CI desde o K1 (antes, K4); o K1 inclui logs estruturados e `GET /api/v1/health`. O `backend/Dockerfile` e os serviços `api` e `worker` do `docker-compose.yml`, que a estrutura previa para o K1, ficaram fora do escopo pedido e passam para antes do R1 (pendência no contexto). Datas inalteradas.
+
 **Frentes ativas:** todas.
 - 25–27/10: fundação (usuário).
 - 28/10 a meados de novembro: BD (P1–P2), UX/UI (U1–U5) e backend (K0–K3).
@@ -90,7 +92,7 @@ O catálogo de referência do S1 (setores, emissores, ativos, corretoras) vem do
 | ID | Tarefa | Datas | Depende de | Pronto quando |
 |---|---|---|---|---|
 | K0 | `PositionCalculator` com TDD: domínio puro, sem banco (RN05–RN10, eventos corporativos), em segundo plano | 28/10–06/11 | F3 | 100% de ramos nos `.spec.ts`; casos de borda passando |
-| K1 | Esqueleto NestJS (api e worker): config validada, filtro RFC 7807, Jest (unitário em paralelo; integração e E2E com Testcontainers em série, migrations pelo Prisma da raiz), job `backend` no `ci.yml` (D40) | 28/10–03/11 | F3, F4 | Jobs `database` e `backend` verdes em todo PR e exigidos na proteção da `main` |
+| K1 | **Implementado (01/11), D52; jobs `database` e `backend` verdes no PR #8; falta o merge e exigir o check `backend` na proteção da `main`.** Esqueleto NestJS com Fastify (api e worker): config validada com zod no boot dos dois processos, prefixo `/api/v1`, filtro RFC 7807, helmet, CORS restrito, logs com `nestjs-pino`, `GET /api/v1/health` (terminus), `openapi.json` exportado e conferido no CI, lint de camadas, Jest (unitário em paralelo; integração e E2E com Testcontainers em série, migrations pelo Prisma da raiz), job `backend` no `ci.yml` (D40) | 28/10–03/11 | F3, F4 | Jobs `database` e `backend` verdes em todo PR e exigidos na proteção da `main` |
 | K2 | Módulos auth e users (RN01), guard JWT, rate limit | 04/11–08/11 | D1, D2, K1 | E2E de cadastro e login passando |
 | K3 | reference-data (ativos, emissores, corretoras) e portfolios (RN02); `GET /portfolios` com `operationCount` (D41) | 09/11–13/11 | K2 | Carteira de outro usuário retorna 404; `operationCount` coberto por teste |
 | K4 | operations com recálculo transacional (RN04–RN12); posições abertas e encerradas (D41); prévia da operação sem gravar (D42); filtro `assetType` no histórico (D45); OpenAPI versionado | 16/11–25/11 | K3, K0 | E2E compra → venda → posição; venda total aparece como posição encerrada com o lucro realizado; violação da RN10 identifica a operação |
