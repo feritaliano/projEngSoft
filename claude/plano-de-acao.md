@@ -20,6 +20,8 @@
 
 **Ajuste de 31/10/2026 (U3–U5):** U3 aprovado, U4 (`claude/microcopy.md`) e U5 (especificação de handoff e revisão WCAG/Nielsen em `claude/handoff-ux.md`) concluídos; a trilha de UX do S1 está fechada antes das datas. O W2 já não depende do gatilho G-U3 e o W4 já tem o U5. O R1 ganha a verificação de acessibilidade. Datas inalteradas.
 
+**Ajuste de 31/10/2026 (D51):** ações de linha e de cartão viram ícones com tooltip (`IconButton` + `Tooltip`) e botões de criar ganham o ícone +; o W3 (Lista) e o W4 (Histórico) usam o `IconButton` compartilhado, sem mudança de datas. Protótipo revisto com todo botão do fluxo ligado.
+
 **Frentes ativas:** todas.
 - 25–27/10: fundação (usuário).
 - 28/10 a meados de novembro: BD (P1–P2), UX/UI (U1–U5) e backend (K0–K3).

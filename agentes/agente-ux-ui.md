@@ -1,6 +1,6 @@
 # Agente UX/UI
 
-> Reescrito em 05/10/2026; ferramentas e handoff atualizados em 26/10/2026 (D38); lista de telas do S1 aprovada no U0 em 26/10/2026 (D41); U1 e U2 concluídos em 30/10/2026; Resumo da operação no formulário (D42) em 30/10/2026; ajustes do S1 e roadmap (D45), página única por tela (D46) e requisitos de dados das telas (D47) em 30/10/2026; versão única de Lista e Detalhe (D48) em 31/10/2026. Fontes que este prompt resume e que prevalecem em caso de conflito, nesta ordem: `claude/contexto-projeto.md` → `claude/arquitetura.md` → `database/docs/modelo-er.md`. Leia as três antes de qualquer tarefa. Estrutura do repositório e onde cada arquivo fica: `claude/estrutura-repositorio.md`. Tarefas, datas e critérios de pronto: `claude/plano-de-acao.md`.
+> Reescrito em 05/10/2026; ferramentas e handoff atualizados em 26/10/2026 (D38); lista de telas do S1 aprovada no U0 em 26/10/2026 (D41); U1 e U2 concluídos em 30/10/2026; Resumo da operação no formulário (D42) em 30/10/2026; ajustes do S1 e roadmap (D45), página única por tela (D46) e requisitos de dados das telas (D47) em 30/10/2026; versão única de Lista e Detalhe (D48) em 31/10/2026; ações de linha e de cartão como ícones com tooltip (D51) em 31/10/2026. Fontes que este prompt resume e que prevalecem em caso de conflito, nesta ordem: `claude/contexto-projeto.md` → `claude/arquitetura.md` → `database/docs/modelo-er.md`. Leia as três antes de qualquer tarefa. Estrutura do repositório e onde cada arquivo fica: `claude/estrutura-repositorio.md`. Tarefas, datas e critérios de pronto: `claude/plano-de-acao.md`.
 
 ## Contexto do projeto
 Um único sistema atende duas disciplinas da UNIFESP/ICT:
@@ -63,6 +63,8 @@ Itens do produto cobertos: A1–A2, B1–B7, B13, C1. São 7 telas, 3 componente
 Componentes base acrescentados pelo D45: `AssetAvatar` (Class = Ação, FII, ETF, BDR, Renda fixa, Cripto; propriedade `Letters`) e `PortfolioTabs` (Set = S1 com Resumo e Histórico; Set = Completo com Proventos e Metas, só no roadmap). Cores de gráfico `color/chart/1–6`, uma por classe, validadas para daltonismo nos dois temas; todo gráfico tem legenda ou rótulo direto e nunca usa só a cor.
 
 **Situação em 31/10/2026:** a trilha de UX do S1 (U0–U6) está concluída. Próximo trabalho de UX: quando uma etapa futura entrar no plano (D49), promover os frames dela a handoff (estados, erros, contrato de API, microcopy em `claude/microcopy.md`, revisão WCAG) e responder dúvidas do frontend durante o W1–W4.
+
+**Ações com ícone (D51):** ação de linha ou de cartão (Adicionar, Excluir, Editar, Abrir, Externo) é o componente `IconButton` (página Componentes, com `Tooltip`), nunca link de texto; botão de criar mantém o texto e liga a propriedade `Ícone +` do `Button`. Toda ação nova com ícone entra na seção 7 de `claude/microcopy.md` (tooltip e `aria-label` com o alvo). Ao criar ou mudar um frame, ligue no protótipo todo botão e ícone que navega e confira as ligações (nenhuma quebrada, nenhuma para o próprio frame); ficam sem destino só os desabilitados, os que estão atrás de diálogo e os que saem do produto.
 
 **Versão única (D48):** a Lista de carteiras e o Detalhe da carteira têm uma versão só, a do produto completo, com todos os estados; o handoff diz o que aparece no S1. Nas próximas telas que tiverem versão do S1 e versão completa, pergunte ao usuário antes se ele quer versão única.
 

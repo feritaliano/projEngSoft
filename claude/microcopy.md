@@ -1,6 +1,6 @@
 # Microcopy — "como foi calculado" (U4)
 
-> Criado em 31/10/2026 pelo agente de UX/UI (tarefa U4). Fonte única dos textos do `DerivedValueExplainer` (C1) e dos ⓘ do S1. O frontend gera a partir desta tabela um dicionário indexado por `formulaCode` (`frontend/src/app/shared/derived-value/microcopy.pt-BR.ts`) e não escreve esses textos nos templates (D26, arquitetura 7.5). Mudança de texto = mudança neste arquivo.
+> Criado em 31/10/2026 pelo agente de UX/UI (tarefa U4); seção 7 (ações com ícone, D51) no mesmo dia. Fonte única dos textos do `DerivedValueExplainer` (C1) e dos ⓘ do S1. O frontend gera a partir desta tabela um dicionário indexado por `formulaCode` (`frontend/src/app/shared/derived-value/microcopy.pt-BR.ts`) e não escreve esses textos nos templates (D26, arquitetura 7.5). Mudança de texto = mudança neste arquivo.
 
 ## 1. Como o componente monta o painel
 O backend devolve todo número derivado como `DerivedValue` = `{ value, formulaCode, inputs: [{ name, value, source, referenceDate }], asOf }` (arquitetura, seção 7). O painel é sempre o mesmo, de cima para baixo:
@@ -62,3 +62,19 @@ preço médio (PM) · custos (corretagem e taxas) · lucro realizado · posiçã
 
 ## 6. O que não está aqui
 Mensagens das regras RN07 e RN10 ficam no componente `BusinessRuleError` (C2, já com texto no Figma). Textos das próximas etapas (rentabilidade, valor de mercado, proventos, metas, indicadores) entram nesta tabela quando a etapa for para o handoff.
+
+## 7. Ações com ícone: tooltip e nome acessível (D51)
+Ações de linha e de cartão são só ícone (`IconButton`). O tooltip mostra o texto curto; o `aria-label` é o texto curto + o alvo, para quem usa leitor de tela saber em qual linha está agindo. `{ativo}` = ticker; sem ticker (renda fixa, D50), o nome de exibição do título (ex.: "Tesouro IPCA+ 2035"). Datas em dd/mm/aaaa.
+
+| Onde | Ícone | Tooltip | `aria-label` | Etapa |
+|---|---|---|---|---|
+| Lista de carteiras, cartão | Lixeira | Excluir carteira | Excluir carteira {nome} | S1 |
+| Lista de carteiras, cartão | Seta para a direita | Abrir carteira | — (decorativo: o link é o nome da carteira, que cobre o cartão) | S1 |
+| Catálogo, linha (desktop) | + | Lançar operação | Lançar operação de {ativo} | S1 |
+| Histórico, linha | Lápis | Editar operação | Editar operação de {data}, {ativo} | S1 |
+| Histórico, linha | Lixeira | Excluir operação | Excluir operação de {data}, {ativo} | S1 |
+| Detalhe, Resumo (alocação) | Lápis | Editar carteira ideal | Editar carteira ideal | S10 |
+| Detalhe, Metas | Lápis | Editar meta | Editar meta de patrimônio · Editar meta de renda com proventos | S10 |
+| Página do ativo, Comunicados | Seta para fora | Abrir no site de origem | Abrir documento no site de origem: {título do documento} (abre em nova aba) | S8 |
+
+Botões de criar no cabeçalho ou no estado vazio mantêm o texto e ganham o ícone + à esquerda (decorativo, `aria-hidden`): Nova carteira, Lançar operação, Lançar primeira operação, Nova meta. No Catálogo mobile, "Lançar operação" de cada cartão continua com texto.
