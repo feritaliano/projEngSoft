@@ -7,7 +7,7 @@ description: Agente backend do projeto Carteira B3 (NestJS, TypeScript). Use par
 
 # Agente Backend — NestJS
 
-> Reescrito em 05/10/2026; ferramentas atualizadas em 26/10/2026 (D38); contrato ajustado às telas aprovadas no U0 em 26/10/2026 (D41) e à prévia da operação em 30/10/2026 (D42); filtro por tipo e etapas S10/S11 em 30/10/2026 (D43–D45); telas do produto completo e requisitos de dados (D46, D47) em 30/10/2026. Fontes que este prompt resume e que prevalecem em caso de conflito, nesta ordem: `claude/contexto-projeto.md` → `claude/arquitetura.md` → `database/docs/modelo-er.md`. Leia as três antes de qualquer tarefa. Estrutura do repositório e onde cada arquivo fica: `claude/estrutura-repositorio.md`. Tarefas, datas e critérios de pronto: `claude/plano-de-acao.md`. Git, PR, definição de pronto e ferramentas: `claude/convencoes-equipe.md`.
+> Reescrito em 05/10/2026; ferramentas atualizadas em 26/10/2026 (D38); contrato ajustado às telas aprovadas no U0 em 26/10/2026 (D41) e à prévia da operação em 30/10/2026 (D42); filtro por tipo e etapas S10/S11 em 30/10/2026 (D43–D45); telas do produto completo e requisitos de dados (D46, D47) em 30/10/2026; adapter Fastify, OpenAPI exportado desde o K1 e observabilidade (D52) em 01/11/2026. Fontes que este prompt resume e que prevalecem em caso de conflito, nesta ordem: `claude/contexto-projeto.md` → `claude/arquitetura.md` → `database/docs/modelo-er.md`. Leia as três antes de qualquer tarefa. Estrutura do repositório e onde cada arquivo fica: `claude/estrutura-repositorio.md`. Tarefas, datas e critérios de pronto: `claude/plano-de-acao.md`. Git, PR, definição de pronto e ferramentas: `claude/convencoes-equipe.md`.
 
 ## Contexto do projeto
 Um único sistema atende duas disciplinas da UNIFESP/ICT:
@@ -19,9 +19,10 @@ Um único sistema atende duas disciplinas da UNIFESP/ICT:
 **ODS:** 10 (meta 10.2) e 4 (meta 4.4), confirmados com a professora em 05/10/2026. A transparência de cada número (D12, D26) sustenta o 4.4. O sistema **não recomenda ativos** (exige analista credenciado na CVM).
 
 ## Stack
-- NestJS (TypeScript strict), monólito modular com **dois processos** a partir do mesmo código: `main.api.ts` (HTTP) e `main.worker.ts` (agendador, ingestão, refresh do ouro) (D24).
+- NestJS (TypeScript strict) com o adapter **Fastify** (`@nestjs/platform-fastify`, D52), monólito modular com **dois processos** a partir do mesmo código: `main.api.ts` (HTTP) e `main.worker.ts` (agendador, ingestão, refresh do ouro) (D24). Cookies com `@fastify/cookie`; cabeçalhos de segurança com `@fastify/helmet`.
 - PostgreSQL 16+ + Prisma, um `schema.prisma` com três schemas: `public` (domínio = ER de BD), `ops` (técnico: `ingestion_runs`, `staging_*`, `import_rows`, `user_sessions`) e `analytics` (derivado recalculável) (D22).
-- Contrato com o frontend: OpenAPI gerado por `@nestjs/swagger`, versionado no repositório; o frontend gera o cliente a partir dele.
+- Contrato com o frontend (D52): a API REST `/api/v1` é o **único** canal do frontend (nada de banco, `data/raw` ou JSON local com dados de negócio no front). OpenAPI gerado por `@nestjs/swagger` e exportado por `npm run openapi:generate` para `backend/openapi/openapi.json`, versionado; o frontend gera o cliente a partir dele. Swagger UI em `/api/docs` só fora de produção. O job `backend` do CI falha se o arquivo salvo divergir do gerado: toda mudança de contrato regenera e commita o arquivo no mesmo PR.
+- Observabilidade do S1 (D52): logs estruturados com `nestjs-pino` nos dois processos, sem dado pessoal nem token (cabeçalhos `authorization`, `cookie` e `set-cookie` fora do log; corpo da requisição nunca registrado; nunca logar e-mail, senha, hash ou token); `GET /api/v1/health` com `@nestjs/terminus` checando o PostgreSQL. Grafana fica fora do S1.
 - Testes: Jest, arquivos `.spec.ts` (D33); Testcontainers para integração; Supertest para E2E. Onde cada teste roda e o CI: `claude/arquitetura.md`, seção 9 (D40).
 
 ## Papel
@@ -56,7 +57,7 @@ Nenhum módulo cria repositório, endpoint ou escrita para tabela de etapa não 
 | ID | Tarefa | Datas | Depende de | Pronto quando |
 |---|---|---|---|---|
 | K0 | `PositionCalculator` com TDD: domínio puro, sem banco (RN05–RN10 e eventos corporativos na linha do tempo), em segundo plano | 28/10–06/11 | F3 | 100% de ramos nos `.spec.ts`; todos os casos de borda abaixo passando |
-| K1 | Esqueleto NestJS (api e worker): config validada com zod, filtro RFC 7807, lint de camadas, Jest (unitário em paralelo; integração e E2E com Testcontainers em série), job `backend` no `.github/workflows/ci.yml` ao lado do job `database` já existente (D40) | 28/10–03/11 | F3, F4 | Jobs `database` e `backend` verdes em todo PR |
+| K1 | Esqueleto NestJS com Fastify (api e worker): config validada com zod no boot dos dois processos, prefixo `/api/v1`, filtro RFC 7807, helmet, CORS restrito, logs com `nestjs-pino`, `GET /api/v1/health` (terminus), `openapi.json` exportado (D52), lint de camadas, Jest (unitário em paralelo; integração e E2E com Testcontainers em série), job `backend` no `.github/workflows/ci.yml` ao lado do job `database` já existente (D40) | 28/10–03/11 | F3, F4 | Jobs `database` e `backend` verdes em todo PR |
 | K2 | `auth` e `users` (RN01): JWT de acesso curto + refresh rotativo em cookie httpOnly (`ops.user_sessions`), guard global, rate limit | 04/11–08/11 | D1, D2, K1 | E2E de cadastro e login passando |
 | K3 | `reference-data` (ativos, emissores, setores, corretoras; leitura) e `portfolios` (RN02); `GET /portfolios` com `operationCount` (D41) | 09/11–13/11 | K2 | Carteira de outro usuário retorna 404; `operationCount` coberto por teste |
 | K4 | `operations` com recálculo transacional (RN04–RN12); posições abertas e encerradas e totais com `DerivedValue` (D41); prévia da operação `POST /portfolios/:id/operations/preview` (D42); filtro `assetType` no histórico (D45); OpenAPI versionado | 16/11–25/11 | K3, K0 | E2E compra → venda → posição; venda total aparece como posição encerrada com o lucro realizado; violação da RN10 identifica a operação |
@@ -120,8 +121,10 @@ src/modules/<modulo>/
 - Decimais como string; datas ISO 8601 (`YYYY-MM-DD`); paginação `?page=&pageSize=` com `items` e `total`.
 - **`DerivedValue`** (D26) em todo número derivado: `{ value, formulaCode, inputs: [{ name, value, source, referenceDate }], asOf }`. Códigos de fórmula de domínio no S1: `AVG_PRICE_BUY`, `REALIZED_PROFIT`, `TOTAL_COST`, `OPERATION_GROSS` (quantidade × preço), `OPERATION_TOTAL_BUY` (+ custos), `OPERATION_NET_SELL` (− custos) (D42); para os totais, `POSITION_REALIZED_PROFIT`, `PORTFOLIO_TOTAL_COST`, `PORTFOLIO_REALIZED_PROFIT` (U4). As chaves `name` de `inputs[]` de cada código estão em `claude/microcopy.md`, seção 3, e são contrato com o frontend (os textos ficam na tabela de microcopy do UX, indexada por `formulaCode`).
 - Dado do usuário com `Cache-Control: no-store`.
+- `GET /api/v1/health` (D52): 200 com o PostgreSQL respondendo, 503 em problem+json quando não responde; rota pública.
 
 ### Segurança e configuração
+- CORS só para a origem do frontend (`CORS_ORIGIN` no `.env`, com credenciais para o cookie do refresh); `@fastify/helmet` em todas as respostas (D52).
 - Guard JWT global; rotas públicas marcadas explicitamente; refresh token só como hash em `ops.user_sessions`.
 - Checagem de propriedade da carteira no caso de uso, não só no controller.
 - `@nestjs/config` com schema zod validado no boot dos dois processos; o app não sobe com env inválido.
@@ -142,7 +145,7 @@ src/modules/<modulo>/
 - Integração: repositórios e query services contra PostgreSQL real de teste via Testcontainers, nunca contra o banco de desenvolvimento (`carteira_dev`) nem o `carteira_test` (que é do E2E do frontend).
 - Testcontainers (D40): o global setup (`backend/test/global-setup.ts`) sobe um PostgreSQL 16, define `DATABASE_URL` com a URL dele e roda `npx prisma migrate deploy` **a partir da raiz do repositório** (onde estão o Prisma CLI e o `prisma.config.ts`; o `schema.prisma` é do agente de banco). Nunca `migrate dev` nem `db push` em teste. Integração e E2E rodam em série (`--runInBand`, config `backend/test/jest-e2e.config.ts`); antes de cada teste, `TRUNCATE ... CASCADE` das tabelas de `public` e `ops`, e cada teste cria os próprios dados com os builders de `backend/test/factories/`.
 - Unitários rodam em paralelo, sem banco e sem Docker.
-- CI: job `backend` no `.github/workflows/ci.yml` (lint, unitário, integração e E2E, cobertura); o job `database` já existe e não é alterado por você.
+- CI: job `backend` no `.github/workflows/ci.yml` (lint com fronteira de camadas, unitário com cobertura, integração e E2E, build, `openapi.json` igual ao regerado, D52); o job `database` já existe e não é alterado por você.
 - E2E (Supertest): cadastro → login → carteira → compra → venda → posição; venda total → posição `CLOSED` com o lucro realizado, e soma das linhas igual ao total do `summary` (D41); `operationCount` correto após lançar e excluir operações; prévia (D42) não altera nada no banco (contagem de operações igual antes e depois), devolve os mesmos números que o lançamento real gera e a mesma `violation` que o 422; acesso à carteira de outro usuário → 404; RN10 → 422 com a operação infratora.
 - Nome de cada teste cita a RN ou decisão coberta quando houver (ex.: `rejects sell above position (RN07)`).
 - Casos de borda obrigatórios do cálculo: venda total; venda maior que a posição; recompra após zerar; operação retroativa que invalida venda futura; exclusão de compra que deixa a posição negativa; mesmo ativo em corretoras diferentes na mesma carteira; custos zero; preços com muitas casas decimais; desdobramento, grupamento e bonificação antes e depois de vendas, preservando o custo total.

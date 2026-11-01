@@ -4,7 +4,7 @@ Plataforma gratuita e sem fins lucrativos de análise e gestão de investimentos
 
 ## Leia antes de qualquer tarefa
 Ordem de precedência em caso de conflito:
-1. `claude/contexto-projeto.md` — documento-mestre: escopo, decisões D1–D51, esquema relacional, pendências.
+1. `claude/contexto-projeto.md` — documento-mestre: escopo, decisões D1–D52, esquema relacional, pendências.
 2. `claude/arquitetura.md` — arquitetura de dados e da aplicação.
 3. `database/docs/modelo-er.md` — modelo ER (34 entidades, 39 relacionamentos + 1 especialização, 36 tabelas), revisto na tarefa D3 (D50).
 4. Prompts dos agentes em `agentes/` (espelhados em `.claude/agents/`).

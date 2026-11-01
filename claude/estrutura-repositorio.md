@@ -78,18 +78,19 @@ carteira-b3/
 │   └── postgres/
 │       └── init/
 │           └── 01-create-test-db.sql   [ok] cria carteira_test e carteira_shadow na primeira subida
-├── docker-compose.yml               [ok] serviço postgres; o K1 acrescenta api e worker
+├── docker-compose.yml               [ok] serviço postgres; api e worker entram antes do R1 (adiados do K1)
 │
 ├── backend/                         [K1] criado pelo Nest CLI; dono: agente backend
 │   ├── package.json
 │   ├── nest-cli.json
 │   ├── tsconfig.json
 │   ├── tsconfig.build.json
-│   ├── eslint.config.mjs            inclui a regra de fronteira entre camadas
+│   ├── eslint.config.mjs            inclui a regra de fronteira entre camadas (eslint-plugin-boundaries)
 │   ├── jest.config.ts               unitários (em paralelo), com os limites de cobertura
-│   ├── Dockerfile                   imagem única; api e worker mudam só o entrypoint
+│   ├── README.md                    comandos do backend
+│   ├── Dockerfile                   [antes do R1] imagem única; api e worker mudam só o entrypoint
 │   ├── openapi/
-│   │   └── openapi.json             [K4] gerado pelo @nestjs/swagger e versionado; o frontend gera o cliente a partir dele
+│   │   └── openapi.json             [K1] gerado pelo @nestjs/swagger (npm run openapi:generate) e versionado; o CI confere; o frontend gera o cliente a partir dele (D52)
 │   ├── src/
 │   │   ├── main.api.ts              processo HTTP (D24)
 │   │   ├── main.worker.ts           agendador, ingestão, refresh do ouro (D24)
@@ -104,7 +105,10 @@ carteira-b3/
 │   │           └── presentation/
 │   └── test/
 │       ├── jest-e2e.config.ts       integração e E2E, em série (--runInBand)
+│       ├── jest-resolver.cjs        resolve os imports .js do Prisma Client gerado para os .ts (unitário e E2E)
 │       ├── global-setup.ts          sobe o PostgreSQL do Testcontainers e roda `prisma migrate deploy` a partir da raiz (D40)
+│       ├── global-teardown.ts       para o contêiner
+│       ├── utils/                   app de teste com o mesmo pipeline HTTP e TRUNCATE de public e ops
 │       ├── factories/               builders de dados de teste
 │       └── *.e2e-spec.ts            E2E e integração (Testcontainers)
 │
@@ -140,10 +144,10 @@ carteira-b3/
 ## 3. Onde fica cada coisa
 | Item | Local | Git |
 |---|---|---|
-| Credenciais (`POSTGRES_*`, `DATABASE_URL`, `SHADOW_DATABASE_URL`, `DATABASE_URL_TEST`; a partir do K1, segredos do JWT) | `.env` na raiz | Não |
+| Credenciais (`POSTGRES_*`, `DATABASE_URL`, `SHADOW_DATABASE_URL`, `DATABASE_URL_TEST`; a partir do K1, `NODE_ENV`, `CORS_ORIGIN`, `API_PORT` e `LOG_LEVEL`; a partir do K2, segredos do JWT) | `.env` na raiz | Não |
 | Modelo das variáveis | `.env.example` na raiz | Sim |
 | Banco local | `docker-compose.yml` na raiz + `docker/postgres/init/` | Sim |
-| Imagem da API e do worker | `backend/Dockerfile` (K1) | Sim |
+| Imagem da API e do worker | `backend/Dockerfile` (antes do R1) | Sim |
 | CI (GitHub Actions) | `.github/workflows/ci.yml`; banco do CI é um serviço PostgreSQL 16 descartável, com senha fixa só do CI | Sim |
 | Relatórios do Playwright e cobertura | `playwright-report/`, `test-results/`, `coverage/` | Não |
 | Schema e migrations | `prisma/` | Sim |
