@@ -25,9 +25,11 @@ const config: Config = {
   ],
   coverageDirectory: '<rootDir>/coverage',
   coverageReporters: ['text-summary', 'lcov'],
-  // 90% of lines in the project (backend prompt). The 100%-of-branches threshold for domain/ enters with K0,
-  // when the first domain files exist (Jest fails a threshold whose glob matches no file).
-  coverageThreshold: { global: { lines: 90 } },
+  // Backend prompt: 90% of lines in the project and 100% of branches in every domain file (pure business rules).
+  coverageThreshold: {
+    global: { lines: 90 },
+    './src/**/domain/**/*.ts': { branches: 100 },
+  },
 };
 
 export default config;
