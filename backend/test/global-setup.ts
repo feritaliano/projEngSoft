@@ -42,6 +42,7 @@ export default async function globalSetup(): Promise<void> {
     NODE_ENV: 'test',
     DATABASE_URL: databaseUrl,
     CORS_ORIGIN: 'http://localhost:4200',
+    JWT_ACCESS_SECRET: 'e2e-only-secret-with-at-least-32-characters',
     // Silent by default; E2E_LOG_LEVEL=debug shows the app logs when a test fails.
     LOG_LEVEL: process.env.E2E_LOG_LEVEL ?? 'silent',
   });

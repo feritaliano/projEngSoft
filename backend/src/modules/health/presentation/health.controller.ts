@@ -18,6 +18,7 @@ import {
   HealthCheckService,
   HealthIndicatorService,
 } from '@nestjs/terminus';
+import { Public } from '../../../shared/presentation/auth-context';
 import { ProblemException } from '../../../shared/presentation/problem-details';
 import { PROBLEM_JSON_MEDIA_TYPE } from '../../../shared/presentation/problem-details.dto';
 import { DatabasePing } from '../application/database-ping';
@@ -43,6 +44,7 @@ function checksOf(response: unknown): { checks?: Record<string, string> } {
 }
 
 @ApiTags('health')
+@Public()
 @ApiExtraModels(...HEALTH_EXTRA_MODELS, HealthUnavailableProblemDto)
 @Controller('health')
 export class HealthController {
