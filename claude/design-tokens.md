@@ -1,6 +1,6 @@
 # Design tokens — Carteira B3
 
-> Criado em 30/10/2026 (U1); cores de gráfico acrescentadas no mesmo dia (D45). Fonte da verdade visual: variáveis do arquivo Figma (https://www.figma.com/design/71YUqOEoUNi1HIPcLZd0qo, página Fundamentos). O `tailwind.config` do frontend (W1) espelha esta tabela 1:1; nenhum valor visual fora destes tokens. Dono: agente UX/UI; o frontend só lê. Mudança de token muda o Figma e esta tabela na mesma tarefa.
+> Criado em 30/10/2026 (U1); cores de gráfico acrescentadas no mesmo dia (D45); `bg/inverse` passa a ser o fundo do tooltip em 31/10/2026 (D51). Fonte da verdade visual: variáveis do arquivo Figma (https://www.figma.com/design/71YUqOEoUNi1HIPcLZd0qo, página Fundamentos). O `tailwind.config` do frontend (W1) espelha esta tabela 1:1; nenhum valor visual fora destes tokens. Dono: agente UX/UI; o frontend só lê. Mudança de token muda o Figma e esta tabela na mesma tarefa.
 
 ## Convenção de nomes
 - Figma: `grupo/subgrupo/nome` (ex.: `color/bg/surface`). CSS: `var(--color-bg-surface)` (sintaxe web já gravada em cada variável). Tailwind: chave aninhada equivalente (ex.: `bg-surface`, `text-secondary`, `border-strong`, `p-4`, `rounded-md`).
@@ -12,12 +12,12 @@
 | `color/bg/canvas` | #F5F7F9 | #0F1419 | Fundo da página |
 | `color/bg/surface` | #FFFFFF | #171C23 | Cartões, tabelas, diálogos |
 | `color/bg/subtle` | #EEF1F4 | #20262E | Cabeçalho de tabela, bloco de fórmula, skeleton |
-| `color/bg/inverse` | #14181F | #E8ECF1 | Reservado (tooltip) |
+| `color/bg/inverse` | #14181F | #E8ECF1 | Fundo do `Tooltip` (D51) |
 | `color/border/default` | #D5DBE2 | #2C343E | Bordas de cartão e divisórias |
 | `color/border/strong` | #7A8491 | #6B7684 | Borda de campo e de botão secundário (≥ 3:1) |
 | `color/text/primary` | #14181F | #E8ECF1 | Texto principal |
 | `color/text/secondary` | #566170 | #A3ADB9 | Texto de apoio, rótulos de coluna |
-| `color/text/on-primary` | #FFFFFF | #0B1E24 | Texto sobre `primary/default` e `negative/default` |
+| `color/text/on-primary` | #FFFFFF | #0B1E24 | Texto sobre `primary/default`, `negative/default` e `bg/inverse` (tooltip) |
 | `color/text/link` | #0B5C70 | #7CC7DA | Links e ações terciárias |
 | `color/primary/default` | #0B5C70 | #5BB4CB | Botão principal, seleção |
 | `color/primary/hover` | #08475A | #7CC7DA | Hover do botão principal |
