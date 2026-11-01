@@ -1,5 +1,5 @@
 # CI do Carteira B3 (D40). Cada job vira verificação obrigatória da proteção da `main` assim que existir.
-# Job `database` desde 26/10/2026; `backend` entra no K1, `frontend` no W1 e `e2e` no R1.
+# Job `database` desde 26/10/2026; `backend` desde o K1 (01/11/2026); `frontend` entra no W1 e `e2e` no R1.
 name: CI
 
 on:
@@ -69,3 +69,58 @@ jobs:
         run: |
           npm run db:ddl
           git diff --exit-code -- database/sql/ddl.sql
+
+  backend:
+    name: backend
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      # Valores descartáveis só do CI: o export do OpenAPI valida o env como a API, mas não conecta no banco.
+      # A integração e o E2E usam o PostgreSQL do Testcontainers (D40), definido no global setup.
+      DATABASE_URL: postgresql://carteira:ci-only-password@localhost:5432/unused
+      SHADOW_DATABASE_URL: postgresql://carteira:ci-only-password@localhost:5432/unused_shadow
+      CORS_ORIGIN: http://localhost:4200
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            backend/package-lock.json
+
+      - name: Install root tools (Prisma CLI)
+        working-directory: .
+        run: npm ci
+
+      - name: Generate Prisma Client (backend/src/generated/prisma)
+        working-directory: .
+        run: npm run db:generate
+
+      - run: npm ci
+
+      - name: Lint (includes layer boundaries)
+        run: npm run lint
+
+      # ts-jest only transpiles (isolatedModules) and the build excludes specs: this checks the types of the tests too.
+      - name: Type check (src, specs and test/)
+        run: npm run typecheck
+
+      - name: Unit tests with coverage
+        run: npm run test:cov
+
+      - name: Integration and E2E tests (Testcontainers, PostgreSQL 16)
+        run: npm run test:e2e
+
+      - name: Build
+        run: npm run build
+
+      - name: openapi.json matches the code (D52)
+        run: |
+          npm run openapi:generate
+          git diff --exit-code -- openapi/openapi.json
+          test -z "$(git status --porcelain -- openapi)" || { echo "openapi/ has untracked or changed files; run npm run openapi:generate and commit"; git status --porcelain -- openapi; exit 1; }

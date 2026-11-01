@@ -1,0 +1,6 @@
+# Complementa o .gitignore da raiz
+dist/
+coverage/
+*.tsbuildinfo
+src/modules/__lint_probe__/
+src/shared/presentation/__lint_probe__.ts

@@ -1,0 +1,162 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/api/v1/health": {
+      "get": {
+        "operationId": "HealthController_check",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "PostgreSQL answers.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthOkDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "A dependency does not answer.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthUnavailableProblemDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "health"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "Carteira B3 API",
+    "description": "API REST da Carteira B3. Erros em RFC 7807 (application/problem+json); decimais como string; datas ISO 8601.",
+    "version": "1",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "schemas": {
+      "IndicatorStatusDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "up",
+              "down"
+            ],
+            "example": "up"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "HealthUnavailableProblemDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "example": "about:blank"
+          },
+          "title": {
+            "type": "string",
+            "example": "Not Found"
+          },
+          "status": {
+            "type": "number",
+            "example": 404
+          },
+          "detail": {
+            "type": "string",
+            "example": "Cannot GET /api/v1/does-not-exist"
+          },
+          "instance": {
+            "type": "string",
+            "example": "/api/v1/does-not-exist"
+          },
+          "errors": {
+            "description": "One message per invalid field (400).",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "checks": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "enum": [
+                "up",
+                "down"
+              ]
+            },
+            "example": {
+              "database": "down"
+            }
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "status",
+          "checks"
+        ]
+      },
+      "HealthOkDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok"
+            ],
+            "example": "ok"
+          },
+          "info": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/IndicatorStatusDto"
+            },
+            "example": {
+              "database": {
+                "status": "up"
+              }
+            }
+          },
+          "error": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/IndicatorStatusDto"
+            },
+            "example": {}
+          },
+          "details": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/IndicatorStatusDto"
+            },
+            "example": {
+              "database": {
+                "status": "up"
+              }
+            }
+          }
+        },
+        "required": [
+          "status",
+          "info",
+          "error",
+          "details"
+        ]
+      }
+    }
+  }
+}
