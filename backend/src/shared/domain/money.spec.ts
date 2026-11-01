@@ -45,9 +45,9 @@ describe('Money (RN11)', () => {
   });
 
   it('never prints a negative zero for a tiny leftover of a 40-digit division', () => {
-    expect(Money.of('-0.000000000000000000000000000000000000001').toFixed(2)).toBe(
-      '0.00',
-    );
+    expect(
+      Money.of('-0.000000000000000000000000000000000000001').toFixed(2),
+    ).toBe('0.00');
   });
 
   it('exposes the Decimal value and names the field in errors', () => {

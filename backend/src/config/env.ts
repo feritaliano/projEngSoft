@@ -29,16 +29,39 @@ export const workerEnvSchema = z.object({
   LOG_LEVEL: z.enum(LOG_LEVELS).default('info'),
 });
 
-export const apiEnvSchema = workerEnvSchema.extend({
-  API_PORT: z.coerce.number().int().min(1).max(65535).default(3000),
-  // Only the frontend origin may call the API (D52).
-  CORS_ORIGIN: z
-    .string()
-    .refine(
-      isOrigin,
-      'must be an origin such as http://localhost:4200 (scheme, host and port; no path or trailing slash)',
-    ),
-});
+/** Placeholder of .env.example: accepted while developing, refused in production. */
+export const JWT_SECRET_PLACEHOLDER =
+  'troque-por-um-segredo-aleatorio-de-pelo-menos-32-caracteres';
+
+export const apiEnvSchema = workerEnvSchema
+  .extend({
+    API_PORT: z.coerce.number().int().min(1).max(65535).default(3000),
+    // Only the frontend origin may call the API (D52).
+    CORS_ORIGIN: z
+      .string()
+      .refine(
+        isOrigin,
+        'must be an origin such as http://localhost:4200 (scheme, host and port; no path or trailing slash)',
+      ),
+    // Signs the short-lived access token (HS256). Generate with: node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
+    JWT_ACCESS_SECRET: z.string().min(32, 'must have at least 32 characters'),
+    JWT_ACCESS_TTL_SECONDS: z.coerce
+      .number()
+      .int()
+      .min(60)
+      .max(3600)
+      .default(900),
+    REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().min(1).max(30).default(7),
+  })
+  .refine(
+    (env) =>
+      env.NODE_ENV !== 'production' ||
+      env.JWT_ACCESS_SECRET !== JWT_SECRET_PLACEHOLDER,
+    {
+      path: ['JWT_ACCESS_SECRET'],
+      message: 'must be replaced by a random secret in production',
+    },
+  );
 
 export type WorkerEnv = z.infer<typeof workerEnvSchema>;
 export type ApiEnv = z.infer<typeof apiEnvSchema>;

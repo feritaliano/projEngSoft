@@ -113,6 +113,7 @@ carteira-b3/
 │       ├── global-teardown.ts       para o contêiner
 │       ├── utils/                   app de teste com o mesmo pipeline HTTP e TRUNCATE de public e ops
 │       ├── factories/               builders de dados de teste
+│       ├── fakes/                   dublês em memória de portas (ex.: repositório de sessões) para testes unitários
 │       └── *.e2e-spec.ts            E2E e integração (Testcontainers)
 │
 ├── frontend/                        [W1] criado pelo Angular CLI; dono: agente frontend
