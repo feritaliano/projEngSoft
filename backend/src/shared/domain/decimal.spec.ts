@@ -10,17 +10,25 @@ describe('toDecimal (RN11, D5)', () => {
     },
   );
 
-  it.each(['', '1e3', '0x1f', 'Infinity', 'NaN', '1,5', ' 1', '1.', '.5', '+1'])(
-    'rejects %j',
-    (value) => {
-      expect(() => toDecimal(value, 'price')).toThrow(
-        new InvalidValueError(
-          'price',
-          'must be a plain decimal string (e.g. "1234.56")',
-        ),
-      );
-    },
-  );
+  it.each([
+    '',
+    '1e3',
+    '0x1f',
+    'Infinity',
+    'NaN',
+    '1,5',
+    ' 1',
+    '1.',
+    '.5',
+    '+1',
+  ])('rejects %j', (value) => {
+    expect(() => toDecimal(value, 'price')).toThrow(
+      new InvalidValueError(
+        'price',
+        'must be a plain decimal string (e.g. "1234.56")',
+      ),
+    );
+  });
 
   it('rejects a non-finite Decimal', () => {
     expect(() => toDecimal(new Decimal(Infinity), 'price')).toThrow(

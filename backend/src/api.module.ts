@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { apiEnvSchema } from './config/env';
 import { validatedConfigModule } from './config/config.module';
+import { AuthModule } from './modules/auth/auth.module';
 import { HealthModule } from './modules/health/health.module';
 import { LoggingModule } from './shared/infrastructure/logging/logging.module';
 import { PrismaModule } from './shared/infrastructure/prisma/prisma.module';
@@ -12,6 +13,7 @@ import { PrismaModule } from './shared/infrastructure/prisma/prisma.module';
     LoggingModule,
     PrismaModule,
     HealthModule,
+    AuthModule,
   ],
 })
 export class ApiModule {}

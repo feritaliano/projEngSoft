@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path';
 import {
   apiEnvSchema,
   InvalidEnvironmentError,
+  JWT_SECRET_PLACEHOLDER,
   parseEnv,
   ROOT_ENV_FILE,
   workerEnvSchema,
@@ -11,6 +12,7 @@ import {
 const validApiEnv = {
   DATABASE_URL: 'postgresql://user:secret-password@localhost:5432/carteira_dev',
   CORS_ORIGIN: 'http://localhost:4200',
+  JWT_ACCESS_SECRET: 'test-secret-with-at-least-32-characters!',
 };
 
 describe('environment validation (zod, D52)', () => {
@@ -22,6 +24,8 @@ describe('environment validation (zod, D52)', () => {
       NODE_ENV: 'development',
       LOG_LEVEL: 'info',
       API_PORT: 3000,
+      JWT_ACCESS_TTL_SECONDS: 900,
+      REFRESH_TOKEN_TTL_DAYS: 7,
     });
   });
 
@@ -93,6 +97,31 @@ describe('environment validation (zod, D52)', () => {
     );
   });
 
+  it.each([
+    ['a short JWT secret', { JWT_ACCESS_SECRET: 'short' }],
+    ['a missing JWT secret', { JWT_ACCESS_SECRET: undefined }],
+    ['an access token TTL above 1 hour', { JWT_ACCESS_TTL_SECONDS: '3601' }],
+    ['a refresh TTL above 30 days', { REFRESH_TOKEN_TTL_DAYS: '31' }],
+  ])('rejects %s (K2)', (_case, override) => {
+    expect(() =>
+      parseEnv(apiEnvSchema, { ...validApiEnv, ...override }),
+    ).toThrow(InvalidEnvironmentError);
+  });
+
+  it('accepts the .env.example JWT placeholder outside production only', () => {
+    const withPlaceholder = {
+      ...validApiEnv,
+      JWT_ACCESS_SECRET: JWT_SECRET_PLACEHOLDER,
+    };
+
+    expect(() => parseEnv(apiEnvSchema, withPlaceholder)).not.toThrow();
+    expect(() =>
+      parseEnv(apiEnvSchema, { ...withPlaceholder, NODE_ENV: 'production' }),
+    ).toThrow(
+      'JWT_ACCESS_SECRET: must be replaced by a random secret in production',
+    );
+  });
+
   it('never echoes values in the error message (they may be secrets)', () => {
     const raw = {
       DATABASE_URL: 'mysql://user:super-secret@host/db',
@@ -111,7 +140,7 @@ describe('environment validation (zod, D52)', () => {
     expect(() =>
       parseEnv(apiEnvSchema, {}, 'no .env at /repo/.env; copy .env.example'),
     ).toThrow(
-      'CORS_ORIGIN: Invalid input: expected string, received undefined (no .env at /repo/.env; copy .env.example)',
+      /CORS_ORIGIN: .* \(no \.env at \/repo\/\.env; copy \.env\.example\)$/,
     );
   });
 

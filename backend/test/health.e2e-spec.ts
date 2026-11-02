@@ -80,9 +80,10 @@ describe('API skeleton with the database down (E2E, D52)', () => {
     unreachable = prismaServiceFor(
       'postgresql://nobody:nothing@127.0.0.1:1/none',
     );
-    app = await createApiApp((builder) =>
-      builder.overrideProvider(PrismaService).useValue(unreachable),
-    );
+    app = await createApiApp({
+      override: (builder) =>
+        builder.overrideProvider(PrismaService).useValue(unreachable),
+    });
   });
 
   afterAll(async () => {
@@ -114,15 +115,16 @@ describe('API skeleton with a database host that never answers (E2E, D52)', () =
 
   beforeAll(async () => {
     // 10.255.255.1 is not routable: packets are dropped, so only the connection timeout ends the attempt.
-    app = await createApiApp((builder) =>
-      builder
-        .overrideProvider(PrismaService)
-        .useValue(
-          prismaServiceFor(
-            'postgresql://nobody:nothing@10.255.255.1:5432/none',
+    app = await createApiApp({
+      override: (builder) =>
+        builder
+          .overrideProvider(PrismaService)
+          .useValue(
+            prismaServiceFor(
+              'postgresql://nobody:nothing@10.255.255.1:5432/none',
+            ),
           ),
-        ),
-    );
+    });
   });
 
   afterAll(async () => {

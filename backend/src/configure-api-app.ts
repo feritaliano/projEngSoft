@@ -2,9 +2,10 @@ import fastifyCookie from '@fastify/cookie';
 import helmet from '@fastify/helmet';
 import { ValidationPipe } from '@nestjs/common';
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
+import { API_PREFIX } from './shared/presentation/api-prefix';
 import { ProblemDetailsFilter } from './shared/presentation/problem-details.filter';
 
-export const API_PREFIX = 'api/v1';
+export { API_PREFIX };
 
 export interface ApiAppOptions {
   /** The only origin allowed by CORS: the frontend (D52). */

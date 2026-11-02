@@ -45,6 +45,15 @@ class ProbeController {
     throw new ServiceUnavailableException('pool exhausted at db-host:5432');
   }
 
+  @Get('prisma-validation')
+  prismaValidation(): never {
+    const error = new Error(
+      'Invalid prisma.user.create() invocation:\n  data: { email: "ana@example.com", passwordHash: "$argon2id$secret" }',
+    );
+    error.name = 'PrismaClientValidationError';
+    throw error;
+  }
+
   @Post()
   echo(@Body() body: EchoDto) {
     return body;
@@ -197,6 +206,28 @@ describe('configureApiApp (D52)', () => {
           status: 503,
         }),
         'Unhandled exception',
+      );
+    } finally {
+      error.mockRestore();
+    }
+  });
+
+  it('logs a Prisma validation error without its message, which quotes the call arguments (D52)', async () => {
+    const error = jest.spyOn(Logger.prototype, 'error').mockImplementation();
+    try {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/v1/probe/prisma-validation',
+      });
+
+      expect(response.statusCode).toBe(500);
+      const [logged] = error.mock.calls[0] as [
+        { err: { name: string; stack: string } },
+      ];
+      expect(logged.err.name).toBe('PrismaClientValidationError');
+      expect(logged.err.stack).toMatch(/^\s+at /);
+      expect(JSON.stringify(logged)).not.toMatch(
+        /ana@example\.com|argon2id|Invalid prisma/,
       );
     } finally {
       error.mockRestore();

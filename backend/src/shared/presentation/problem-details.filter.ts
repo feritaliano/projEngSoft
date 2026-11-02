@@ -6,6 +6,24 @@ import {
   toProblemDetails,
 } from './problem-details';
 
+/**
+ * Prisma validation errors quote the arguments of the failed call (e-mail, password hash, token hash) in their message;
+ * pino redaction only matches keys, so the message is dropped and the name and stack kept.
+ */
+function withoutQueryArguments(exception: unknown): unknown {
+  if (
+    exception instanceof Error &&
+    exception.name === 'PrismaClientValidationError'
+  ) {
+    // The message (repeated at the top of the stack, possibly over several lines) goes; only the frames stay.
+    const frames = (exception.stack ?? '')
+      .split('\n')
+      .filter((line) => /^\s+at /.test(line));
+    return { name: exception.name, stack: frames.join('\n') };
+  }
+  return exception;
+}
+
 /** Global filter: every error response is RFC 7807 application/problem+json, including unknown routes (404). */
 @Catch()
 export class ProblemDetailsFilter implements ExceptionFilter {
@@ -21,10 +39,11 @@ export class ProblemDetailsFilter implements ExceptionFilter {
     const problem = toProblemDetails(exception, instance);
 
     if (!isClientFacingProblem(exception)) {
+      const err = withoutQueryArguments(exception);
       // Unexpected errors (and 5xx thrown by libraries) keep the cause and stack in the log; the client only gets
       // the generic problem.
       this.logger.error(
-        { err: exception, status: problem.status, instance },
+        { err, status: problem.status, instance },
         'Unhandled exception',
       );
     } else if (problem.status >= 500) {
