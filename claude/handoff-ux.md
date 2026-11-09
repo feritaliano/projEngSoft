@@ -133,7 +133,8 @@ Limites conhecidos do roadmap: as guias internas foram desenhadas uma vez por ti
 ## Dependências do contrato da API
 | Frame | O que precisa do backend | Tarefa do backend |
 |---|---|---|
-| 3, C3 | `GET /portfolios` devolve `operationCount` de cada carteira | K3 |
+| 3, C3 | `GET /portfolios` devolve, por carteira, `operationCount` e a contagem de posições abertas (encerradas não contam): cartão "6 ativos · 11 operações" e confirmação de exclusão | K3 |
+| 4 (indicadores) | `GET /portfolios/:id/summary` (B7): custo total em `DerivedValue` `PORTFOLIO_TOTAL_COST`, lucro realizado em `DerivedValue` `PORTFOLIO_REALIZED_PROFIT` (abertas e encerradas; igual à soma da coluna Lucro realizado de `positions`) e a contagem de posições abertas (indicador "Ativos em carteira"), com `asOf`; chaves `name` dos insumos pela seção 3 de `claude/microcopy.md`; nomes dos campos no OpenAPI | K4 |
 | 4 | `GET /portfolios/:id/positions` devolve também as posições encerradas (quantidade 0 e lucro realizado ≠ 0), com `status` OPEN/CLOSED | K4 |
 | 5 (editar) | `GET /portfolios/:id/operations/:operationId` para preencher o modo editar | K4 |
 | C2 | 422 da RN07/RN10 com operação infratora (id, tipo, ativo, data, corretora), posição disponível na data e quantidade vendida | K4 |
