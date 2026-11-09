@@ -5,6 +5,7 @@ import {
   HttpStatus,
   Logger,
   Post,
+  Query,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import {
@@ -12,15 +13,42 @@ import {
   NestFastifyApplication,
 } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
-import { IsString } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+  ValidateNested,
+} from 'class-validator';
 import { configureApiApp } from './configure-api-app';
 import { ProblemException } from './shared/presentation/problem-details';
 
 const FRONTEND_ORIGIN = 'http://localhost:4200';
 
+class TagDto {
+  @IsString()
+  label: string;
+}
+
 class EchoDto {
   @IsString()
   name: string;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => TagDto)
+  tag?: TagDto;
+}
+
+class PageQueryDto {
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  pageSize?: number;
 }
 
 @Controller('probe')
@@ -57,6 +85,11 @@ class ProbeController {
   @Post()
   echo(@Body() body: EchoDto) {
     return body;
+  }
+
+  @Get('page')
+  page(@Query() query: PageQueryDto) {
+    return query;
   }
 }
 
@@ -130,11 +163,44 @@ describe('configureApiApp (D52)', () => {
     expect(response.json()).toMatchObject({
       status: 400,
       detail: 'The request is invalid.',
-      errors: expect.arrayContaining([
-        'property extra should not exist',
-        'name must be a string',
-      ]) as unknown,
     });
+    expect(response.json<{ errors: unknown[] }>().errors).toEqual(
+      expect.arrayContaining([
+        { field: 'extra', message: 'property extra should not exist' },
+        { field: 'name', message: 'name must be a string' },
+      ]),
+    );
+  });
+
+  it('names nested body fields with a dotted path in errors[].field', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/probe',
+      payload: { name: 'Ana', tag: { label: 5 } },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json<{ errors: unknown[] }>().errors).toEqual([
+      { field: 'tag.label', message: 'label must be a string' },
+    ]);
+  });
+
+  it('names query string parameters in errors[].field', async () => {
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/probe/page?pageSize=500&debug=1',
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.headers['content-type']).toBe(
+      'application/problem+json; charset=utf-8',
+    );
+    expect(response.json<{ errors: unknown[] }>().errors).toEqual(
+      expect.arrayContaining([
+        { field: 'pageSize', message: 'pageSize must not be greater than 100' },
+        { field: 'debug', message: 'property debug should not exist' },
+      ]),
+    );
   });
 
   it('hides unexpected errors behind a generic 500 without stack or message', async () => {

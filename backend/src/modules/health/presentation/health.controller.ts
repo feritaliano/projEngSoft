@@ -9,9 +9,8 @@ import {
 import {
   ApiExtraModels,
   ApiOkResponse,
-  ApiServiceUnavailableResponse,
+  ApiOperation,
   ApiTags,
-  getSchemaPath,
 } from '@nestjs/swagger';
 import {
   HealthCheckResult,
@@ -20,21 +19,24 @@ import {
 } from '@nestjs/terminus';
 import { Public } from '../../../shared/presentation/auth-context';
 import { ProblemException } from '../../../shared/presentation/problem-details';
-import { PROBLEM_JSON_MEDIA_TYPE } from '../../../shared/presentation/problem-details.dto';
+import { ApiProblemResponse } from '../../../shared/presentation/problem-details.dto';
 import { DatabasePing } from '../application/database-ping';
 import {
   HEALTH_EXTRA_MODELS,
   HealthOkDto,
-  HealthUnavailableProblemDto,
+  HealthChecksProblemDto,
 } from './health.dto';
 
 const DATABASE_CHECK = 'database';
 
-/** Status of each check from terminus' result; empty if the body is not the expected HealthCheckResult. */
-function checksOf(response: unknown): { checks?: Record<string, string> } {
+/**
+ * Status of each check from terminus' result. Always present (the OpenAPI schema requires it): empty if the body is
+ * not the expected HealthCheckResult.
+ */
+function checksOf(response: unknown): { checks: Record<string, string> } {
   const details = (response as Partial<HealthCheckResult> | null)?.details;
   if (typeof details !== 'object' || details === null) {
-    return {};
+    return { checks: {} };
   }
   return {
     checks: Object.fromEntries(
@@ -45,7 +47,7 @@ function checksOf(response: unknown): { checks?: Record<string, string> } {
 
 @ApiTags('health')
 @Public()
-@ApiExtraModels(...HEALTH_EXTRA_MODELS, HealthUnavailableProblemDto)
+@ApiExtraModels(...HEALTH_EXTRA_MODELS)
 @Controller('health')
 export class HealthController {
   private readonly logger = new Logger(HealthController.name);
@@ -58,16 +60,14 @@ export class HealthController {
 
   /** 200 when PostgreSQL answers; 503 problem+json listing the failed checks otherwise (D52). */
   @Get()
+  @ApiOperation({ summary: 'Health check of the API and PostgreSQL (D52)' })
   @Header('Cache-Control', 'no-store')
   @ApiOkResponse({ type: HealthOkDto, description: 'PostgreSQL answers.' })
-  @ApiServiceUnavailableResponse({
-    description: 'A dependency does not answer.',
-    content: {
-      [PROBLEM_JSON_MEDIA_TYPE]: {
-        schema: { $ref: getSchemaPath(HealthUnavailableProblemDto) },
-      },
-    },
-  })
+  @ApiProblemResponse(
+    HttpStatus.SERVICE_UNAVAILABLE,
+    'A dependency does not answer.',
+    HealthChecksProblemDto,
+  )
   async check(): Promise<HealthCheckResult> {
     try {
       return await this.health.check([() => this.checkDatabase()]);

@@ -1,13 +1,25 @@
 import {
+  applyDecorators,
   createParamDecorator,
   ExecutionContext,
   SetMetadata,
 } from '@nestjs/common';
+import { ApiExtension } from '@nestjs/swagger';
 
 export const IS_PUBLIC_ROUTE = 'isPublicRoute';
 
-/** Opts a route out of the global JWT guard (health, sign-up, login, refresh, logout). Everything else needs a token. */
-export const Public = () => SetMetadata(IS_PUBLIC_ROUTE, true);
+/** Marks the OpenAPI operation of a public route; buildOpenApiDocument turns it into `security: []` and removes it. */
+export const OPENAPI_PUBLIC_ROUTE = 'x-public-route';
+
+/**
+ * Opts a route out of the global JWT guard (health, sign-up, login, refresh, logout). Everything else needs a token,
+ * and the OpenAPI document requires the bearer scheme by default.
+ */
+export const Public = () =>
+  applyDecorators(
+    SetMetadata(IS_PUBLIC_ROUTE, true),
+    ApiExtension(OPENAPI_PUBLIC_ROUTE, true),
+  );
 
 /** Who is calling, set by the JWT guard on every protected route. */
 export interface AuthenticatedUser {

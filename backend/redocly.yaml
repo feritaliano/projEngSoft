@@ -1,0 +1,14 @@
+# Lint of the API contract (openapi/openapi.json, D52), run by npm run openapi:lint and by the backend CI job.
+# `recommended` covers the structure (struct), references and operation metadata. security-defined is the rule the
+# backend audit of 09/11/2026 found broken: operations pointed to a security scheme not defined in components.
+extends:
+  - recommended
+rules:
+  struct: error
+  security-defined: error
+  # The paths already carry /api/v1 and the frontend calls the API on its own origin; an empty list means "/".
+  no-empty-servers: off
+  # Free, non-profit academic project without a published license.
+  info-license: off
+  # Health (200/503) and logout (always 204) have no client error; protected routes always document their 401.
+  operation-4xx-response: off

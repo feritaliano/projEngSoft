@@ -148,13 +148,17 @@ describe('AuthController (A1, A2, D39)', () => {
   });
 
   it.each([
-    ['a short password', { ...SIGN_UP, password: '1234567' }],
-    ['a malformed e-mail', { ...SIGN_UP, email: 'ana' }],
-    ['a missing name', { email: SIGN_UP.email, password: SIGN_UP.password }],
-    ['an extra field', { ...SIGN_UP, role: 'admin' }],
+    ['a short password', { ...SIGN_UP, password: '1234567' }, 'password'],
+    ['a malformed e-mail', { ...SIGN_UP, email: 'ana' }, 'email'],
+    [
+      'a missing name',
+      { email: SIGN_UP.email, password: SIGN_UP.password },
+      'name',
+    ],
+    ['an extra field', { ...SIGN_UP, role: 'admin' }, 'role'],
   ])(
-    'sign-up rejects %s with 400 problem+json (RN01)',
-    async (_case, payload) => {
+    'sign-up rejects %s with 400 problem+json naming the field (RN01)',
+    async (_case, payload, field) => {
       const response = await app.inject({
         method: 'POST',
         url: '/api/v1/auth/register',
@@ -165,6 +169,9 @@ describe('AuthController (A1, A2, D39)', () => {
       expect(response.headers['content-type']).toContain(
         'application/problem+json',
       );
+      const { errors } = response.json<{ errors: { field: string }[] }>();
+      expect(errors.length).toBeGreaterThan(0);
+      expect(errors.every((error) => error.field === field)).toBe(true);
       expect(useCases.signUp.execute).not.toHaveBeenCalled();
     },
   );
@@ -197,9 +204,18 @@ describe('AuthController (A1, A2, D39)', () => {
     });
 
     expect(response.statusCode).toBe(400);
-    expect(response.json()).toMatchObject({
-      field: 'name',
-      detail: 'name must have between 1 and 150 characters',
+    expect(response.json()).toEqual({
+      type: 'about:blank',
+      title: 'Bad Request',
+      status: 400,
+      detail: 'The request is invalid.',
+      errors: [
+        {
+          field: 'name',
+          message: 'name must have between 1 and 150 characters',
+        },
+      ],
+      instance: '/api/v1/auth/register',
     });
   });
 

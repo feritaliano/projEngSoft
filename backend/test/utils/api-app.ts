@@ -1,8 +1,6 @@
 import { Type } from '@nestjs/common';
-import {
-  FastifyAdapter,
-  NestFastifyApplication,
-} from '@nestjs/platform-fastify';
+import type { NestFastifyApplication } from '@nestjs/platform-fastify';
+import { ApiFastifyAdapter } from '../../src/shared/presentation/api-fastify-adapter';
 import { Test, TestingModuleBuilder } from '@nestjs/testing';
 import { Logger } from 'nestjs-pino';
 import { ApiModule } from '../../src/api.module';
@@ -25,7 +23,7 @@ export async function createApiApp(
   });
   const moduleRef = await (options.override ?? ((b) => b))(builder).compile();
   const app = moduleRef.createNestApplication<NestFastifyApplication>(
-    new FastifyAdapter(),
+    new ApiFastifyAdapter(),
     { bufferLogs: true },
   );
   app.useLogger(app.get(Logger));

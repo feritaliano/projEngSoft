@@ -6,11 +6,14 @@ import {
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
+import { InvalidValueError } from '../domain/domain-error';
 import {
+  invalidValueProblem,
   isClientFacingProblem,
   ProblemException,
   toProblemDetails,
 } from './problem-details';
+import { RequestValidationException } from './request-validation';
 
 describe('toProblemDetails (RFC 7807)', () => {
   it('maps an HttpException with a string message', () => {
@@ -61,10 +64,10 @@ describe('toProblemDetails (RFC 7807)', () => {
     expect(JSON.stringify(problem)).not.toMatch(/relation|details/);
   });
 
-  it('lists ValidationPipe messages in errors', () => {
-    const exception = new BadRequestException([
-      'name must be a string',
-      'name should not be empty',
+  it('lists the ValidationPipe errors with their field (audit of 09/11)', () => {
+    const exception = new RequestValidationException([
+      { field: 'name', message: 'name must be a string' },
+      { field: 'address.street', message: 'street should not be empty' },
     ]);
 
     expect(toProblemDetails(exception, '/api/v1/portfolios')).toEqual({
@@ -72,9 +75,50 @@ describe('toProblemDetails (RFC 7807)', () => {
       title: 'Bad Request',
       status: 400,
       detail: 'The request is invalid.',
-      errors: ['name must be a string', 'name should not be empty'],
+      errors: [
+        { field: 'name', message: 'name must be a string' },
+        { field: 'address.street', message: 'street should not be empty' },
+      ],
       instance: '/api/v1/portfolios',
     });
+  });
+
+  it('maps a domain InvalidValueError to the same 400 shape, with the field in errors', () => {
+    const problem = toProblemDetails(
+      invalidValueProblem(
+        new InvalidValueError('name', 'must have between 1 and 150 characters'),
+      ),
+      '/api/v1/auth/register',
+    );
+
+    expect(problem).toEqual({
+      type: 'about:blank',
+      title: 'Bad Request',
+      status: 400,
+      detail: 'The request is invalid.',
+      errors: [
+        {
+          field: 'name',
+          message: 'name must have between 1 and 150 characters',
+        },
+      ],
+      instance: '/api/v1/auth/register',
+    });
+  });
+
+  it('drops a list of messages without fields, keeping only the generic detail', () => {
+    const exception = new BadRequestException([
+      'name must be a string',
+      'name should not be empty',
+    ]);
+
+    const problem = toProblemDetails(exception, '/x');
+
+    expect(problem).toMatchObject({
+      status: 400,
+      detail: 'The request is invalid.',
+    });
+    expect(problem).not.toHaveProperty('errors');
   });
 
   it('omits detail when a 4xx response object has no usable message', () => {
