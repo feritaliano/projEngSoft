@@ -35,7 +35,7 @@ O conteúdo de `.claude/agents/*.md` é o mesmo de `agentes/*.md`; ao alterar um
 - `npm run db:migrate` aplica as migrations (`prisma migrate deploy`); `npm run db:drift` confere se `schema.prisma` e as migrations estão iguais (deve sair sem diferenças).
 - `npm run db:test` roda `database/tests/constraints.sql`, `database/tests/ops-constraints.sql` e `database/tests/full-product-constraints.sql` (testes das restrições de `public`, de `ops` e das tabelas da D3; não deixam dados).
 - `npm run db:ddl` regenera `database/sql/ddl.sql` a partir do banco migrado.
-- CHECK constraints e a extensão `citext` ficam escritos à mão no fim da migration; o Prisma não os expressa nem os remove.
+- CHECK constraints e as extensões `citext` e `unaccent` ficam escritos à mão nas migrations; o Prisma não os expressa nem os remove.
 
 ## Testes e CI (D40)
 - Onde cada tipo de teste roda: `claude/arquitetura.md`, seção 9. Resumo: unitário sem banco; integração e E2E do backend com Testcontainers (migrations pelo Prisma da raiz, em série); specs do frontend com Vitest; E2E do frontend com `@playwright/test` contra `carteira_test` na máquina; `db:test` contra `carteira_dev`.
