@@ -223,6 +223,360 @@
           "auth"
         ]
       }
+    },
+    "/api/v1/assets": {
+      "get": {
+        "operationId": "AssetsController_search",
+        "parameters": [
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "Part of the ticker or of the issuer name, ignoring case and accents. Empty lists the whole catalog.",
+            "schema": {
+              "maxLength": 100,
+              "example": "itausa",
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100000,
+              "default": 1,
+              "example": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "example": 20,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetPageDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query: errors[] names each parameter (search, page, pageSize).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed or expired access token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Search the asset catalog (C1)",
+        "tags": [
+          "reference-data"
+        ]
+      }
+    },
+    "/api/v1/assets/{ticker}": {
+      "get": {
+        "operationId": "AssetsController_get",
+        "parameters": [
+          {
+            "name": "ticker",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed or expired access token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No active asset with this ticker.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get an asset by ticker (C1)",
+        "tags": [
+          "reference-data"
+        ]
+      }
+    },
+    "/api/v1/brokers": {
+      "get": {
+        "operationId": "BrokersController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BrokerDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed or expired access token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "summary": "List brokers and exchanges (RN04, D9)",
+        "tags": [
+          "reference-data"
+        ]
+      }
+    },
+    "/api/v1/portfolios": {
+      "get": {
+        "operationId": "PortfoliosController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PortfolioDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed or expired access token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "summary": "List the portfolios of the user (B1)",
+        "tags": [
+          "portfolios"
+        ]
+      },
+      "post": {
+        "operationId": "PortfoliosController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePortfolioDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortfolioDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body: errors[] names each field (name, or a field that should not exist).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed or expired access token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The user already has a portfolio with this name (field: name).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Create a portfolio (B1, RN02)",
+        "tags": [
+          "portfolios"
+        ]
+      }
+    },
+    "/api/v1/portfolios/{id}": {
+      "get": {
+        "operationId": "PortfoliosController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortfolioDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed or expired access token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Portfolio not found, or it belongs to another user (RN02).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get a portfolio of the user (RN02)",
+        "tags": [
+          "portfolios"
+        ]
+      },
+      "delete": {
+        "operationId": "PortfoliosController_delete",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted, with its operations (ON DELETE CASCADE)."
+          },
+          "401": {
+            "description": "Missing, malformed or expired access token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Portfolio not found, or it belongs to another user (RN02).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Delete a portfolio and its operations (B1, D41)",
+        "tags": [
+          "portfolios"
+        ]
+      }
     }
   },
   "info": {
@@ -485,6 +839,155 @@
         "required": [
           "email",
           "password"
+        ]
+      },
+      "AssetType": {
+        "type": "string",
+        "enum": [
+          "STOCK",
+          "FII",
+          "ETF",
+          "BDR",
+          "FIXED_INCOME",
+          "CRYPTO"
+        ]
+      },
+      "AssetDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "6b0d3a52-1f5e-4f0a-9d7c-3e2b8a1c4d90"
+          },
+          "ticker": {
+            "type": "string",
+            "nullable": true,
+            "example": "ITSA4",
+            "description": "Null for fixed income (D50)."
+          },
+          "assetType": {
+            "example": "STOCK",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AssetType"
+              }
+            ]
+          },
+          "displayName": {
+            "type": "string",
+            "example": "ITSA4",
+            "description": "Ticker for stocks, FIIs, ETFs and BDRs; name for crypto; bond type and maturity year for fixed income (D50)."
+          },
+          "issuer": {
+            "type": "string",
+            "nullable": true,
+            "example": "Itaúsa S.A.",
+            "description": "Issuer name; null for crypto."
+          },
+          "sector": {
+            "type": "string",
+            "nullable": true,
+            "example": "Financeiro",
+            "description": "Sector of the issuer, when it has one."
+          }
+        },
+        "required": [
+          "id",
+          "ticker",
+          "assetType",
+          "displayName",
+          "issuer",
+          "sector"
+        ]
+      },
+      "AssetPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssetDto"
+            }
+          },
+          "total": {
+            "type": "number",
+            "example": 1,
+            "description": "Assets matching the search, across all pages."
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ]
+      },
+      "BrokerDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0c9e7f3a-5b2d-4e81-a6c4-9d1f2b3e4a57"
+          },
+          "name": {
+            "type": "string",
+            "example": "XP Investimentos CCTVM S.A."
+          },
+          "cnpj": {
+            "type": "string",
+            "nullable": true,
+            "example": "02332886000104",
+            "description": "14 digits; null for an exchange without CNPJ (D50)."
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "cnpj"
+        ]
+      },
+      "PortfolioDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "3f1c2b9e-8d4a-4c6f-9b1e-2a7d5c8e0f13"
+          },
+          "name": {
+            "type": "string",
+            "example": "Longo prazo"
+          },
+          "operationCount": {
+            "type": "number",
+            "example": 11,
+            "description": "Operations of the portfolio, counted in the query (D41). Shown when confirming the deletion: they go with it."
+          },
+          "assetCount": {
+            "type": "number",
+            "example": 6,
+            "description": "Assets with an open position (quantity > 0), derived from the operations by the position calculator (RN09); closed positions do not count."
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "operationCount",
+          "assetCount"
+        ]
+      },
+      "CreatePortfolioDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Longo prazo",
+            "maxLength": 150,
+            "description": "RN02: unique per user (case-sensitive), trimmed, 1 to 150 characters."
+          }
+        },
+        "required": [
+          "name"
         ]
       }
     }

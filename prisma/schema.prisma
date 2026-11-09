@@ -2,7 +2,7 @@
 // `public` = domínio. Fonte: database/docs/modelo-er.md (ER congelado em 05/10/2026, D14; revisto na D3, D50) e database/docs/glossario.md (PT ↔ EN).
 // 34 entidades + 2 relacionamentos N:N = 36 tabelas. Dado derivado nunca vira coluna (D4, D17, D32).
 // `ops` = técnico, fora do ER e do ddl.sql de BD (D39). `analytics` entra quando houver o primeiro objeto (S3).
-// CHECK constraints e a extensão citext ficam no SQL das migrations (o Prisma não os expressa).
+// CHECK constraints e as extensões citext e unaccent ficam no SQL das migrations (o Prisma não os expressa).
 
 generator client {
   provider = "prisma-client"

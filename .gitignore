@@ -26,6 +26,9 @@ Thumbs.db
 # Prisma Client gerado
 backend/src/generated/
 
+# Grafo do código gerado pelo Graphify (D53); cada máquina regera com `graphify update .`
+graphify-out/
+
 # Relatórios do Playwright (E2E)
 playwright-report/
 test-results/
