@@ -1,5 +1,10 @@
 import { HttpException, HttpStatus } from '@nestjs/common';
 import { STATUS_CODES } from 'node:http';
+import type { InvalidValueError } from '../domain/domain-error';
+import {
+  RequestValidationException,
+  VALIDATION_ERROR_DETAIL,
+} from './request-validation';
 
 export const PROBLEM_JSON_CONTENT_TYPE =
   'application/problem+json; charset=utf-8';
@@ -25,14 +30,25 @@ export class ProblemException extends HttpException {
   }
 }
 
-const INTERNAL_ERROR_DETAIL = 'An unexpected error occurred.';
+/**
+ * 400 of a value rejected by the domain (value object), in the same shape as the ValidationPipe 400: the client reads
+ * `errors[].field` whichever layer rejected the input.
+ */
+export function invalidValueProblem(
+  error: InvalidValueError,
+): RequestValidationException {
+  return new RequestValidationException([
+    { field: error.field, message: error.message },
+  ]);
+}
+
+export const INTERNAL_ERROR_DETAIL = 'An unexpected error occurred.';
 const SERVER_ERROR_DETAIL = 'The server could not complete the request.';
-const VALIDATION_ERROR_DETAIL = 'The request is invalid.';
 
 // Nest's not-found message echoes the raw URL ("Cannot GET /path?token=..."); the query may carry user input.
 const ROUTE_NOT_FOUND = /^(Cannot [A-Z]+ [^?\s]*)\?\S*$/;
 
-function titleFor(status: number): string {
+export function titleFor(status: number): string {
   return STATUS_CODES[status] ?? 'Error';
 }
 
@@ -40,10 +56,7 @@ function withoutQuery(message: string): string {
   return message.replace(ROUTE_NOT_FOUND, '$1');
 }
 
-function detailFromResponse(response: string | object): {
-  detail?: string;
-  errors?: string[];
-} {
+function detailFromResponse(response: string | object): { detail?: string } {
   if (typeof response === 'string') {
     return { detail: withoutQuery(response) };
   }
@@ -52,10 +65,9 @@ function detailFromResponse(response: string | object): {
     return { detail: withoutQuery(message) };
   }
   if (Array.isArray(message)) {
-    // ValidationPipe reports one message per invalid field; other shapes keep only the generic detail.
-    return message.every((item) => typeof item === 'string')
-      ? { detail: VALIDATION_ERROR_DETAIL, errors: message }
-      : { detail: VALIDATION_ERROR_DETAIL };
+    // A list of messages without fields (not from our ValidationPipe): the `errors` contract needs a field per entry,
+    // so only the generic detail goes out.
+    return { detail: VALIDATION_ERROR_DETAIL };
   }
   return {};
 }
@@ -84,6 +96,17 @@ export function toProblemDetails(
       title: titleFor(status),
       status,
       detail: exception.detail,
+      instance,
+    };
+  }
+
+  if (exception instanceof RequestValidationException) {
+    return {
+      type: 'about:blank',
+      title: titleFor(HttpStatus.BAD_REQUEST),
+      status: HttpStatus.BAD_REQUEST,
+      detail: VALIDATION_ERROR_DETAIL,
+      errors: exception.errors,
       instance,
     };
   }

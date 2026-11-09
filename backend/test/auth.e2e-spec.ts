@@ -108,16 +108,60 @@ describe('Auth (E2E, RN01, A1, A2, D39)', () => {
     expect(await prisma.user.count()).toBe(1);
   });
 
-  it('rejects a password with fewer than 8 characters (RN01)', async () => {
-    const response = await http()
-      .post('/api/v1/auth/register')
-      .send({ ...ANA, password: '1234567' })
-      .expect(400);
+  // The frontend shows each error next to its input (W2): every 400 names the field (audit of 09/11).
+  it.each([
+    ['an empty name', { ...ANA, name: '' }, 'name'],
+    ['a blank name, rejected by the domain', { ...ANA, name: '   ' }, 'name'],
+    ['a malformed e-mail', { ...ANA, email: 'ana-at-example' }, 'email'],
+    [
+      'a password with fewer than 8 characters',
+      { ...ANA, password: '1234567' },
+      'password',
+    ],
+    ['an extra field', { ...ANA, role: 'admin' }, 'role'],
+  ])(
+    'sign-up rejects %s: 400 problem+json with errors[].field (RN01)',
+    async (_case, payload, field) => {
+      const response = await http()
+        .post('/api/v1/auth/register')
+        .send(payload)
+        .expect(400);
 
-    expect(response.headers['content-type']).toBe(PROBLEM_JSON);
-    expect(response.body.errors).toHaveLength(1);
-    expect(await prisma.user.count()).toBe(0);
-  });
+      expect(response.headers['content-type']).toBe(PROBLEM_JSON);
+      expect(response.body).toMatchObject({
+        status: 400,
+        detail: 'The request is invalid.',
+      });
+      expect(response.body.errors).toEqual([
+        { field, message: expect.any(String) as unknown },
+      ]);
+      expect(await prisma.user.count()).toBe(0);
+    },
+  );
+
+  it.each([
+    ['a malformed e-mail', { email: 'ana', password: ANA.password }, 'email'],
+    ['an empty password', { email: ANA.email, password: '' }, 'password'],
+    [
+      'an extra field',
+      { email: ANA.email, password: ANA.password, remember: true },
+      'remember',
+    ],
+  ])(
+    'login rejects %s: 400 problem+json with errors[].field (A2)',
+    async (_case, payload, field) => {
+      const response = await http()
+        .post('/api/v1/auth/login')
+        .send(payload)
+        .expect(400);
+
+      expect(response.headers['content-type']).toBe(PROBLEM_JSON);
+      expect(response.body.errors).toEqual([
+        { field, message: expect.any(String) as unknown },
+      ]);
+      expect(await prisma.userSession.count()).toBe(0);
+    },
+  );
 
   it('logs in with the e-mail in any casing and the token opens protected routes (A2)', async () => {
     const signUp = await http()

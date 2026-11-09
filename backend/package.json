@@ -18,7 +18,8 @@
     "test": "node --experimental-vm-modules --no-warnings=ExperimentalWarning node_modules/jest/bin/jest.js",
     "test:cov": "node --experimental-vm-modules --no-warnings=ExperimentalWarning node_modules/jest/bin/jest.js --coverage",
     "test:e2e": "node --experimental-vm-modules --no-warnings=ExperimentalWarning node_modules/jest/bin/jest.js --config test/jest-e2e.config.ts --runInBand",
-    "openapi:generate": "nest build && node dist/openapi/export-openapi.js"
+    "openapi:generate": "nest build && node dist/openapi/export-openapi.js",
+    "openapi:lint": "redocly lint openapi/openapi.json"
   },
   "dependencies": {
     "@fastify/cookie": "11.1.5",
@@ -50,6 +51,7 @@
     "@nestjs/cli": "12.0.11",
     "@nestjs/schematics": "12.0.12",
     "@nestjs/testing": "12.3.2",
+    "@redocly/cli": "2.71.0",
     "@testcontainers/postgresql": "12.2.1",
     "@types/jest": "30.0.0",
     "@types/node": "24.19.2",

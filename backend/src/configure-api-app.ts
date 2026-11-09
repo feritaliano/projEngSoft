@@ -4,6 +4,7 @@ import { ValidationPipe } from '@nestjs/common';
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import { API_PREFIX } from './shared/presentation/api-prefix';
 import { ProblemDetailsFilter } from './shared/presentation/problem-details.filter';
+import { requestValidationExceptionFactory } from './shared/presentation/request-validation';
 
 export { API_PREFIX };
 
@@ -24,6 +25,8 @@ export async function configureApiApp(
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
+      // 400 with errors: [{ field, message }], for the body and the query string alike.
+      exceptionFactory: requestValidationExceptionFactory,
     }),
   );
   app.useGlobalFilters(new ProblemDetailsFilter());

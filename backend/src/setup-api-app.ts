@@ -22,6 +22,9 @@ export async function setupApiApp(app: NestFastifyApplication): Promise<void> {
   });
 
   if (!production) {
-    SwaggerModule.setup(SWAGGER_UI_PATH, app, () => buildOpenApiDocument(app));
+    // Authorize (bearer) keeps the access token across reloads of the page.
+    SwaggerModule.setup(SWAGGER_UI_PATH, app, () => buildOpenApiDocument(app), {
+      swaggerOptions: { persistAuthorization: true },
+    });
   }
 }

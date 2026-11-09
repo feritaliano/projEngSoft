@@ -126,6 +126,14 @@ jobs:
           git diff --exit-code -- openapi/openapi.json
           test -z "$(git status --porcelain -- openapi)" || { echo "openapi/ has untracked or changed files; run npm run openapi:generate and commit"; git status --porcelain -- openapi; exit 1; }
 
+      # Structure and security schemes of the contract (redocly.yaml): an operation pointing to an undefined scheme
+      # made the file invalid until the K3 (audit of 09/11/2026).
+      - name: openapi.json lint (Redocly CLI)
+        run: npm run openapi:lint
+        env:
+          REDOCLY_TELEMETRY: 'off'
+          REDOCLY_SUPPRESS_UPDATE_NOTICE: 'true'
+
       # Docker (chore/K1-backend-docker): builds the image and runs the real stack (postgres, migrate, api, worker)
       # from the .env.example, as a user would with docker compose --profile app up.
       - name: Docker stack smoke test (migrate, api, worker)

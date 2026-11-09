@@ -63,7 +63,7 @@ describe('HealthController (D52)', () => {
     );
   });
 
-  it('still answers 503 (without checks) when terminus fails with an unexpected body', async () => {
+  it('still answers 503 with empty checks when terminus fails with an unexpected body (D52)', async () => {
     const moduleRef = await Test.createTestingModule({
       controllers: [HealthController],
       providers: [
@@ -86,6 +86,6 @@ describe('HealthController (D52)', () => {
 
     expect(error).toBeInstanceOf(ProblemException);
     expect((error as ProblemException).getStatus()).toBe(503);
-    expect((error as ProblemException).extensions).toEqual({});
+    expect((error as ProblemException).extensions).toEqual({ checks: {} });
   });
 });

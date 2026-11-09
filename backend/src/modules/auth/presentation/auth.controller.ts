@@ -10,21 +10,24 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import {
-  ApiConflictResponse,
   ApiCookieAuth,
   ApiCreatedResponse,
   ApiNoContentResponse,
   ApiOkResponse,
+  ApiOperation,
   ApiTags,
-  ApiTooManyRequestsResponse,
-  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { API_PREFIX } from '../../../shared/presentation/api-prefix';
+import { REFRESH_TOKEN_SCHEME } from '../../../shared/presentation/api-security';
 import { InvalidValueError } from '../../../shared/domain/domain-error';
 import { Public } from '../../../shared/presentation/auth-context';
-import { ProblemException } from '../../../shared/presentation/problem-details';
+import {
+  invalidValueProblem,
+  ProblemException,
+} from '../../../shared/presentation/problem-details';
+import { ApiProblemResponse } from '../../../shared/presentation/problem-details.dto';
 import { EmailAlreadyRegisteredError } from '../../users/domain/user';
 import { LogIn } from '../application/log-in.use-case';
 import { LogOut } from '../application/log-out.use-case';
@@ -51,9 +54,7 @@ function toProblem(error: unknown): unknown {
     );
   }
   if (error instanceof InvalidValueError) {
-    return new ProblemException(HttpStatus.BAD_REQUEST, error.message, {
-      field: error.field,
-    });
+    return invalidValueProblem(error);
   }
   if (error instanceof InvalidCredentialsError) {
     return new ProblemException(
@@ -88,13 +89,19 @@ export class AuthController {
 
   /** A1: sign-up; the user is logged in right away. Rate limited (A2/D52). */
   @Post('register')
+  @ApiOperation({ summary: 'Sign up and start a session (A1, RN01)' })
   @UseGuards(ThrottlerGuard)
   @Header('Cache-Control', 'no-store')
   @ApiCreatedResponse({ type: AuthResponseDto })
-  @ApiConflictResponse({
-    description: 'E-mail already registered (field: email).',
-  })
-  @ApiTooManyRequestsResponse({ description: 'Too many attempts.' })
+  @ApiProblemResponse(
+    HttpStatus.BAD_REQUEST,
+    'Invalid body: errors[] names each field (name, email, password, or a field that should not exist).',
+  )
+  @ApiProblemResponse(
+    HttpStatus.CONFLICT,
+    'E-mail already registered (field: email).',
+  )
+  @ApiProblemResponse(HttpStatus.TOO_MANY_REQUESTS, 'Too many attempts.')
   async register(
     @Body() body: SignUpDto,
     @Res({ passthrough: true }) reply: FastifyReply,
@@ -107,12 +114,20 @@ export class AuthController {
 
   /** A2: login. Unknown e-mail and wrong password give the same 401. Rate limited. */
   @Post('login')
+  @ApiOperation({ summary: 'Log in (A2)' })
   @HttpCode(HttpStatus.OK)
   @UseGuards(ThrottlerGuard)
   @Header('Cache-Control', 'no-store')
   @ApiOkResponse({ type: AuthResponseDto })
-  @ApiUnauthorizedResponse({ description: 'E-mail or password is incorrect.' })
-  @ApiTooManyRequestsResponse({ description: 'Too many attempts.' })
+  @ApiProblemResponse(
+    HttpStatus.BAD_REQUEST,
+    'Invalid body: errors[] names each field (email, password, or a field that should not exist).',
+  )
+  @ApiProblemResponse(
+    HttpStatus.UNAUTHORIZED,
+    'E-mail or password is incorrect.',
+  )
+  @ApiProblemResponse(HttpStatus.TOO_MANY_REQUESTS, 'Too many attempts.')
   async login(
     @Body() body: LogInDto,
     @Res({ passthrough: true }) reply: FastifyReply,
@@ -127,11 +142,14 @@ export class AuthController {
 
   /** New access token and rotated refresh cookie (D39). 401 = session expired: log in again. */
   @Post('refresh')
+  @ApiOperation({
+    summary: 'Rotate the refresh cookie and issue a new access token (D39)',
+  })
   @HttpCode(HttpStatus.OK)
   @Header('Cache-Control', 'no-store')
-  @ApiCookieAuth(REFRESH_COOKIE)
+  @ApiCookieAuth(REFRESH_TOKEN_SCHEME)
   @ApiOkResponse({ type: AuthResponseDto })
-  @ApiUnauthorizedResponse({ description: 'Session expired or revoked.' })
+  @ApiProblemResponse(HttpStatus.UNAUTHORIZED, 'Session expired or revoked.')
   async refresh(
     @Req() request: FastifyRequest,
     @Res({ passthrough: true }) reply: FastifyReply,
@@ -151,8 +169,9 @@ export class AuthController {
 
   /** Revokes the session family of the cookie and clears it: 204. The cookie is cleared even if revoking fails (500). */
   @Post('logout')
+  @ApiOperation({ summary: 'Log out: revoke the session family (D39)' })
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiCookieAuth(REFRESH_COOKIE)
+  @ApiCookieAuth(REFRESH_TOKEN_SCHEME)
   @ApiNoContentResponse()
   async logout(
     @Req() request: FastifyRequest,

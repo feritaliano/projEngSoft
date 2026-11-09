@@ -1,8 +1,6 @@
 import { NestFactory } from '@nestjs/core';
-import {
-  FastifyAdapter,
-  NestFastifyApplication,
-} from '@nestjs/platform-fastify';
+import type { NestFastifyApplication } from '@nestjs/platform-fastify';
+import { ApiFastifyAdapter } from '../shared/presentation/api-fastify-adapter';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { ApiModule } from '../api.module';
@@ -18,7 +16,7 @@ const OUTPUT_FILE = resolve(__dirname, '..', '..', 'openapi', 'openapi.json');
 async function exportOpenApi(): Promise<void> {
   const app = await NestFactory.create<NestFastifyApplication>(
     ApiModule,
-    new FastifyAdapter(),
+    new ApiFastifyAdapter(),
     { logger: false, abortOnError: false },
   );
   try {

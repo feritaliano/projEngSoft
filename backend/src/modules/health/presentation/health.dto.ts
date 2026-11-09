@@ -1,5 +1,4 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { ProblemDetailsDto } from '../../../shared/presentation/problem-details.dto';
 
 class IndicatorStatusDto {
   @ApiProperty({ enum: ['up', 'down'], example: 'up' })
@@ -33,8 +32,8 @@ export class HealthOkDto {
   details: Record<string, IndicatorStatusDto>;
 }
 
-/** 503 problem body: which checks are down, without error messages (D52). */
-export class HealthUnavailableProblemDto extends ProblemDetailsDto {
+/** Extension members of the 503 problem: which checks are down, without error messages (D52). */
+export class HealthChecksProblemDto {
   @ApiProperty({
     type: 'object',
     additionalProperties: { type: 'string', enum: ['up', 'down'] },
