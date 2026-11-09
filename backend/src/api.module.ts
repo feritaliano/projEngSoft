@@ -3,6 +3,8 @@ import { apiEnvSchema } from './config/env';
 import { validatedConfigModule } from './config/config.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { HealthModule } from './modules/health/health.module';
+import { PortfoliosModule } from './modules/portfolios/portfolios.module';
+import { ReferenceDataModule } from './modules/reference-data/reference-data.module';
 import { LoggingModule } from './shared/infrastructure/logging/logging.module';
 import { PrismaModule } from './shared/infrastructure/prisma/prisma.module';
 
@@ -14,6 +16,8 @@ import { PrismaModule } from './shared/infrastructure/prisma/prisma.module';
     PrismaModule,
     HealthModule,
     AuthModule,
+    ReferenceDataModule,
+    PortfoliosModule,
   ],
 })
 export class ApiModule {}
