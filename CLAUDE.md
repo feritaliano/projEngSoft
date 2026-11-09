@@ -4,7 +4,7 @@ Plataforma gratuita e sem fins lucrativos de análise e gestão de investimentos
 
 ## Leia antes de qualquer tarefa
 Ordem de precedência em caso de conflito:
-1. `claude/contexto-projeto.md` — documento-mestre: escopo, decisões D1–D52, esquema relacional, pendências.
+1. `claude/contexto-projeto.md` — documento-mestre: escopo, decisões D1–D53, esquema relacional, pendências.
 2. `claude/arquitetura.md` — arquitetura de dados e da aplicação.
 3. `database/docs/modelo-er.md` — modelo ER (34 entidades, 39 relacionamentos + 1 especialização, 36 tabelas), revisto na tarefa D3 (D50).
 4. Prompts dos agentes em `agentes/` (espelhados em `.claude/agents/`).
@@ -12,6 +12,31 @@ Ordem de precedência em caso de conflito:
 Onde cada arquivo fica, o que é gerado e o que vai para o Git: `claude/estrutura-repositorio.md`. Arquivo novo segue essa estrutura; mudança nela só com registro no contexto (D37).
 
 Tarefas, datas, dependências e critérios de pronto: `claude/plano-de-acao.md`. Git, PR, testes e definição de pronto: `claude/convencoes-equipe.md`.
+
+## Pesquisa no código: grafo do Graphify (D53)
+O grafo do projeto fica em `graphify-out/` (gerado, fora do Git): `graph.json` (grafo completo), `GRAPH_REPORT.md` (comunidades e nós centrais) e `graph.html` (visualização no navegador). Cobre o código (TypeScript, SQL das migrations e de `database/`, JSON e YAML de configuração), extraído por AST e sem LLM; os `.md` ficam fora (`--code-only`). Arquivos excluídos: `.gitignore` + `.graphifyignore`.
+- Em pergunta sobre o código (onde está, quem chama, o que depende de quê), consulte o grafo **antes** de Grep, Glob ou leitura de arquivo-fonte, e leia só as linhas que ele apontar:
+  - `graphify query "<pergunta>"`: subgrafo da pergunta, limitado a 2000 tokens (`--budget N` muda o limite).
+  - `graphify explain "<símbolo>"`: o símbolo e seus vizinhos.
+  - `graphify path "<A>" "<B>"`: como dois símbolos se ligam.
+  - `graphify affected "<símbolo>"`: o que é afetado se ele mudar.
+- Repasse esta regra no prompt de todo subagente que for explorar código.
+- `GRAPH_REPORT.md` só para visão geral da arquitetura.
+- Grep e leitura direta continuam certos para texto literal, documentos `.md`, configuração que o grafo não indexa e quando o grafo estiver desatualizado.
+- Hooks opcionais, por máquina: `graphify hook-guard read|search|compact` no `.claude/settings.local.json` (`PreToolUse` em `Read|Glob` e `Bash|Grep`, `SessionStart` em `compact`), com o caminho absoluto do executável. Nunca no `settings.json` compartilhado. Sem o grafo, o hook não bloqueia nada.
+- Sem `graphify` no PATH ou sem `graphify-out/graph.json`: instale com `uv tool install "graphifyy[sql]"` (Python 3.10 a 3.13; o 3.15 não instala) e gere com os comandos abaixo, ou siga com grep.
+
+**Avaliação depois de mudança grande.** Ao concluir uma mudança grande, avalie se o grafo precisa ser atualizado e diga na resposta o que decidiu.
+- É mudança grande:
+  - criar, remover, renomear ou mover arquivo de código ou módulo;
+  - mudar símbolo exportado, classe, DTO, rota ou dependência entre módulos;
+  - migration nova;
+  - merge, rebase ou pull que traga código.
+- Não é: só `.md`, ajuste dentro de uma função, teste sem símbolo novo, formatação.
+- Para conferir, compare o commit de origem do grafo ("Built from commit" no `GRAPH_REPORT.md`) com `git rev-parse HEAD`; `git diff --stat <commit>` mostra o que mudou desde então (inclua o que ainda não foi commitado).
+- Atualizar (AST, sem LLM, segundos): `GRAPHIFY_BACKEND=none graphify update .`. Se o código diminuiu e o comando recusar gravar um grafo com menos nós, acrescente `--force`.
+- Comunidades novas ficam como "Community N". Renomeie só quando muitas mudarem: `graphify label . --missing-only --backend=claude-cli`. Usa a assinatura do Claude; a geração completa gastou ~55 mil tokens de entrada.
+- Recriar do zero: `GRAPHIFY_BACKEND=none graphify extract . --code-only` e depois `graphify cluster-only . --backend=claude-cli`.
 
 ## Agentes (subagentes em `.claude/agents/`)
 | Agente | Arquivo | Quando usar |
@@ -70,5 +95,6 @@ data/raw/         arquivos brutos das fontes externas (fora do Git)
 docker/           scripts de inicialização do PostgreSQL
 backend/          NestJS (criado pelo Nest CLI no K1)
 frontend/         Angular (criado pelo Angular CLI no W1)
+graphify-out/     grafo do código do Graphify (gerado, fora do Git, D53)
 .env              único, na raiz, fora do Git (Compose, Prisma e backend leem o mesmo)
 ```

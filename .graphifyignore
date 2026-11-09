@@ -1,0 +1,8 @@
+# Arquivos fora do grafo do Graphify (o .gitignore já é respeitado).
+# Lockfiles e saídas geradas não agregam relações úteis.
+package-lock.json
+**/package-lock.json
+database/results/
+database/docs/*.png
+database/docs/*.svg
+graphify-out/

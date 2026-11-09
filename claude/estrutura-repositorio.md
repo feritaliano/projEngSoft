@@ -135,6 +135,8 @@ carteira-b3/
 │   └── e2e/
 │       └── *.spec.ts                [R1] E2E ponta a ponta do S1 com @playwright/test, no CI (D38)
 │
+├── graphify-out/                    *gerado*, *fora do Git*: grafo do código do Graphify (graph.json, GRAPH_REPORT.md, graph.html), D53; uso no CLAUDE.md
+├── .graphifyignore                  arquivos fora do grafo, além do .gitignore (D53)
 ├── .env                             fora do Git: credenciais locais (copiado do .env.example)
 ├── .env.example                     [ok] modelo do .env, sem segredos
 ├── .gitignore                       [ok]
@@ -166,6 +168,7 @@ carteira-b3/
 | Plugins do Claude Code do projeto | `.claude/settings.json` (`enabledPlugins`) | Sim |
 | Arquivos brutos das fontes | `data/raw/` | Não |
 | Configuração pessoal do Claude Code | `.claude/settings.local.json` | Não |
+| Grafo do código (Graphify, D53) | `graphify-out/` (gerado por `graphify update .`); exclusões em `.graphifyignore` | Não (o `.graphifyignore` vai) |
 
 ## 4. Donos por pasta
 | Pasta | Dono | Outros agentes |
