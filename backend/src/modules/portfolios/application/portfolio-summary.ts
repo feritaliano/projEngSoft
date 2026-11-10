@@ -6,6 +6,7 @@ export interface PortfolioSummary {
   readonly id: string;
   readonly name: string;
   readonly operationCount: number;
+  readonly lastTradeDate: string | null;
   readonly assetCount: number;
 }
 
@@ -16,10 +17,11 @@ export async function summarize(
   const assetCounts = await openPositions.byPortfolio(
     portfolios.map((portfolio) => portfolio.id),
   );
-  return portfolios.map(({ id, name, operationCount }) => ({
+  return portfolios.map(({ id, name, operationCount, lastTradeDate }) => ({
     id,
     name,
     operationCount,
+    lastTradeDate,
     assetCount: assetCounts.get(id) ?? 0,
   }));
 }

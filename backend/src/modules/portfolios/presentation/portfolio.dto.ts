@@ -1,10 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, MaxLength } from 'class-validator';
+import { IsString } from 'class-validator';
 import { PORTFOLIO_NAME_MAX_LENGTH } from '../domain/portfolio';
 
-// class-validator counts UTF-16 units, so the DTO only caps the size (150 characters are at most 300 units, e.g.
-// emoji); PortfolioName trims and counts characters like VARCHAR(150) and is the final check (blank or over 150: a 400
-// from the domain, with the same errors[].field).
+// class-validator counts UTF-16 units, so the length is left to PortfolioName, which trims and counts characters like
+// VARCHAR(150): blank is REQUIRED and over 150 is TOO_LONG { max: 150 } (D56), from the domain, with the same
+// errors[].field. A cap in UTF-16 units here would answer TOO_LONG with a max the client cannot show.
+// Fastify's body limit bounds the size of the request.
 export class CreatePortfolioDto {
   @ApiProperty({
     example: 'Longo prazo',
@@ -13,7 +14,6 @@ export class CreatePortfolioDto {
       'RN02: unique per user (case-sensitive), trimmed, 1 to 150 characters.',
   })
   @IsString()
-  @MaxLength(PORTFOLIO_NAME_MAX_LENGTH * 2)
   name: string;
 }
 
@@ -33,6 +33,16 @@ export class PortfolioDto {
       'Operations of the portfolio, counted in the query (D41). Shown when confirming the deletion: they go with it.',
   })
   operationCount: number;
+
+  @ApiProperty({
+    type: String,
+    format: 'date',
+    nullable: true,
+    example: '2026-10-28',
+    description:
+      'Trade date of the most recent operation (header "9 operações · última em 28/10/2026"); null without operations.',
+  })
+  lastTradeDate: string | null;
 
   @ApiProperty({
     example: 6,

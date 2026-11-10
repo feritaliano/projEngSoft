@@ -24,10 +24,14 @@ import { REFRESH_TOKEN_SCHEME } from '../../../shared/presentation/api-security'
 import { InvalidValueError } from '../../../shared/domain/domain-error';
 import { Public } from '../../../shared/presentation/auth-context';
 import {
+  alreadyExistsProblem,
   invalidValueProblem,
   ProblemException,
 } from '../../../shared/presentation/problem-details';
-import { ApiProblemResponse } from '../../../shared/presentation/problem-details.dto';
+import {
+  ApiProblemResponse,
+  badRequestExample,
+} from '../../../shared/presentation/problem-details.dto';
 import { EmailAlreadyRegisteredError } from '../../users/domain/user';
 import { LogIn } from '../application/log-in.use-case';
 import { LogOut } from '../application/log-out.use-case';
@@ -47,11 +51,7 @@ export const REFRESH_COOKIE_PATH = `/${API_PREFIX}/auth`;
 /** Domain errors of the auth flow as HTTP problems; anything else propagates (500 by the global filter). */
 function toProblem(error: unknown): unknown {
   if (error instanceof EmailAlreadyRegisteredError) {
-    return new ProblemException(
-      HttpStatus.CONFLICT,
-      'This e-mail is already registered.',
-      { field: 'email' },
-    );
+    return alreadyExistsProblem('email', 'This e-mail is already registered.');
   }
   if (error instanceof InvalidValueError) {
     return invalidValueProblem(error);
@@ -95,11 +95,26 @@ export class AuthController {
   @ApiCreatedResponse({ type: AuthResponseDto })
   @ApiProblemResponse(
     HttpStatus.BAD_REQUEST,
-    'Invalid body: errors[] names each field (name, email, password, or a field that should not exist).',
+    'Invalid body: errors[] names each field and why (D56): name REQUIRED or TOO_LONG; email REQUIRED, INVALID_FORMAT or TOO_LONG; password REQUIRED, TOO_SHORT or TOO_LONG; a field that should not exist is INVALID_VALUE.',
+    {
+      example: badRequestExample(`/${API_PREFIX}/auth/register`, [
+        {
+          field: 'email',
+          code: 'INVALID_FORMAT',
+          message: 'email must be an email',
+        },
+        {
+          field: 'password',
+          code: 'TOO_SHORT',
+          message: 'password must be longer than or equal to 8 characters',
+          params: { min: 8 },
+        },
+      ]),
+    },
   )
   @ApiProblemResponse(
     HttpStatus.CONFLICT,
-    'E-mail already registered (field: email).',
+    'E-mail already registered: field email, and errors[] with ALREADY_EXISTS (D56).',
   )
   @ApiProblemResponse(HttpStatus.TOO_MANY_REQUESTS, 'Too many attempts.')
   async register(
@@ -121,7 +136,16 @@ export class AuthController {
   @ApiOkResponse({ type: AuthResponseDto })
   @ApiProblemResponse(
     HttpStatus.BAD_REQUEST,
-    'Invalid body: errors[] names each field (email, password, or a field that should not exist).',
+    'Invalid body: errors[] names each field and why (D56): email REQUIRED or INVALID_FORMAT; password REQUIRED; a field that should not exist is INVALID_VALUE.',
+    {
+      example: badRequestExample(`/${API_PREFIX}/auth/login`, [
+        {
+          field: 'password',
+          code: 'REQUIRED',
+          message: 'password is required',
+        },
+      ]),
+    },
   )
   @ApiProblemResponse(
     HttpStatus.UNAUTHORIZED,

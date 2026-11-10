@@ -1,6 +1,6 @@
 import { Prisma } from '../../../generated/prisma/client';
 import type { PrismaService } from '../../../shared/infrastructure/prisma/prisma.service';
-import { InconsistentTimelineError } from '../application/count-open-positions';
+import { InconsistentTimelineError } from '../domain/inconsistent-timeline';
 import { PrismaTimelineReader } from './prisma-timeline-reader';
 
 function row(

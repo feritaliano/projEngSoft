@@ -83,7 +83,11 @@ function oneOf<T extends string>(
   field: string,
 ): T {
   if (!(allowed as readonly string[]).includes(value)) {
-    throw new InvalidValueError(field, `must be one of ${allowed.join(', ')}`);
+    throw new InvalidValueError(
+      field,
+      'INVALID_VALUE',
+      `must be one of ${allowed.join(', ')}`,
+    );
   }
   return value as T;
 }
@@ -105,17 +109,26 @@ export interface OperationProps {
  */
 export function timelineOperation(props: OperationProps): TimelineOperation {
   const type = oneOf(OPERATION_TYPES, props.type, 'type');
-  const quantity = Quantity.of(props.quantity, 'quantity');
-  if (quantity.isZero()) {
-    throw new InvalidValueError('quantity', 'must be greater than zero');
+  const units = toDecimal(props.quantity, 'quantity');
+  if (units.lessThanOrEqualTo(0)) {
+    throw new InvalidValueError(
+      'quantity',
+      'NOT_POSITIVE',
+      'must be greater than zero',
+    );
   }
+  const quantity = Quantity.of(units, 'quantity');
   const unitPrice = Money.of(props.unitPrice, 'unitPrice');
   if (!unitPrice.isPositive()) {
-    throw new InvalidValueError('unitPrice', 'must be greater than zero');
+    throw new InvalidValueError(
+      'unitPrice',
+      'NOT_POSITIVE',
+      'must be greater than zero',
+    );
   }
   const fees = Money.of(props.fees, 'fees');
   if (fees.isNegative()) {
-    throw new InvalidValueError('fees', 'must not be negative');
+    throw new InvalidValueError('fees', 'NEGATIVE', 'must not be negative');
   }
   return {
     kind: 'operation',
@@ -148,7 +161,11 @@ const RATIO_DIRECTION: Record<CorporateEventType, string> = {
 function positiveRatio(value: DecimalInput, field: string): Decimal {
   const ratio = toDecimal(value, field);
   if (ratio.lessThanOrEqualTo(0)) {
-    throw new InvalidValueError(field, 'must be greater than zero');
+    throw new InvalidValueError(
+      field,
+      'NOT_POSITIVE',
+      'must be greater than zero',
+    );
   }
   return ratio;
 }
@@ -168,7 +185,11 @@ export function corporateEvent(
       ? ratioTo.lessThan(ratioFrom)
       : ratioTo.greaterThan(ratioFrom);
   if (!directionOk) {
-    throw new InvalidValueError('ratioTo', RATIO_DIRECTION[type]);
+    throw new InvalidValueError(
+      'ratioTo',
+      'INVALID_VALUE',
+      RATIO_DIRECTION[type],
+    );
   }
 
   const base = {
@@ -185,20 +206,29 @@ export function corporateEvent(
     if (hasBonusCost) {
       throw new InvalidValueError(
         'bonusUnitCost',
+        'INVALID_VALUE',
         'is only allowed in a bonus',
       );
     }
     return { ...base, type, bonusUnitCost: null } as SplitEvent;
   }
   if (!hasBonusCost) {
-    throw new InvalidValueError('bonusUnitCost', 'is required in a bonus');
+    throw new InvalidValueError(
+      'bonusUnitCost',
+      'REQUIRED',
+      'is required in a bonus',
+    );
   }
   const bonusUnitCost = Money.of(
     props.bonusUnitCost as DecimalInput,
     'bonusUnitCost',
   );
   if (bonusUnitCost.isNegative()) {
-    throw new InvalidValueError('bonusUnitCost', 'must not be negative');
+    throw new InvalidValueError(
+      'bonusUnitCost',
+      'NEGATIVE',
+      'must not be negative',
+    );
   }
   return { ...base, type, bonusUnitCost } as BonusEvent;
 }

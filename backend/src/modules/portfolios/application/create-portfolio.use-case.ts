@@ -12,6 +12,11 @@ export class CreatePortfolio {
       userId,
       PortfolioName.of(name),
     );
-    return { ...portfolio, operationCount: 0, assetCount: 0 };
+    return {
+      ...portfolio,
+      operationCount: 0,
+      lastTradeDate: null,
+      assetCount: 0,
+    };
   }
 }

@@ -15,15 +15,21 @@ export class PortfolioName {
 
   static of(value: string): PortfolioName {
     const name = value.trim();
-    if (name.length === 0 || [...name].length > PORTFOLIO_NAME_MAX_LENGTH) {
+    if (name.length === 0) {
+      throw new InvalidValueError('name', 'REQUIRED', 'is required');
+    }
+    if ([...name].length > PORTFOLIO_NAME_MAX_LENGTH) {
       throw new InvalidValueError(
         'name',
-        `must have between 1 and ${PORTFOLIO_NAME_MAX_LENGTH} characters`,
+        'TOO_LONG',
+        `must have at most ${PORTFOLIO_NAME_MAX_LENGTH} characters`,
+        { max: PORTFOLIO_NAME_MAX_LENGTH },
       );
     }
     if (CONTROL_CHARACTERS.test(name)) {
       throw new InvalidValueError(
         'name',
+        'INVALID_VALUE',
         'must not contain control characters',
       );
     }
@@ -44,9 +50,11 @@ export interface Portfolio {
   readonly name: string;
 }
 
-/** A portfolio with its operation count, taken in the same query (D41, never a column). */
+/** A portfolio with its operation count and last trade date, taken in the same query (D41, never columns). */
 export interface PortfolioWithOperationCount extends Portfolio {
   readonly operationCount: number;
+  /** YYYY-MM-DD of the most recent operation; null without operations (header of the detail, frame 6). */
+  readonly lastTradeDate: string | null;
 }
 
 /** RN02: the name is unique per user (UNIQUE (user_id, name): case-sensitive, after the trim). */
@@ -93,6 +101,11 @@ export abstract class PortfolioRepository {
     userId: string,
     portfolioId: PortfolioId,
   ): Promise<PortfolioWithOperationCount | null>;
+  /** Ownership only, without counting anything (checked on every request of the operations module). */
+  abstract existsOwned(
+    userId: string,
+    portfolioId: PortfolioId,
+  ): Promise<boolean>;
   /** False when the portfolio does not exist or belongs to another user. Operations go by ON DELETE CASCADE (D41). */
   abstract deleteOwned(
     userId: string,

@@ -9,7 +9,11 @@ export class LocalDate {
   static parse(value: string, field = 'date'): LocalDate {
     const match = ISO_DATE.exec(value);
     if (!match) {
-      throw new InvalidValueError(field, 'must be a date in YYYY-MM-DD format');
+      throw new InvalidValueError(
+        field,
+        'INVALID_FORMAT',
+        'must be a date in YYYY-MM-DD format',
+      );
     }
     const [year, month, day] = match.slice(1).map(Number);
     const date = new Date(Date.UTC(year, month - 1, day));
@@ -18,9 +22,31 @@ export class LocalDate {
       date.getUTCMonth() === month - 1 &&
       date.getUTCDate() === day;
     if (!isRealDate) {
-      throw new InvalidValueError(field, 'must be a valid calendar date');
+      throw new InvalidValueError(
+        field,
+        'INVALID_FORMAT',
+        'must be a valid calendar date',
+      );
     }
     return new LocalDate(value);
+  }
+
+  /** The calendar date of an instant in a time zone (e.g. "today" in São Paulo, D54). */
+  static todayIn(now: Date, timeZone: string): LocalDate {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(now);
+    const { year, month, day } = Object.fromEntries(
+      parts.map((part) => [part.type, part.value]),
+    );
+    return LocalDate.parse(`${year}-${month}-${day}`);
+  }
+
+  isAfter(other: LocalDate): boolean {
+    return this.compareTo(other) > 0;
   }
 
   /** Negative, zero or positive, like Array.prototype.sort expects. ISO strings sort chronologically. */

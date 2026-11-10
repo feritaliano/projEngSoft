@@ -13,8 +13,23 @@ export class Email {
 
   static of(value: string): Email {
     const address = value.trim();
-    if (address.length > EMAIL_MAX_LENGTH || !EMAIL_SHAPE.test(address)) {
-      throw new InvalidValueError('email', 'must be a valid e-mail address');
+    if (address.length === 0) {
+      throw new InvalidValueError('email', 'REQUIRED', 'is required');
+    }
+    if (address.length > EMAIL_MAX_LENGTH) {
+      throw new InvalidValueError(
+        'email',
+        'TOO_LONG',
+        `must have at most ${EMAIL_MAX_LENGTH} characters`,
+        { max: EMAIL_MAX_LENGTH },
+      );
+    }
+    if (!EMAIL_SHAPE.test(address)) {
+      throw new InvalidValueError(
+        'email',
+        'INVALID_FORMAT',
+        'must be a valid e-mail address',
+      );
     }
     return new Email(address);
   }

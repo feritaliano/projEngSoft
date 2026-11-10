@@ -51,36 +51,79 @@ describe('PrismaPortfolioRepository (RN02, D41)', () => {
     ).rejects.toBe(failure);
   });
 
-  it('lists the portfolios of the user by creation, with the operation count of the query', async () => {
-    const findMany = jest
-      .fn()
-      .mockResolvedValue([
-        { id: 'p1', name: 'Longo prazo', _count: { operations: 11 } },
-      ]);
+  // $queryRaw is a tagged template: the mock gets the strings and the values, rebuilt here as the Sql it runs.
+  function sqlOf(
+    queryRaw: jest.Mock,
+    call = 0,
+  ): { sql: string; values: unknown[] } {
+    const [strings, ...values] = queryRaw.mock.calls[call] as [
+      TemplateStringsArray,
+      ...unknown[],
+    ];
+    const query = Prisma.sql(strings, ...values);
+    return { sql: query.sql, values: query.values };
+  }
 
-    await expect(repositoryWith({ findMany }).listOwned('u1')).resolves.toEqual(
-      [{ id: 'p1', name: 'Longo prazo', operationCount: 11 }],
-    );
-    expect(findMany.mock.calls[0][0]).toMatchObject({
-      where: { userId: 'u1' },
-      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
-    });
+  it('lists the portfolios of the user by creation, with the count and last date of the operations in one query (D41)', async () => {
+    const $queryRaw = jest.fn().mockResolvedValue([
+      {
+        id: 'p1',
+        name: 'Longo prazo',
+        operation_count: 9,
+        last_trade_date: new Date('2026-10-28T00:00:00.000Z'),
+      },
+      { id: 'p2', name: 'Vazia', operation_count: 0, last_trade_date: null },
+    ]);
+    const repository = new PrismaPortfolioRepository({
+      $queryRaw,
+    } as unknown as PrismaService);
+
+    await expect(repository.listOwned('u1')).resolves.toEqual([
+      {
+        id: 'p1',
+        name: 'Longo prazo',
+        operationCount: 9,
+        lastTradeDate: '2026-10-28',
+      },
+      { id: 'p2', name: 'Vazia', operationCount: 0, lastTradeDate: null },
+    ]);
+    const { sql, values } = sqlOf($queryRaw);
+    expect(sql).toContain('LEFT JOIN operations o');
+    expect(sql).toContain('max(o.trade_date)');
+    expect(sql).toContain('ORDER BY p.created_at ASC, p.id ASC');
+    expect(values).toEqual(['u1']);
   });
 
   it('finds a portfolio only together with its owner', async () => {
-    const findFirst = jest
+    const $queryRaw = jest
       .fn()
-      .mockResolvedValueOnce({ id: 'p1', name: 'A', _count: { operations: 2 } })
-      .mockResolvedValueOnce(null);
-    const repository = repositoryWith({ findFirst });
+      .mockResolvedValueOnce([
+        { id: 'p1', name: 'A', operation_count: 2, last_trade_date: null },
+      ])
+      .mockResolvedValueOnce([]);
+    const repository = new PrismaPortfolioRepository({
+      $queryRaw,
+    } as unknown as PrismaService);
 
     await expect(repository.findOwned('u1', P1)).resolves.toEqual({
       id: 'p1',
       name: 'A',
       operationCount: 2,
+      lastTradeDate: null,
     });
     await expect(repository.findOwned('u2', P1)).resolves.toBeNull();
-    expect(findFirst.mock.calls[1][0]).toMatchObject({
+    const { sql, values } = sqlOf($queryRaw, 1);
+    expect(sql).toContain('WHERE p.id = ?::uuid AND p.user_id = ?::uuid');
+    expect(values).toEqual(['p1', 'u2']);
+  });
+
+  it('checks ownership with the owner in the WHERE, without counting (K4)', async () => {
+    const count = jest.fn().mockResolvedValueOnce(1).mockResolvedValueOnce(0);
+    const repository = repositoryWith({ count });
+
+    await expect(repository.existsOwned('u1', P1)).resolves.toBe(true);
+    await expect(repository.existsOwned('u2', P1)).resolves.toBe(false);
+    expect(count.mock.calls[1][0]).toEqual({
       where: { id: 'p1', userId: 'u2' },
     });
   });

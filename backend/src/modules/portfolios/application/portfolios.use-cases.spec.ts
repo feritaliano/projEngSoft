@@ -1,8 +1,6 @@
 import { InvalidValueError } from '../../../shared/domain/domain-error';
-import {
-  CountOpenPositions,
-  InconsistentTimelineError,
-} from '../../operations/application/count-open-positions';
+import { CountOpenPositions } from '../../operations/application/count-open-positions';
+import { InconsistentTimelineError } from '../../operations/domain/inconsistent-timeline';
 import {
   Portfolio,
   PortfolioName,
@@ -39,6 +37,7 @@ class InMemoryPortfolios extends PortfolioRepository {
       userId,
       name: name.toString(),
       operationCount: 0,
+      lastTradeDate: null,
     };
     this.rows.push(row);
     return Promise.resolve({ id: row.id, name: row.name });
@@ -48,7 +47,12 @@ class InMemoryPortfolios extends PortfolioRepository {
     return Promise.resolve(
       this.rows
         .filter((r) => r.userId === userId)
-        .map(({ id, name, operationCount }) => ({ id, name, operationCount })),
+        .map(({ id, name, operationCount, lastTradeDate }) => ({
+          id,
+          name,
+          operationCount,
+          lastTradeDate,
+        })),
     );
   }
 
@@ -62,8 +66,20 @@ class InMemoryPortfolios extends PortfolioRepository {
     );
     return Promise.resolve(
       row
-        ? { id: row.id, name: row.name, operationCount: row.operationCount }
+        ? {
+            id: row.id,
+            name: row.name,
+            operationCount: row.operationCount,
+            lastTradeDate: row.lastTradeDate,
+          }
         : null,
+    );
+  }
+
+  existsOwned(userId: string, portfolioId: string): Promise<boolean> {
+    this.calls.push(`exists:${userId}:${portfolioId}`);
+    return Promise.resolve(
+      this.rows.some((r) => r.id === portfolioId && r.userId === userId),
     );
   }
 
@@ -106,6 +122,7 @@ describe('CreatePortfolio (B1, RN02)', () => {
       id: ID(1),
       name: 'Longo prazo',
       operationCount: 0,
+      lastTradeDate: null,
       assetCount: 0,
     });
     expect(repository.rows[0].userId).toBe(ANA);
@@ -145,17 +162,47 @@ describe('ListPortfolios (B1, D41)', () => {
   it('lists only the portfolios of the user, with operationCount and assetCount', async () => {
     const repository = new InMemoryPortfolios();
     seed(repository, [
-      { id: ID(1), userId: ANA, name: 'Longo prazo', operationCount: 11 },
-      { id: ID(2), userId: BRUNO, name: 'Outro', operationCount: 3 },
-      { id: ID(3), userId: ANA, name: 'Testes FII', operationCount: 0 },
+      {
+        id: ID(1),
+        userId: ANA,
+        name: 'Longo prazo',
+        operationCount: 11,
+        lastTradeDate: '2026-10-28',
+      },
+      {
+        id: ID(2),
+        userId: BRUNO,
+        name: 'Outro',
+        operationCount: 3,
+        lastTradeDate: null,
+      },
+      {
+        id: ID(3),
+        userId: ANA,
+        name: 'Testes FII',
+        operationCount: 0,
+        lastTradeDate: null,
+      },
     ]);
     const positions = openPositions({ [ID(1)]: 6, [ID(2)]: 2 });
 
     const list = await new ListPortfolios(repository, positions).execute(ANA);
 
     expect(list).toEqual([
-      { id: ID(1), name: 'Longo prazo', operationCount: 11, assetCount: 6 },
-      { id: ID(3), name: 'Testes FII', operationCount: 0, assetCount: 0 },
+      {
+        id: ID(1),
+        name: 'Longo prazo',
+        operationCount: 11,
+        lastTradeDate: '2026-10-28',
+        assetCount: 6,
+      },
+      {
+        id: ID(3),
+        name: 'Testes FII',
+        operationCount: 0,
+        lastTradeDate: null,
+        assetCount: 0,
+      },
     ]);
     expect(positions.byPortfolio).toHaveBeenCalledWith([ID(1), ID(3)]);
   });
@@ -165,7 +212,13 @@ describe('ListPortfolios with inconsistent stored operations (RN10)', () => {
   it('lets the error through instead of answering a smaller assetCount', async () => {
     const repository = new InMemoryPortfolios();
     seed(repository, [
-      { id: ID(1), userId: ANA, name: 'Longo prazo', operationCount: 2 },
+      {
+        id: ID(1),
+        userId: ANA,
+        name: 'Longo prazo',
+        operationCount: 2,
+        lastTradeDate: null,
+      },
     ]);
     const failing = {
       byPortfolio: () =>
@@ -181,7 +234,13 @@ describe('ListPortfolios with inconsistent stored operations (RN10)', () => {
 describe('GetOwnedPortfolio (RN02)', () => {
   const repository = new InMemoryPortfolios();
   seed(repository, [
-    { id: ID(1), userId: ANA, name: 'Longo prazo', operationCount: 11 },
+    {
+      id: ID(1),
+      userId: ANA,
+      name: 'Longo prazo',
+      operationCount: 11,
+      lastTradeDate: '2026-10-28',
+    },
   ]);
   const get = new GetOwnedPortfolio(repository, openPositions({ [ID(1)]: 6 }));
 
@@ -190,6 +249,7 @@ describe('GetOwnedPortfolio (RN02)', () => {
       id: ID(1),
       name: 'Longo prazo',
       operationCount: 11,
+      lastTradeDate: '2026-10-28',
       assetCount: 6,
     });
   });
@@ -214,13 +274,44 @@ describe('GetOwnedPortfolio (RN02)', () => {
     );
     expect(repository.calls).toEqual([]);
   });
+
+  it('checks only ownership, without counting, for other modules (K4)', async () => {
+    repository.calls.length = 0;
+
+    await expect(get.ensureOwned(ANA, ID(1))).resolves.toBe(ID(1));
+    expect(repository.calls).toEqual([`exists:${ANA}:${ID(1)}`]);
+  });
+
+  it.each([
+    ['another user (RN02)', BRUNO, ID(1)],
+    ['a missing portfolio', ANA, ID(9)],
+  ])('ensureOwned answers not found for %s', async (_case, user, id) => {
+    await expect(get.ensureOwned(user, id)).rejects.toBeInstanceOf(
+      PortfolioNotFoundError,
+    );
+  });
+
+  it('ensureOwned answers not found for a malformed id without querying', async () => {
+    repository.calls.length = 0;
+
+    await expect(get.ensureOwned(ANA, 'abc')).rejects.toBeInstanceOf(
+      PortfolioNotFoundError,
+    );
+    expect(repository.calls).toEqual([]);
+  });
 });
 
 describe('DeletePortfolio (B1, D41, RN02)', () => {
   function repositoryWithAnasPortfolio(): InMemoryPortfolios {
     const repository = new InMemoryPortfolios();
     seed(repository, [
-      { id: ID(1), userId: ANA, name: 'Longo prazo', operationCount: 11 },
+      {
+        id: ID(1),
+        userId: ANA,
+        name: 'Longo prazo',
+        operationCount: 11,
+        lastTradeDate: null,
+      },
     ]);
     return repository;
   }

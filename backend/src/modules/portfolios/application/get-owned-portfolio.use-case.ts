@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { CountOpenPositions } from '../../operations/application/count-open-positions';
 import {
   parsePortfolioId,
+  PortfolioId,
   PortfolioNotFoundError,
   PortfolioRepository,
 } from '../domain/portfolio';
@@ -29,5 +30,17 @@ export class GetOwnedPortfolio {
     }
     const [summary] = await summarize([portfolio], this.openPositions);
     return summary;
+  }
+
+  /**
+   * RN02 without the counts: the id of a portfolio of the user, for modules that act on it (operations, K4). Same
+   * PortfolioNotFoundError as execute for another user's, a missing one and a malformed id.
+   */
+  async ensureOwned(userId: string, portfolioId: string): Promise<PortfolioId> {
+    const id = parsePortfolioId(portfolioId);
+    if (!id || !(await this.portfolios.existsOwned(userId, id))) {
+      throw new PortfolioNotFoundError();
+    }
+    return id;
   }
 }

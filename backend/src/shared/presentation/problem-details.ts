@@ -32,14 +32,33 @@ export class ProblemException extends HttpException {
 
 /**
  * 400 of a value rejected by the domain (value object), in the same shape as the ValidationPipe 400: the client reads
- * `errors[].field` whichever layer rejected the input.
+ * `errors[].field` and `code` (D56) whichever layer rejected the input.
  */
 export function invalidValueProblem(
   error: InvalidValueError,
 ): RequestValidationException {
   return new RequestValidationException([
-    { field: error.field, message: error.message },
+    {
+      field: error.field,
+      code: error.code,
+      message: error.message,
+      ...(error.params && { params: error.params }),
+    },
   ]);
+}
+
+/**
+ * 409 of a form value that already exists (e-mail, portfolio name): `field` on top, as before D56, and the same
+ * `errors[]` as a 400, with ALREADY_EXISTS, so the client handles both statuses alike.
+ */
+export function alreadyExistsProblem(
+  field: string,
+  detail: string,
+): ProblemException {
+  return new ProblemException(HttpStatus.CONFLICT, detail, {
+    field,
+    errors: [{ field, code: 'ALREADY_EXISTS', message: detail }],
+  });
 }
 
 export const INTERNAL_ERROR_DETAIL = 'An unexpected error occurred.';

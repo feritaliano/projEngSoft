@@ -35,6 +35,14 @@ class FakeCatalog extends AssetCatalog {
     this.tickers.push(ticker);
     return Promise.resolve(ticker === 'ITSA4' ? ITSA4 : null);
   }
+
+  findActiveById(): Promise<AssetRecord | null> {
+    return Promise.reject(new Error('not used'));
+  }
+
+  findByIds(): Promise<AssetRecord[]> {
+    return Promise.reject(new Error('not used'));
+  }
 }
 
 describe('SearchAssets (C1)', () => {
@@ -119,6 +127,10 @@ describe('ListBrokers (RN04, D9)', () => {
     const catalog = new (class extends BrokerCatalog {
       list() {
         return Promise.resolve(brokers);
+      }
+
+      findByIds() {
+        return Promise.reject(new Error('not used'));
       }
     })();
 
