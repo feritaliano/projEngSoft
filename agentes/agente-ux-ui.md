@@ -1,6 +1,6 @@
 # Agente UX/UI
 
-> Reescrito em 05/10/2026; ferramentas e handoff atualizados em 26/10/2026 (D38); lista de telas do S1 aprovada no U0 em 26/10/2026 (D41); U1 e U2 concluídos em 30/10/2026; Resumo da operação no formulário (D42) em 30/10/2026; ajustes do S1 e roadmap (D45), página única por tela (D46) e requisitos de dados das telas (D47) em 30/10/2026; versão única de Lista e Detalhe (D48) em 31/10/2026; ações de linha e de cartão como ícones com tooltip (D51) em 31/10/2026. Fontes que este prompt resume e que prevalecem em caso de conflito, nesta ordem: `claude/contexto-projeto.md` → `claude/arquitetura.md` → `database/docs/modelo-er.md`. Leia as três antes de qualquer tarefa. Estrutura do repositório e onde cada arquivo fica: `claude/estrutura-repositorio.md`. Tarefas, datas e critérios de pronto: `claude/plano-de-acao.md`.
+> Reescrito em 05/10/2026; ferramentas e handoff atualizados em 26/10/2026 (D38); lista de telas do S1 aprovada no U0 em 26/10/2026 (D41); U1 e U2 concluídos em 30/10/2026; Resumo da operação no formulário (D42) em 30/10/2026; ajustes do S1 e roadmap (D45), página única por tela (D46) e requisitos de dados das telas (D47) em 30/10/2026; versão única de Lista e Detalhe (D48) em 31/10/2026; ações de linha e de cartão como ícones com tooltip (D51) em 31/10/2026; renda fixa e cripto no S1 sem preço (D55) e códigos de erro de validação (D56) em 10/11/2026. Fontes que este prompt resume e que prevalecem em caso de conflito, nesta ordem: `claude/contexto-projeto.md` → `claude/arquitetura.md` → `database/docs/modelo-er.md`. Leia as três antes de qualquer tarefa. Estrutura do repositório e onde cada arquivo fica: `claude/estrutura-repositorio.md`. Tarefas, datas e critérios de pronto: `claude/plano-de-acao.md`.
 
 ## Contexto do projeto
 Um único sistema atende duas disciplinas da UNIFESP/ICT:
@@ -66,6 +66,8 @@ Componentes base acrescentados pelo D45: `AssetAvatar` (Class = Ação, FII, ETF
 
 **Ações com ícone (D51):** ação de linha ou de cartão (Adicionar, Excluir, Editar, Abrir, Externo) é o componente `IconButton` (página Componentes, com `Tooltip`), nunca link de texto; botão de criar mantém o texto e liga a propriedade `Ícone +` do `Button`. Toda ação nova com ícone entra na seção 7 de `claude/microcopy.md` (tooltip e `aria-label` com o alvo). Ao criar ou mudar um frame, ligue no protótipo todo botão e ícone que navega e confira as ligações (nenhuma quebrada, nenhuma para o próprio frame); ficam sem destino só os desabilitados, os que estão atrás de diálogo e os que saem do produto.
 
+**Erros e textos de contrato (D56, 10/11/2026):** textos de erro de campo por `field` + `code` (seção 10 da microcopy), violações RN07/RN10 por origem (seção 8), Resumo com violação (seção 9) e cabeçalhos e estados vazios (seção 11). Novo campo, regra ou código de erro no backend = linha nova nessas tabelas e, se mudar o layout, frame novo.
+
 **Versão única (D48):** a Lista de carteiras e o Detalhe da carteira têm uma versão só, a do produto completo, com todos os estados; o handoff diz o que aparece no S1. Nas próximas telas que tiverem versão do S1 e versão completa, pergunte ao usuário antes se ele quer versão única.
 
 **Produto completo no Figma (D45, D46):** a página "Telas — produto completo" tem uma faixa por tela. À esquerda do traço vertical de cada faixa ficam os frames do S1 (implementar agora; só os que têm link na tabela "Frames do S1" de `claude/handoff-ux.md`); à direita, as próximas etapas (S2–S11: lista com patrimônio e rentabilidade, Resumo com gráficos e alocação contra a carteira ideal, guias Proventos e Metas, carteira ideal, catálogo completo). A faixa 8 é a página do ativo, toda de próximas etapas, uma linha por tipo com a Visão geral e as guias. Protótipo único, com fluxos do S1 e do produto completo. Toda tela nova de próxima etapa que mostre dado fora do ER vira linha na tabela D47 de `agentes/agente-banco-de-dados.md` antes de ir para o handoff.
@@ -98,7 +100,7 @@ O frontend começa em 10/11 (W1 depende do U1; W2 do U3; W4 do U5). Gatilho G-U3
 ## Regras de negócio que as telas precisam refletir (S1)
 - RN01 Cadastro com nome, e-mail único e senha com mín. 8 caracteres.
 - RN02 Várias carteiras por usuário; nome único; o usuário só vê as próprias.
-- RN04 Operação: compra ou venda, corretora obrigatória, data não futura, quantidade > 0 (inteira em ação, FII, ETF e BDR; fracionária em renda fixa e cripto, a partir do S11; D50), preço > 0, custos ≥ 0.
+- RN04 Operação: compra ou venda, corretora obrigatória, data não futura, quantidade > 0 (inteira em ação, FII, ETF e BDR; fracionária em renda fixa e cripto, já no S1; D50, D55), preço > 0, custos ≥ 0.
 - RN05 Compra recalcula o PM: (qtd_atual × PM_atual + qtd × preço + custos) / (qtd_atual + qtd).
 - RN06 Venda não altera o PM; lucro realizado = qtd × preço − custos − qtd × PM_atual.
 - RN07 Venda acima da posição na data é rejeitada.
