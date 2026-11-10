@@ -258,7 +258,7 @@ Camadas por módulo (`domain` / `application` / `infrastructure` / `presentation
 | `tax` | Apuração, regras e DARF | tax_assessments, darfs; tax_categories e tax_rules só via seed | S7 |
 | `watchlist` | Favoritos e alertas | watchlist_items, price_alerts | S10 |
 | `planning` | Carteira ideal e metas (D43) | tabelas definidas na D3 | S10 |
-| `fixed-income`, `crypto` | Títulos de renda fixa e criptoativos (D44): catálogo, posição com quantidade fracionária; preços pelos adapters da ingestão | tabelas definidas na D3 | S11 |
+| `fixed-income`, `crypto` | Títulos de renda fixa e criptoativos (D44): catálogo, operações e posição com quantidade fracionária no S1 (D55, no módulo `operations` e no catálogo de `reference-data`); preços pelos adapters da ingestão no S11 | tabelas definidas na D3 | S11 |
 | `ingestion` | Orquestração: agenda, locks, bronze, runs. Cada fonte é um adapter na `infrastructure` do módulo dono, implementando a porta `SourceIngestor` | ops.ingestion_runs, ops.staging_* | S2 |
 
 Regras:
@@ -276,7 +276,7 @@ Regras:
 |---|---|
 | Decimal | Todo número monetário, percentual ou de precisão trafega como **string**. Datas em ISO 8601 (`YYYY-MM-DD`) |
 | **DerivedValue** | Todo número derivado é `{ value, formulaCode, inputs: [{ name, value, source, referenceDate }], asOf }`. `formulaCode` referencia `indicators.code` ou um código de fórmula de domínio (ex.: `AVG_PRICE_BUY`). É a base única do "como foi calculado" (D12) |
-| Erros | RFC 7807 `application/problem+json`; 404 também para recurso de outro usuário; 422 para regra de negócio, com dados do item infrator |
+| Erros | RFC 7807 `application/problem+json`; 404 também para recurso de outro usuário; 422 para regra de negócio, com dados do item infrator; 400 e 409 de formulário com `errors: [{ field, code, message, params? }]`, `code` de lista fechada e `params` com o limite (D56); a tela mostra o texto da microcopy pelo `field` + `code`, nunca a `message` |
 | Paginação | `?page=&pageSize=`, resposta com `items` e `total`. Séries temporais usam `?from=&to=` |
 | Proveniência | Endpoint de dado externo retorna `source` e `referenceDate` (ex.: "B3 COTAHIST, 29/09/2026"; "CVM informe trimestral FII, 30/06/2026") |
 | Cache HTTP | Dado de mercado: `ETag` = id da última `ingestion_run` da fonte + `Cache-Control: max-age` até a próxima carga. Dado do usuário: `Cache-Control: no-store` |

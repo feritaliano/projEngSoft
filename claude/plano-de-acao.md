@@ -26,6 +26,8 @@
 
 **Ajuste de 09/11/2026 (auditoria K0–K2, agente de backend):** `main` em `cfd1018` conferida: lint e fronteira de camadas, typecheck, 316 testes unitários (98,8% de linhas; 100% de ramos em `domain/`, limite do Jest), 19 testes de integração e E2E contra PostgreSQL 16 (migrations do zero), build e `openapi.json` igual ao regerado. K0, K1 e K2 cumprem os critérios de pronto; K2 mesclado no PR #11. A API do S1 para o frontend tem hoje 5 rotas (`health` e as 4 de `auth`): bastam para o W1 e o W2; as do W3 e do W4 são do K3 e do K4, nas datas. Três defeitos de contrato entram no K3, antes do W2: `openapi.json` referencia o esquema `refresh_token` sem defini-lo (e não declara o `bearer` das rotas protegidas); o 400 de validação traz `errors: string[]` sem o campo; as respostas de erro não têm schema. O K4 ganha `GET /portfolios/:id/summary` (totais, B7), que faltava na lista de endpoints. Datas inalteradas.
 
+**Ajuste de 10/11/2026 (D55, D56):** renda fixa e cripto entram no S1 sem preço (catálogo, operações, posição, totais e Histórico com 6 classes), sem tarefa nova: o K3 já tem o catálogo, o K4 e o W4 passam a cobrir as duas classes. Erros de validação ganham código (`errors[].code`, D56): entra no PR 1 do K4 e no W2–W4. Datas inalteradas.
+
 **Frentes ativas:** todas.
 - 25–27/10: fundação (usuário).
 - 28/10 a meados de novembro: BD (P1–P2), UX/UI (U1–U5) e backend (K0–K3).
@@ -34,7 +36,7 @@
 **Prazos fixos:** BD Parte 1 em **19/10/2026** · BD Parte 2 em **07/12/2026** (Google Classroom).
 **Alvos:** BD Parte 1 enviada em 19/10 (feito) · handoff de UX em 16/11 · BD Parte 2 enviada até 30/11 · S1 (núcleo da carteira) pronto em 06/12.
 
-**Escopo de Engenharia de Software nestas datas:** só o **S1** (A1–A2, B1–B7, B13, C1), aprovado em 31/10/2026 (D49). Depois de 06/12: S2 → S6 → S9 → S10 → S3 → S4 → S5 → S7 → S8 → S11.
+**Escopo de Engenharia de Software nestas datas:** só o **S1** (A1–A2, B1–B7, B13, C1; renda fixa e cripto sem preço, D55), aprovado em 31/10/2026 (D49). Depois de 06/12: S2 → S6 → S9 → S10 → S3 → S4 → S5 → S7 → S8 → S11.
 
 **Prompts dos agentes:** os quatro em `agentes/` foram reescritos em 05/10/2026 e trazem as tarefas e datas da própria frente; mudança neste plano atualiza também o prompt da frente afetada.
 
