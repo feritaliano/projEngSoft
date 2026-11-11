@@ -6,7 +6,9 @@ import { ReferenceDataModule } from '../reference-data/reference-data.module';
 import { CreateOperation } from './application/create-operation.use-case';
 import { DeleteOperation } from './application/delete-operation.use-case';
 import { GetOperation } from './application/get-operation.use-case';
+import { GetPortfolioSummary } from './application/get-portfolio-summary.use-case';
 import { ListOperations } from './application/list-operations.use-case';
+import { ListPositions } from './application/list-positions.use-case';
 import { OperationDetails } from './application/operation-details';
 import { OperationDrafts } from './application/operation-drafts';
 import { UpdateOperation } from './application/update-operation.use-case';
@@ -16,20 +18,23 @@ import { PrismaOperationHistory } from './infrastructure/prisma-operation-histor
 import { PrismaOperationStore } from './infrastructure/prisma-operation-store';
 import { OperationsReadModule } from './operations-read.module';
 import { OperationsController } from './presentation/operations.controller';
+import { PositionsController } from './presentation/positions.controller';
 
 /**
- * Command side of operations (owns the operations table, arquitetura 7.2). Imports portfolios for ownership and the
+ * Operations and the positions derived from them (owns the operations table, arquitetura 7.2). Imports portfolios for ownership and the
  * catalog for assets and brokers; portfolios imports only OperationsReadModule, so there is no cycle.
  */
 @Module({
   imports: [PortfoliosModule, OperationsReadModule, ReferenceDataModule],
-  controllers: [OperationsController],
+  controllers: [OperationsController, PositionsController],
   providers: [
     ListOperations,
     GetOperation,
     CreateOperation,
     UpdateOperation,
     DeleteOperation,
+    ListPositions,
+    GetPortfolioSummary,
     OperationDetails,
     OperationDrafts,
     { provide: OperationStore, useClass: PrismaOperationStore },

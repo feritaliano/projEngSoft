@@ -71,7 +71,7 @@ Desativados neste projeto (via `enabledPlugins` em `.claude/settings.json`): `fr
 | `claude/convencoes-equipe.md` | Este documento |
 | `claude/estrutura-repositorio.md` | Árvore de pastas, onde fica cada arquivo (`.env`, Docker, gerados), o que vai para o Git e o dono de cada pasta |
 | `claude/handoff-ux.md` | Handoff do UX para o frontend: link do arquivo Figma e do frame de cada tela (preenchido em 30/10; revisado no U5) |
-| `claude/design-tokens.md` | Tokens do design system (cores claro/escuro, espaçamento, raio, tipografia), espelhados no `tailwind.config` |
+| `claude/design-tokens.md` | Tokens do design system (cores claro/escuro, espaçamento, raio, tipografia), espelhados no `@theme` de `frontend/src/styles.css` (D58) |
 | `claude/microcopy.md` | Textos do "como foi calculado" por `formulaCode` e chaves dos insumos do `DerivedValue` (U4) |
 | `database/docs/modelo-er.md` | Modelo ER: 34 entidades, 39 relacionamentos + 1 especialização, verificação 3FN, roteiro do brModelo (D50) |
 | `database/docs/mapeamento.md` | Mapeamento ER→relacional: regras aplicadas e as 36 tabelas |

@@ -26,6 +26,9 @@ Thumbs.db
 # Prisma Client gerado
 backend/src/generated/
 
+# Cliente da API gerado no frontend (npm run api:generate, a partir de backend/openapi/openapi.json)
+frontend/src/app/api/
+
 # Grafo do código gerado pelo Graphify (D53); cada máquina regera com `graphify update .`
 graphify-out/
 

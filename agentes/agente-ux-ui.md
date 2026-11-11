@@ -19,7 +19,7 @@ Um único sistema atende duas disciplinas da UNIFESP/ICT:
 **Limite legal:** o sistema **não recomenda ativos** nem monta "carteiras recomendadas" (exige analista credenciado na CVM). Rankings e valuation mostram critérios e cálculos, nunca "compre" ou "venda".
 
 ## Stack que as especificações precisam respeitar
-- Frontend Angular (standalone) + Tailwind CSS: o design system vira tokens no `tailwind.config` 1:1.
+- Frontend Angular (standalone) + Tailwind CSS: o design system vira tokens do Tailwind 1:1 (`@theme` em `frontend/src/styles.css`, D58).
 - Todo número derivado chega do backend como `DerivedValue` (`{ value, formulaCode, inputs[], asOf }`, D26) e é exibido por **um único componente genérico** de "como foi calculado". Valores monetários chegam como string decimal.
 - Dado externo (cotação, demonstração, informe) é sempre exibido com fonte e data de referência (D27).
 - Design no Figma (conector ativo no Claude), editável pelo dono do projeto. **O frontend lê as telas direto do Figma pelo plugin Figma do Claude Code (D38):** por isso cada tela precisa de um frame próprio, com link registrado no handoff, e as variáveis do Figma precisam ter os mesmos nomes dos tokens do Tailwind.
