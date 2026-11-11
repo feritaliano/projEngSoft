@@ -1097,6 +1097,115 @@
           "operations"
         ]
       }
+    },
+    "/api/v1/portfolios/{id}/positions": {
+      "get": {
+        "description": "Open (quantity > 0) and closed (quantity 0, realized profit ≠ 0) positions; a closed one with realized profit exactly 0 is not listed. Ordered by asset class, then display name. 500 while the portfolio has a corporate event (traced from S2 on).",
+        "operationId": "PositionsController_positions",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Position"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed or expired access token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Portfolio not found, or it belongs to another user (RN02).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Open and closed positions of a portfolio (B6, D41, RN12)",
+        "tags": [
+          "positions"
+        ]
+      }
+    },
+    "/api/v1/portfolios/{id}/summary": {
+      "get": {
+        "description": "Computed from the same rows as GET positions. 500 while the portfolio has a corporate event (traced from S2 on).",
+        "operationId": "PositionsController_summary",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortfolioSummary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed or expired access token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Portfolio not found, or it belongs to another user (RN02).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Totals of a portfolio (B7)",
+        "tags": [
+          "positions"
+        ]
+      }
     }
   },
   "info": {
@@ -1916,6 +2025,280 @@
             "description": "Brokerage and fees of the note: zero or more, up to 2 decimal places."
           }
         }
+      },
+      "PositionStatus": {
+        "type": "string",
+        "enum": [
+          "OPEN",
+          "CLOSED"
+        ],
+        "description": "OPEN: quantity > 0. CLOSED: quantity 0 and realized profit ≠ 0 (D41)."
+      },
+      "FormulaCode": {
+        "type": "string",
+        "enum": [
+          "AVG_PRICE_BUY",
+          "TOTAL_COST",
+          "REALIZED_PROFIT",
+          "POSITION_REALIZED_PROFIT",
+          "PORTFOLIO_TOTAL_COST",
+          "PORTFOLIO_REALIZED_PROFIT"
+        ]
+      },
+      "DerivedValueSource": {
+        "type": "string",
+        "enum": [
+          "POSITION",
+          "OPERATION",
+          "DERIVED",
+          "ASSET_POSITION"
+        ]
+      },
+      "OperationRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "example": "SELL",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OperationType"
+              }
+            ]
+          },
+          "broker": {
+            "$ref": "#/components/schemas/BrokerRef"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "broker"
+        ]
+      },
+      "AssetPositionRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "6b0d3a52-1f5e-4f0a-9d7c-3e2b8a1c4d90"
+          },
+          "ticker": {
+            "type": "string",
+            "nullable": true,
+            "example": "PETR4",
+            "description": "Null for fixed income (D50)."
+          },
+          "displayName": {
+            "type": "string",
+            "example": "PETR4",
+            "description": "Ticker for stocks, FIIs, ETFs and BDRs; name for crypto; bond type and maturity year for fixed income (D50)."
+          },
+          "assetType": {
+            "example": "STOCK",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AssetType"
+              }
+            ]
+          },
+          "status": {
+            "example": "OPEN",
+            "description": "OPEN: quantity > 0. CLOSED: quantity 0 and realized profit ≠ 0 (D41).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PositionStatus"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "ticker",
+          "displayName",
+          "assetType",
+          "status"
+        ]
+      },
+      "DerivedValueInput": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "quantityBought"
+          },
+          "value": {
+            "type": "string",
+            "example": "50",
+            "description": "Decimal string, full precision (RN11)."
+          },
+          "source": {
+            "example": "OPERATION",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DerivedValueSource"
+              }
+            ]
+          },
+          "referenceDate": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-03-14"
+          },
+          "operation": {
+            "$ref": "#/components/schemas/OperationRef"
+          },
+          "asset": {
+            "$ref": "#/components/schemas/AssetPositionRef"
+          },
+          "derived": {
+            "description": "The trace of this value, when it is itself derived.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DerivedValue"
+              }
+            ]
+          }
+        },
+        "description": "A value used by the formula. `name` is a key of claude/microcopy.md, section 3 (`sales` and `positions` repeat once per item). `source` tells the origin line and which reference comes with it: OPERATION → `operation` (and `derived` on `sales` items); DERIVED → `derived`; ASSET_POSITION → `asset` and `derived`; POSITION → none.",
+        "required": [
+          "name",
+          "value",
+          "source",
+          "referenceDate"
+        ]
+      },
+      "DerivedValue": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string",
+            "example": "32.0326666666666666666666666666666666666667",
+            "description": "Decimal string, full precision (RN11): round only to display."
+          },
+          "formulaCode": {
+            "example": "AVG_PRICE_BUY",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FormulaCode"
+              }
+            ]
+          },
+          "asOf": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-11-11",
+            "description": "Today in America/Sao_Paulo (D54)."
+          },
+          "inputs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DerivedValueInput"
+            }
+          }
+        },
+        "description": "A derived number with its trace, for \"como foi calculado\" (D26). Texts by `formulaCode` in claude/microcopy.md, section 3.",
+        "required": [
+          "value",
+          "formulaCode",
+          "asOf",
+          "inputs"
+        ]
+      },
+      "Position": {
+        "type": "object",
+        "properties": {
+          "asset": {
+            "$ref": "#/components/schemas/AssetRef"
+          },
+          "status": {
+            "example": "OPEN",
+            "description": "OPEN: quantity > 0. CLOSED: quantity 0 and realized profit ≠ 0 (D41).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PositionStatus"
+              }
+            ]
+          },
+          "quantity": {
+            "type": "string",
+            "example": "100",
+            "description": "Decimal string; \"0\" when closed."
+          },
+          "averagePrice": {
+            "nullable": true,
+            "description": "AVG_PRICE_BUY; null when closed (RN08).",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DerivedValue"
+              }
+            ]
+          },
+          "totalCost": {
+            "nullable": true,
+            "description": "TOTAL_COST; null when closed (RN08).",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DerivedValue"
+              }
+            ]
+          },
+          "realizedProfit": {
+            "description": "POSITION_REALIZED_PROFIT: sum of the realized profit of every sale (RN06); \"0\" without sales.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DerivedValue"
+              }
+            ]
+          }
+        },
+        "description": "Position of one asset in the portfolio, brokers summed (RN12), derived from the operations (RN09, D4).",
+        "required": [
+          "asset",
+          "status",
+          "quantity",
+          "averagePrice",
+          "totalCost",
+          "realizedProfit"
+        ]
+      },
+      "PortfolioSummary": {
+        "type": "object",
+        "properties": {
+          "totalCost": {
+            "description": "PORTFOLIO_TOTAL_COST: sum of the cost of the open positions; one `positions` input per open position.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DerivedValue"
+              }
+            ]
+          },
+          "realizedProfit": {
+            "description": "PORTFOLIO_REALIZED_PROFIT: one `positions` input per row with realized profit ≠ 0, open or closed (empty when none); equals the sum of the rows of GET positions (D41).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DerivedValue"
+              }
+            ]
+          },
+          "assetCount": {
+            "type": "number",
+            "example": 4,
+            "description": "Open positions."
+          }
+        },
+        "description": "Totals of the portfolio (B7).",
+        "required": [
+          "totalCost",
+          "realizedProfit",
+          "assetCount"
+        ]
       }
     }
   },
