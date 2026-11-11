@@ -66,7 +66,7 @@ export class HealthController {
   @ApiProblemResponse(
     HttpStatus.SERVICE_UNAVAILABLE,
     'A dependency does not answer.',
-    HealthChecksProblemDto,
+    { extension: HealthChecksProblemDto },
   )
   async check(): Promise<HealthCheckResult> {
     try {

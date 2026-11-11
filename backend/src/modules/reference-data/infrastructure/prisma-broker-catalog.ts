@@ -14,4 +14,11 @@ export class PrismaBrokerCatalog extends BrokerCatalog {
       orderBy: [{ name: 'asc' }, { id: 'asc' }],
     });
   }
+
+  findByIds(ids: readonly string[]): Promise<Broker[]> {
+    return this.prisma.broker.findMany({
+      where: { id: { in: [...ids] } },
+      select: { id: true, name: true, cnpj: true },
+    });
+  }
 }

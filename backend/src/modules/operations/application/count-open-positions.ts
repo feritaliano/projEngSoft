@@ -1,26 +1,7 @@
 import { Injectable } from '@nestjs/common';
+import { InconsistentTimelineError } from '../domain/inconsistent-timeline';
 import { calculatePosition } from '../domain/position-calculator';
 import { TimelineReader } from '../domain/timeline-reader';
-
-/**
- * Stored operations that do not form a valid timeline (a row breaking RN04, or a position going negative). The API
- * rejects every change that would cause it (RN04, RN10), so it can only come from data written outside the API: a
- * server fault (500), never a client error nor a smaller count.
- */
-export class InconsistentTimelineError extends Error {
-  constructor(
-    readonly portfolioId: string,
-    readonly assetId: string,
-    reason = 'goes negative',
-    options?: ErrorOptions,
-  ) {
-    super(
-      `Timeline of asset ${assetId} in portfolio ${portfolioId} ${reason}`,
-      options,
-    );
-    this.name = 'InconsistentTimelineError';
-  }
-}
 
 /**
  * Number of assets with an open position (quantity > 0) in each portfolio, derived from the operations by the

@@ -3,10 +3,8 @@ import {
   PortfolioAssetTimeline,
   TimelineReader,
 } from '../domain/timeline-reader';
-import {
-  CountOpenPositions,
-  InconsistentTimelineError,
-} from './count-open-positions';
+import { InconsistentTimelineError } from '../domain/inconsistent-timeline';
+import { CountOpenPositions } from './count-open-positions';
 
 class FakeTimelines extends TimelineReader {
   readonly requested: (readonly string[])[] = [];

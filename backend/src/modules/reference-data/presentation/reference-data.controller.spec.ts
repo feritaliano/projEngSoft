@@ -109,7 +109,9 @@ describe('AssetsController and BrokersController (C1, RN04)', () => {
 
   it('maps a search rejected by the domain to 400 with errors[].field', async () => {
     useCases.search.execute.mockRejectedValue(
-      new InvalidValueError('page', 'must be an integer from 1 to 100000'),
+      new InvalidValueError('page', 'TOO_LARGE', 'must be at most 100000', {
+        max: 100000,
+      }),
     );
 
     const response = await app.inject({
@@ -120,7 +122,12 @@ describe('AssetsController and BrokersController (C1, RN04)', () => {
 
     expect(response.statusCode).toBe(400);
     expect(response.json<{ errors: unknown[] }>().errors).toEqual([
-      { field: 'page', message: 'page must be an integer from 1 to 100000' },
+      {
+        field: 'page',
+        code: 'TOO_LARGE',
+        message: 'page must be at most 100000',
+        params: { max: 100000 },
+      },
     ]);
   });
 

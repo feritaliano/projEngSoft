@@ -119,7 +119,11 @@ describe('assetSearchOf (C1, documented limits)', () => {
 describe('assetSearchOf with control characters (C1)', () => {
   it('rejects them in the term, naming the field "search"', () => {
     expect(() => assetSearchOf('itsa\u0000', 1, 20)).toThrow(
-      new InvalidValueError('search', 'must not contain control characters'),
+      new InvalidValueError(
+        'search',
+        'INVALID_VALUE',
+        'must not contain control characters',
+      ),
     );
   });
 });

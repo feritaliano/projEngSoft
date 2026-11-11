@@ -1,30 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '../../../generated/prisma/client';
-import { InvalidValueError } from '../../../shared/domain/domain-error';
 import { PrismaService } from '../../../shared/infrastructure/prisma/prisma.service';
-import { InconsistentTimelineError } from '../application/count-open-positions';
-import { TimelineOperation, timelineOperation } from '../domain/timeline';
+import { TimelineOperation } from '../domain/timeline';
 import {
   PortfolioAssetTimeline,
   TimelineReader,
 } from '../domain/timeline-reader';
-
-const OPERATION_FIELDS = {
-  id: true,
-  portfolioId: true,
-  assetId: true,
-  brokerId: true,
-  type: true,
-  tradeDate: true,
-  sequence: true,
-  quantity: true,
-  unitPrice: true,
-  fees: true,
-} as const;
-
-type OperationRow = Prisma.OperationGetPayload<{
-  select: typeof OPERATION_FIELDS;
-}>;
+import { OPERATION_FIELDS, toStoredOperation } from './operation-rows';
 
 /** One query for all the portfolios, grouped by (portfolio, asset) in memory. */
 @Injectable()
@@ -56,37 +37,8 @@ export class PrismaTimelineReader extends TimelineReader {
         };
         groups.set(key, group);
       }
-      group.items.push(this.toItem(row));
+      group.items.push(toStoredOperation(row).operation);
     }
     return [...groups.values()];
-  }
-
-  /** A stored row that breaks RN04 is a data fault, not the client's: it must not become a 400 with its field. */
-  private toItem(row: OperationRow): TimelineOperation {
-    try {
-      return timelineOperation({
-        id: row.id,
-        type: row.type,
-        // trade_date is a DATE: Prisma returns it at UTC midnight.
-        date: row.tradeDate.toISOString().slice(0, 10),
-        sequence: row.sequence,
-        // toFixed, not toString: Decimal switches to exponent notation below 1e-7 (e.g. 8-place crypto quantities),
-        // which the domain only accepts as plain decimals.
-        quantity: row.quantity.toFixed(),
-        unitPrice: row.unitPrice.toFixed(),
-        fees: row.fees.toFixed(),
-        brokerId: row.brokerId,
-      });
-    } catch (error) {
-      if (error instanceof InvalidValueError) {
-        throw new InconsistentTimelineError(
-          row.portfolioId,
-          row.assetId,
-          `has an invalid operation ${row.id}: ${error.message}`,
-          { cause: error },
-        );
-      }
-      throw error;
-    }
   }
 }

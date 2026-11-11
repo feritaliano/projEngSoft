@@ -19,6 +19,7 @@ import {
   IsOptional,
   IsString,
   Max,
+  MaxLength,
   Min,
   ValidateNested,
 } from 'class-validator';
@@ -34,6 +35,7 @@ class TagDto {
 
 class EchoDto {
   @IsString()
+  @MaxLength(10)
   name: string;
 
   @IsOptional()
@@ -166,10 +168,36 @@ describe('configureApiApp (D52)', () => {
     });
     expect(response.json<{ errors: unknown[] }>().errors).toEqual(
       expect.arrayContaining([
-        { field: 'extra', message: 'property extra should not exist' },
-        { field: 'name', message: 'name must be a string' },
+        {
+          field: 'extra',
+          code: 'INVALID_VALUE',
+          message: 'property extra should not exist',
+        },
+        {
+          field: 'name',
+          code: 'INVALID_FORMAT',
+          message: 'name must be a string',
+        },
       ]),
     );
+  });
+
+  it('reads the decorator limit into params of a 400 (D56)', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/probe',
+      payload: { name: 'x'.repeat(11) },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json<{ errors: unknown[] }>().errors).toEqual([
+      {
+        field: 'name',
+        code: 'TOO_LONG',
+        message: 'name must be shorter than or equal to 10 characters',
+        params: { max: 10 },
+      },
+    ]);
   });
 
   it('names nested body fields with a dotted path in errors[].field', async () => {
@@ -181,7 +209,11 @@ describe('configureApiApp (D52)', () => {
 
     expect(response.statusCode).toBe(400);
     expect(response.json<{ errors: unknown[] }>().errors).toEqual([
-      { field: 'tag.label', message: 'label must be a string' },
+      {
+        field: 'tag.label',
+        code: 'INVALID_FORMAT',
+        message: 'label must be a string',
+      },
     ]);
   });
 
@@ -197,8 +229,17 @@ describe('configureApiApp (D52)', () => {
     );
     expect(response.json<{ errors: unknown[] }>().errors).toEqual(
       expect.arrayContaining([
-        { field: 'pageSize', message: 'pageSize must not be greater than 100' },
-        { field: 'debug', message: 'property debug should not exist' },
+        {
+          field: 'pageSize',
+          code: 'TOO_LARGE',
+          message: 'pageSize must not be greater than 100',
+          params: { max: 100 },
+        },
+        {
+          field: 'debug',
+          code: 'INVALID_VALUE',
+          message: 'property debug should not exist',
+        },
       ]),
     );
   });

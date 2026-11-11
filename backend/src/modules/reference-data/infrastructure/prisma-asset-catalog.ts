@@ -20,14 +20,15 @@ interface AssetRow {
   maturity_date: Date | null;
 }
 
-const FROM_ACTIVE_ASSETS = Prisma.sql`
+const FROM_ASSETS = Prisma.sql`
   FROM assets a
   LEFT JOIN issuers i ON i.id = a.issuer_id
   LEFT JOIN sectors s ON s.id = i.sector_id
   LEFT JOIN crypto_assets c ON c.asset_id = a.id
   LEFT JOIN fixed_income_bonds fb ON fb.asset_id = a.id
-  LEFT JOIN fixed_income_types ft ON ft.id = fb.fixed_income_type_id
-  WHERE a.is_active`;
+  LEFT JOIN fixed_income_types ft ON ft.id = fb.fixed_income_type_id`;
+
+const FROM_ACTIVE_ASSETS = Prisma.sql`${FROM_ASSETS} WHERE a.is_active`;
 
 const SELECT_ASSET = Prisma.sql`
   SELECT a.id, a.ticker, a.type::text AS type, i.name AS issuer, s.name AS sector, c.name AS crypto_name,
@@ -92,5 +93,20 @@ export class PrismaAssetCatalog extends AssetCatalog {
     const [row] = await this.prisma.$queryRaw<AssetRow[]>`
       ${SELECT_ASSET} ${FROM_ACTIVE_ASSETS} AND a.ticker = ${ticker}`;
     return row ? toRecord(row) : null;
+  }
+
+  async findActiveById(id: string): Promise<AssetRecord | null> {
+    const [row] = await this.prisma.$queryRaw<AssetRow[]>`
+      ${SELECT_ASSET} ${FROM_ACTIVE_ASSETS} AND a.id = ${id}::uuid`;
+    return row ? toRecord(row) : null;
+  }
+
+  async findByIds(ids: readonly string[]): Promise<AssetRecord[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+    const rows = await this.prisma.$queryRaw<AssetRow[]>`
+      ${SELECT_ASSET} ${FROM_ASSETS} WHERE a.id = ANY(${[...ids]}::uuid[])`;
+    return rows.map(toRecord);
   }
 }

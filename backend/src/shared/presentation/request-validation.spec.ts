@@ -2,6 +2,7 @@ import { Type } from 'class-transformer';
 import {
   IsInt,
   IsString,
+  Length,
   Min,
   MinLength,
   validate,
@@ -14,6 +15,7 @@ import {
   requestValidationExceptionFactory,
   RequestValidationException,
   toFieldErrors,
+  UnmappedConstraintError,
 } from './request-validation';
 
 class AddressDto {
@@ -41,12 +43,23 @@ class OrderDto {
   items: ItemDto[];
 }
 
+class SignUpDto {
+  @Length(8, 128)
+  password: string;
+}
+
+class BoundedDto {
+  @IsInt()
+  @Min(0)
+  count: number;
+}
+
 async function errorsOf(payload: object): Promise<ValidationError[]> {
   return validate(plainToInstance(OrderDto, payload));
 }
 
 describe('toFieldErrors (400 with the field, D52, audit of 09/11)', () => {
-  it('names each top-level field, one entry per failed constraint', async () => {
+  it('names each top-level field with one entry, the first constraint by priority (D56)', async () => {
     const errors = await errorsOf({
       name: 7,
       address: { street: 'Rua A' },
@@ -56,9 +69,50 @@ describe('toFieldErrors (400 with the field, D52, audit of 09/11)', () => {
     expect(toFieldErrors(errors)).toEqual([
       {
         field: 'name',
-        message: 'name must be longer than or equal to 3 characters',
+        code: 'INVALID_FORMAT',
+        message: 'name must be a string',
       },
-      { field: 'name', message: 'name must be a string' },
+    ]);
+  });
+
+  it('reads the limit of the decorator into params (D56)', async () => {
+    const tooShort = await errorsOf({
+      name: 'An',
+      address: { street: 'Rua A' },
+      items: [],
+    });
+    const tooLong = await validate(
+      plainToInstance(SignUpDto, { password: 'x'.repeat(129) }),
+    );
+
+    expect(toFieldErrors(tooShort)).toEqual([
+      {
+        field: 'name',
+        code: 'TOO_SHORT',
+        message: 'name must be longer than or equal to 3 characters',
+        params: { min: 3 },
+      },
+    ]);
+    expect(toFieldErrors(tooLong)).toEqual([
+      {
+        field: 'password',
+        code: 'TOO_LONG',
+        message: 'password must be shorter than or equal to 128 characters',
+        params: { max: 128 },
+      },
+    ]);
+  });
+
+  it('answers REQUIRED for a missing value, with the minimum length when above 1 (D56)', async () => {
+    const errors = await validate(plainToInstance(SignUpDto, {}));
+
+    expect(toFieldErrors(errors)).toEqual([
+      {
+        field: 'password',
+        code: 'REQUIRED',
+        message: 'password is required',
+        params: { min: 8 },
+      },
     ]);
   });
 
@@ -70,26 +124,62 @@ describe('toFieldErrors (400 with the field, D52, audit of 09/11)', () => {
     });
 
     expect(toFieldErrors(errors)).toEqual([
-      { field: 'address.street', message: 'street must be a string' },
+      {
+        field: 'address.street',
+        code: 'INVALID_FORMAT',
+        message: 'street must be a string',
+      },
       {
         field: 'items.1.quantity',
+        code: 'NOT_POSITIVE',
         message: 'quantity must not be less than 1',
       },
     ]);
   });
 
-  it('keeps an error without constraints or children, naming its field', () => {
+  it('fails loudly on an error without constraints or children (D56)', () => {
     const error = Object.assign(new ValidationError(), { property: 'odd' });
 
-    expect(toFieldErrors([error])).toEqual([
-      { field: 'odd', message: 'odd is invalid' },
-    ]);
+    expect(() => toFieldErrors([error])).toThrow(UnmappedConstraintError);
+  });
+
+  it('fails loudly on a constraint without a code, never a generic one (D56)', () => {
+    const error = Object.assign(new ValidationError(), {
+      property: 'name',
+      value: 'Ana',
+      target: {},
+      constraints: { isOdd: 'name must be odd' },
+    });
+
+    expect(() => toFieldErrors([error])).toThrow(
+      'Constraint "isOdd" has no field error code (D56)',
+    );
+  });
+
+  it('fails loudly on a lower bound other than Min(1), which has no code yet (D56)', async () => {
+    const errors = await validate(plainToInstance(BoundedDto, { count: -1 }));
+
+    expect(() => toFieldErrors(errors)).toThrow(UnmappedConstraintError);
+  });
+
+  it('fails loudly when the error comes without its target (ValidationPipe default)', async () => {
+    const errors = await validate(
+      plainToInstance(SignUpDto, { password: 'x' }),
+      {
+        validationError: { target: false },
+      },
+    );
+
+    expect(() => toFieldErrors(errors)).toThrow(
+      'Constraint "isLength" was reported without its target class',
+    );
   });
 
   it('caps errors[] so a body with thousands of unknown keys cannot blow up the 400', () => {
     const errors = Array.from({ length: 5_000 }, (_, index) =>
       Object.assign(new ValidationError(), {
         property: `k${index}`,
+        target: {},
         constraints: {
           whitelistValidation: `property k${index} should not exist`,
         },
@@ -101,6 +191,7 @@ describe('toFieldErrors (400 with the field, D52, audit of 09/11)', () => {
     expect(exception.errors).toHaveLength(MAX_FIELD_ERRORS);
     expect(exception.errors[0]).toEqual({
       field: 'k0',
+      code: 'INVALID_VALUE',
       message: 'property k0 should not exist',
     });
   });
@@ -113,7 +204,11 @@ describe('toFieldErrors (400 with the field, D52, audit of 09/11)', () => {
     expect(exception).toBeInstanceOf(RequestValidationException);
     expect(exception.getStatus()).toBe(400);
     expect(exception.errors).toEqual([
-      { field: 'address.street', message: 'street must be a string' },
+      {
+        field: 'address.street',
+        code: 'REQUIRED',
+        message: 'address.street is required',
+      },
     ]);
   });
 });

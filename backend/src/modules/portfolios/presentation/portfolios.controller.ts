@@ -21,10 +21,15 @@ import { InvalidValueError } from '../../../shared/domain/domain-error';
 import type { AuthenticatedUser } from '../../../shared/presentation/auth-context';
 import { CurrentUser } from '../../../shared/presentation/auth-context';
 import {
+  alreadyExistsProblem,
   invalidValueProblem,
   ProblemException,
 } from '../../../shared/presentation/problem-details';
-import { ApiProblemResponse } from '../../../shared/presentation/problem-details.dto';
+import {
+  ApiProblemResponse,
+  badRequestExample,
+} from '../../../shared/presentation/problem-details.dto';
+import { API_PREFIX } from '../../../shared/presentation/api-prefix';
 import { CreatePortfolio } from '../application/create-portfolio.use-case';
 import { DeletePortfolio } from '../application/delete-portfolio.use-case';
 import { GetOwnedPortfolio } from '../application/get-owned-portfolio.use-case';
@@ -41,10 +46,9 @@ function toProblem(error: unknown): unknown {
     return new ProblemException(HttpStatus.NOT_FOUND, 'Portfolio not found.');
   }
   if (error instanceof PortfolioNameTakenError) {
-    return new ProblemException(
-      HttpStatus.CONFLICT,
+    return alreadyExistsProblem(
+      'name',
       'A portfolio with this name already exists.',
-      { field: 'name' },
     );
   }
   if (error instanceof InvalidValueError) {
@@ -97,11 +101,21 @@ export class PortfoliosController {
   @ApiCreatedResponse({ type: PortfolioDto })
   @ApiProblemResponse(
     HttpStatus.BAD_REQUEST,
-    'Invalid body: errors[] names each field (name, or a field that should not exist).',
+    'Invalid body: errors[] names each field and why (D56): name REQUIRED, TOO_LONG or INVALID_VALUE (control characters); a field that should not exist is INVALID_VALUE.',
+    {
+      example: badRequestExample(`/${API_PREFIX}/portfolios`, [
+        {
+          field: 'name',
+          code: 'TOO_LONG',
+          message: 'name must have at most 150 characters',
+          params: { max: 150 },
+        },
+      ]),
+    },
   )
   @ApiProblemResponse(
     HttpStatus.CONFLICT,
-    'The user already has a portfolio with this name (field: name).',
+    'The user already has a portfolio with this name: field name, and errors[] with ALREADY_EXISTS (D56).',
   )
   async create(
     @CurrentUser() user: AuthenticatedUser,

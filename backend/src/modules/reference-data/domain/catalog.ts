@@ -2,6 +2,7 @@ import {
   DomainError,
   InvalidValueError,
 } from '../../../shared/domain/domain-error';
+import { pageNumber } from '../../../shared/domain/page-number';
 import { AssetType } from '../../operations/domain/asset-type';
 
 export const DEFAULT_PAGE_SIZE = 20;
@@ -57,22 +58,15 @@ export function assetSearchOf(
   if (term !== null && CONTROL_CHARACTERS.test(term)) {
     throw new InvalidValueError(
       'search',
+      'INVALID_VALUE',
       'must not contain control characters',
     );
   }
-  if (!Number.isInteger(page) || page < 1 || page > MAX_PAGE) {
-    throw new InvalidValueError(
-      'page',
-      `must be an integer from 1 to ${MAX_PAGE}`,
-    );
-  }
-  if (!Number.isInteger(pageSize) || pageSize < 1 || pageSize > MAX_PAGE_SIZE) {
-    throw new InvalidValueError(
-      'pageSize',
-      `must be an integer from 1 to ${MAX_PAGE_SIZE}`,
-    );
-  }
-  return { term, page, pageSize };
+  return {
+    term,
+    page: pageNumber(page, 'page', MAX_PAGE),
+    pageSize: pageNumber(pageSize, 'pageSize', MAX_PAGE_SIZE),
+  };
 }
 
 export interface Broker {
@@ -160,9 +154,15 @@ export abstract class AssetCatalog {
     total: number;
   }>;
   abstract findByTicker(ticker: string): Promise<AssetRecord | null>;
+  /** Active asset by id (an operation can only be entered for one, RN04). Ids must be uuids. */
+  abstract findActiveById(id: string): Promise<AssetRecord | null>;
+  /** Assets by id, active or not (an asset deactivated later keeps its operations). Ids must be uuids. */
+  abstract findByIds(ids: readonly string[]): Promise<AssetRecord[]>;
 }
 
 /** Port: brokers and exchanges, ordered by name. */
 export abstract class BrokerCatalog {
   abstract list(): Promise<Broker[]>;
+  /** Ids must be uuids. */
+  abstract findByIds(ids: readonly string[]): Promise<Broker[]>;
 }

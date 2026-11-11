@@ -1,4 +1,3 @@
-import { InvalidValueError } from '../../../shared/domain/domain-error';
 import { PersonName, PlainPassword } from './credentials';
 import { Email } from './email';
 
@@ -19,16 +18,16 @@ describe('Email (RN01)', () => {
   });
 
   it.each([
-    '',
-    'ana',
-    'ana@',
-    '@example.com',
-    'ana@example',
-    'a na@example.com',
-    `${'a'.repeat(250)}@x.com`,
-  ])('rejects %j', (value) => {
+    ['', 'REQUIRED'],
+    ['ana', 'INVALID_FORMAT'],
+    ['ana@', 'INVALID_FORMAT'],
+    ['@example.com', 'INVALID_FORMAT'],
+    ['ana@example', 'INVALID_FORMAT'],
+    ['a na@example.com', 'INVALID_FORMAT'],
+    [`${'a'.repeat(250)}@x.com`, 'TOO_LONG'],
+  ])('rejects %j with %s (D56)', (value, code) => {
     expect(() => Email.of(value)).toThrow(
-      new InvalidValueError('email', 'must be a valid e-mail address'),
+      expect.objectContaining({ field: 'email', code }) as Error,
     );
   });
 
@@ -47,7 +46,21 @@ describe('PlainPassword (RN01)', () => {
 
   it('rejects fewer than 8 characters (RN01)', () => {
     expect(() => PlainPassword.of('1234567')).toThrow(
-      new InvalidValueError('password', 'must have at least 8 characters'),
+      expect.objectContaining({
+        field: 'password',
+        code: 'TOO_SHORT',
+        params: { min: 8 },
+      }) as Error,
+    );
+  });
+
+  it('answers REQUIRED with the minimum length for an empty password (D56)', () => {
+    expect(() => PlainPassword.of('')).toThrow(
+      expect.objectContaining({
+        field: 'password',
+        code: 'REQUIRED',
+        params: { min: 8 },
+      }) as Error,
     );
   });
 
@@ -71,9 +84,13 @@ describe('PersonName (RN01)', () => {
     expect(JSON.stringify(PersonName.of('Ana'))).toBe('"Ana"');
   });
 
-  it.each(['', '   ', 'x'.repeat(151)])('rejects %j', (value) => {
+  it.each([
+    ['', 'REQUIRED'],
+    ['   ', 'REQUIRED'],
+    ['x'.repeat(151), 'TOO_LONG'],
+  ])('rejects %j with %s (D56)', (value, code) => {
     expect(() => PersonName.of(value)).toThrow(
-      new InvalidValueError('name', 'must have between 1 and 150 characters'),
+      expect.objectContaining({ field: 'name', code }) as Error,
     );
   });
 });

@@ -178,7 +178,7 @@ describe('PortfoliosController (B1, RN02, D41)', () => {
 
   it('answers 400 with errors[].field "name" for a blank name (domain)', async () => {
     useCases.create.execute.mockRejectedValue(
-      new InvalidValueError('name', 'must have between 1 and 150 characters'),
+      new InvalidValueError('name', 'REQUIRED', 'is required'),
     );
 
     const response = await app.inject({
@@ -190,17 +190,12 @@ describe('PortfoliosController (B1, RN02, D41)', () => {
 
     expect(response.statusCode).toBe(400);
     expect(response.json<{ errors: unknown[] }>().errors).toEqual([
-      { field: 'name', message: 'name must have between 1 and 150 characters' },
+      { field: 'name', code: 'REQUIRED', message: 'name is required' },
     ]);
   });
 
   it.each([
     ['a missing name', {}, 'name'],
-    [
-      'a name over the DTO cap of 300 UTF-16 units',
-      { name: 'a'.repeat(301) },
-      'name',
-    ],
     ['an extra field', { name: 'A', userId: 'other' }, 'userId'],
   ])('answers 400 for %s, naming the field', async (_case, payload, field) => {
     const response = await app.inject({

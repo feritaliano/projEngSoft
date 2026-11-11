@@ -19,6 +19,7 @@ describe('LocalDate', () => {
       expect(() => LocalDate.parse(value, 'tradeDate')).toThrow(
         new InvalidValueError(
           'tradeDate',
+          'INVALID_FORMAT',
           'must be a date in YYYY-MM-DD format',
         ),
       );
@@ -42,5 +43,23 @@ describe('LocalDate', () => {
     expect(JSON.stringify({ date: LocalDate.parse('2026-01-05') })).toBe(
       '{"date":"2026-01-05"}',
     );
+  });
+
+  it('takes today in the given time zone, not in the server one (D54)', () => {
+    // 02:30 UTC on 1 Nov is still 31 Oct in São Paulo (UTC-3).
+    const now = new Date('2026-11-01T02:30:00Z');
+
+    expect(LocalDate.todayIn(now, 'America/Sao_Paulo').toString()).toBe(
+      '2026-10-31',
+    );
+    expect(LocalDate.todayIn(now, 'UTC').toString()).toBe('2026-11-01');
+  });
+
+  it('tells whether a date is after another (RN04 no future dates)', () => {
+    const today = LocalDate.parse('2026-11-09');
+
+    expect(LocalDate.parse('2026-11-10').isAfter(today)).toBe(true);
+    expect(LocalDate.parse('2026-11-09').isAfter(today)).toBe(false);
+    expect(LocalDate.parse('2026-11-08').isAfter(today)).toBe(false);
   });
 });

@@ -1,4 +1,8 @@
-import { InvalidValueError } from '../../../shared/domain/domain-error';
+import {
+  FieldErrorCode,
+  FieldErrorParams,
+  InvalidValueError,
+} from '../../../shared/domain/domain-error';
 import { Quantity } from '../../../shared/domain/quantity';
 import { ASSET_TYPES, AssetType, isAssetType } from './asset-type';
 import { assertQuantityAllowed, InvalidQuantityError } from './quantity-rules';
@@ -45,7 +49,13 @@ describe('timelineOperation (RN04)', () => {
           ...validOperation,
           type: type as OperationProps['type'],
         }),
-      ).toThrow(new InvalidValueError('type', 'must be one of BUY, SELL'));
+      ).toThrow(
+        new InvalidValueError(
+          'type',
+          'INVALID_VALUE',
+          'must be one of BUY, SELL',
+        ),
+      );
     },
   );
 
@@ -57,7 +67,11 @@ describe('timelineOperation (RN04)', () => {
 
   it.each([
     ['quantity zero', { quantity: '0' }, 'quantity must be greater than zero'],
-    ['negative quantity', { quantity: '-1' }, 'quantity must not be negative'],
+    [
+      'negative quantity',
+      { quantity: '-1' },
+      'quantity must be greater than zero',
+    ],
     [
       'unit price zero',
       { unitPrice: '0' },
@@ -187,7 +201,7 @@ describe('corporateEvent (D29)', () => {
     expect(() => corporateEvent({ ...split, ratioFrom: 'x' })).toThrow(
       expect.objectContaining({
         name: 'InvalidValueError',
-        code: 'INVALID_VALUE',
+        code: 'INVALID_FORMAT',
         field: 'ratioFrom',
       }) as Error,
     );
@@ -202,6 +216,7 @@ describe('corporateEvent (D29)', () => {
     ).toThrow(
       new InvalidValueError(
         'type',
+        'INVALID_VALUE',
         'must be one of SPLIT, REVERSE_SPLIT, BONUS',
       ),
     );
@@ -263,13 +278,20 @@ describe('assertQuantityAllowed (RN04 by asset class, D50)', () => {
     FIXED_INCOME: ['0.52', '1', '10.5'],
     CRYPTO: ['0.0125', '0.00000001', '2'],
   };
-  const rejected: [AssetType, string, string][] = [
-    ['STOCK', '1.5', 'must be a whole number of units'],
-    ['FII', '0.1', 'must be a whole number of units'],
-    ['ETF', '2.01', 'must be a whole number of units'],
-    ['BDR', '1.000001', 'must be a whole number of units'],
-    ['FIXED_INCOME', '0.521', 'must be a multiple of 0.01'],
-    ['CRYPTO', '0.000000001', 'must have at most 8 decimal places'],
+  // Rows of 4 items: with a shorter row, Jest would pass its done callback as params.
+  type Rejected = [
+    AssetType,
+    string,
+    FieldErrorCode,
+    FieldErrorParams | undefined,
+  ];
+  const rejected: Rejected[] = [
+    ['STOCK', '1.5', 'NOT_INTEGER', undefined],
+    ['FII', '0.1', 'NOT_INTEGER', undefined],
+    ['ETF', '2.01', 'NOT_INTEGER', undefined],
+    ['BDR', '1.000001', 'NOT_INTEGER', undefined],
+    ['FIXED_INCOME', '0.521', 'INVALID_STEP', { step: '0.01' }],
+    ['CRYPTO', '0.000000001', 'TOO_MANY_DECIMALS', { maxDecimals: 8 }],
   ];
 
   it.each(
@@ -282,11 +304,21 @@ describe('assertQuantityAllowed (RN04 by asset class, D50)', () => {
     ).not.toThrow();
   });
 
-  it.each(rejected)('rejects %s quantity %s', (assetType, value, rule) => {
-    expect(() => assertQuantityAllowed(assetType, Quantity.of(value))).toThrow(
-      new InvalidQuantityError(assetType, Quantity.of(value), rule),
-    );
-  });
+  it.each(rejected)(
+    'rejects %s quantity %s with %s (D56)',
+    (assetType, value, code, params) => {
+      expect(() =>
+        assertQuantityAllowed(assetType, Quantity.of(value)),
+      ).toThrow(
+        expect.objectContaining({
+          field: 'quantity',
+          code,
+          params,
+          assetType,
+        }) as InvalidQuantityError,
+      );
+    },
+  );
 
   it('leaves quantity > 0 to the operation factory (RN04)', () => {
     expect(() =>
@@ -299,13 +331,15 @@ describe('assertQuantityAllowed (RN04 by asset class, D50)', () => {
       new InvalidQuantityError(
         'STOCK',
         Quantity.of('1.5'),
+        'NOT_INTEGER',
         'must be a whole number of units',
       ),
     ).toMatchObject({
-      code: 'INVALID_QUANTITY',
+      field: 'quantity',
+      code: 'NOT_INTEGER',
       assetType: 'STOCK',
       message:
-        'Quantity 1.5 is not allowed for STOCK: must be a whole number of units',
+        'quantity 1.5 is not allowed for STOCK: must be a whole number of units',
     });
   });
 });

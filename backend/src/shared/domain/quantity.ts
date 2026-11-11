@@ -11,7 +11,7 @@ export class Quantity {
   static of(value: DecimalInput, field = 'quantity'): Quantity {
     const units = toDecimal(value, field);
     if (units.lessThan(0)) {
-      throw new InvalidValueError(field, 'must not be negative');
+      throw new InvalidValueError(field, 'NEGATIVE', 'must not be negative');
     }
     // -0 becomes 0, so equality and printing never show a negative zero.
     return new Quantity(units.isZero() ? new Decimal(0) : units);

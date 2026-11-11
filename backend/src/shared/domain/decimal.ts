@@ -22,6 +22,7 @@ export function toDecimal(value: DecimalInput, field: string): Decimal {
     if (!PLAIN_DECIMAL.test(value)) {
       throw new InvalidValueError(
         field,
+        'INVALID_FORMAT',
         'must be a plain decimal string (e.g. "1234.56")',
       );
     }
@@ -29,10 +30,18 @@ export function toDecimal(value: DecimalInput, field: string): Decimal {
   }
   // Runtime guard: values typed loosely (JSON bodies, database rows) must not reach the domain as numbers or null.
   if (!Decimal.isDecimal(value)) {
-    throw new InvalidValueError(field, 'must be a decimal string or Decimal');
+    throw new InvalidValueError(
+      field,
+      'INVALID_FORMAT',
+      'must be a decimal string or Decimal',
+    );
   }
   if (!value.isFinite()) {
-    throw new InvalidValueError(field, 'must be a finite number');
+    throw new InvalidValueError(
+      field,
+      'INVALID_VALUE',
+      'must be a finite number',
+    );
   }
   // Re-wrapped so arithmetic uses the domain precision even if the caller built it with another Decimal config.
   return new Decimal(value);

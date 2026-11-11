@@ -11,16 +11,26 @@ export class PlainPassword {
 
   static of(value: string): PlainPassword {
     const length = [...value].length;
+    if (length === 0) {
+      // The text of REQUIRED asks for a password of at least {min} characters (microcopy, section 10).
+      throw new InvalidValueError('password', 'REQUIRED', 'is required', {
+        min: PASSWORD_MIN_LENGTH,
+      });
+    }
     if (length < PASSWORD_MIN_LENGTH) {
       throw new InvalidValueError(
         'password',
+        'TOO_SHORT',
         `must have at least ${PASSWORD_MIN_LENGTH} characters`,
+        { min: PASSWORD_MIN_LENGTH },
       );
     }
     if (length > PASSWORD_MAX_LENGTH) {
       throw new InvalidValueError(
         'password',
+        'TOO_LONG',
         `must have at most ${PASSWORD_MAX_LENGTH} characters`,
+        { max: PASSWORD_MAX_LENGTH },
       );
     }
     return new PlainPassword(value);
@@ -47,10 +57,15 @@ export class PersonName {
 
   static of(value: string): PersonName {
     const name = value.trim();
-    if (name.length === 0 || [...name].length > NAME_MAX_LENGTH) {
+    if (name.length === 0) {
+      throw new InvalidValueError('name', 'REQUIRED', 'is required');
+    }
+    if ([...name].length > NAME_MAX_LENGTH) {
       throw new InvalidValueError(
         'name',
-        `must have between 1 and ${NAME_MAX_LENGTH} characters`,
+        'TOO_LONG',
+        `must have at most ${NAME_MAX_LENGTH} characters`,
+        { max: NAME_MAX_LENGTH },
       );
     }
     return new PersonName(name);

@@ -1,4 +1,3 @@
-import { InvalidValueError } from '../../../shared/domain/domain-error';
 import {
   parsePortfolioId,
   PORTFOLIO_NAME_MAX_LENGTH,
@@ -14,12 +13,16 @@ describe('PortfolioName (RN02)', () => {
   });
 
   it.each([
-    ['empty', ''],
-    ['blank', '   '],
-    ['longer than the column', 'a'.repeat(PORTFOLIO_NAME_MAX_LENGTH + 1)],
-  ])('rejects a %s name with the field "name"', (_case, value) => {
+    ['empty', '', 'REQUIRED'],
+    ['blank', '   ', 'REQUIRED'],
+    [
+      'longer than the column',
+      'a'.repeat(PORTFOLIO_NAME_MAX_LENGTH + 1),
+      'TOO_LONG',
+    ],
+  ])('rejects a %s name with the field "name" (%s)', (_case, value, code) => {
     expect(() => PortfolioName.of(value)).toThrow(
-      new InvalidValueError('name', 'must have between 1 and 150 characters'),
+      expect.objectContaining({ field: 'name', code }) as Error,
     );
   });
 
@@ -31,7 +34,11 @@ describe('PortfolioName (RN02)', () => {
     'rejects a name with %s (control characters; PostgreSQL rejects NUL)',
     (_case, value) => {
       expect(() => PortfolioName.of(value)).toThrow(
-        new InvalidValueError('name', 'must not contain control characters'),
+        expect.objectContaining({
+          field: 'name',
+          code: 'INVALID_VALUE',
+          message: 'name must not contain control characters',
+        }) as Error,
       );
     },
   );
