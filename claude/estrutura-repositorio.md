@@ -124,16 +124,21 @@ carteira-b3/
 │   ├── tsconfig.app.json
 │   ├── tsconfig.spec.json           specs com Vitest (executor padrão do Angular CLI, D40)
 │   ├── playwright.config.ts         [W1] configuração do @playwright/test (D38)
-│   ├── (configuração do Tailwind)   tokens do design system; o arquivo depende da versão do Tailwind (ver W1)
+│   ├── ng-openapi-gen.json          [W1] configuração do gerador do cliente da API (npm run api:generate, D58)
+│   ├── .postcssrc.json              [W1] plugin do Tailwind 4 no build do Angular; os tokens ficam em src/styles.css (D58)
+│   ├── eslint.config.js             angular-eslint (ignora src/app/api/)
+│   ├── scripts/
+│   │   └── check-tokens.mjs         [W1] parte do npm run lint: recusa valor arbitrário do Tailwind fora dos tokens
 │   ├── src/
 │   │   ├── environments/            URLs e configuração por ambiente
-│   │   ├── styles.css
+│   │   ├── styles.css               tokens do design system em @theme (Tailwind 4), claro e escuro (D58)
 │   │   └── app/
 │   │       ├── core/                auth, interceptors, layout
 │   │       ├── shared/              componentes de apresentação, DerivedValueExplainer, pipes pt-BR
 │   │       ├── api/                 gerado a partir de backend/openapi/openapi.json (fora do Git)
 │   │       └── features/            auth, portfolios, operations, assets (S1); demais por etapa
 │   └── e2e/
+│       ├── shell.spec.ts            [W1] abre o shell (404)
 │       └── *.spec.ts                [R1] E2E ponta a ponta do S1 com @playwright/test, no CI (D38)
 │
 ├── graphify-out/                    *gerado*, *fora do Git*: grafo do código do Graphify (graph.json, GRAPH_REPORT.md, graph.html), D53; uso no CLAUDE.md
@@ -179,7 +184,7 @@ carteira-b3/
 | `backend/` | agente backend | o frontend consome só o `openapi.json` |
 | `frontend/` | agente frontend | — |
 | `claude/handoff-ux.md` | agente UX/UI | o frontend só lê |
-| `claude/design-tokens.md` | agente UX/UI | o frontend só lê; o `tailwind.config` espelha a tabela |
+| `claude/design-tokens.md` | agente UX/UI | o frontend só lê; o `@theme` de `frontend/src/styles.css` espelha a tabela (D58) |
 | `claude/microcopy.md` | agente UX/UI | o frontend só lê e gera o dicionário `microcopy.pt-BR.ts`; o backend usa as chaves `name` dos insumos |
 | `agentes/`, `.claude/agents/`, `claude/` | usuário (atualizados pelos agentes no chat do projeto) | `.claude/agents/*.md` e `agentes/*.md` mudam juntos |
 | `docker-compose.yml` | agente database (serviço postgres); agente backend (api e worker, a partir do K1) | — |

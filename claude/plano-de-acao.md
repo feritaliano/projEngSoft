@@ -30,6 +30,8 @@
 
 **Ajuste de 11/11/2026 (K4 PR 1, D54, D57):** o PR 1 do K4 foi mesclado antes da janela (PR #14): operações com recálculo transacional e lock por (carteira, ativo), RN04 por classe, RN07 e RN10 com a operação infratora (422), histórico com filtro `assetType` e paginação, `GET /portfolios/:id` com `lastTradeDate`, códigos de erro da D56 em todos os formulários e "hoje" em America/Sao_Paulo (D54, registrada no PR #17). A revisão do PR achou e corrigiu dois 500 (todo 400 de validação e corpo que não é objeto) e um código de tamanho errado (PR #17). Faltam no K4 o **PR 2** (posições abertas e encerradas, totais com `DerivedValue`, renda fixa e cripto da D55) e o **PR 3** (prévia, D42), dentro da janela até 25/11. Skills do Claude Code no projeto (D57, PR #16). O **W1 não começou** na data (a pasta `frontend/` não existe): passa para 12/11–14/11 e o W2 encolhe para 15/11–18/11, mantendo o fim. A API já tem tudo o que W1, W2 e W3 consomem; o W4 depende do PR 2 e do PR 3.
 
+**Ajuste de 11/11/2026 (W1, D58):** o W1 foi feito um dia antes da janela (branch `feat/W1-angular-skeleton`): Angular 22, Tailwind 4 com os tokens em `@theme` (não há `tailwind.config`), cliente da API pelo `ng-openapi-gen`, sessão em memória com refresh único, shell do frame L com 404 e falha de conexão, 52 specs (97% de linhas), `@playwright/test` com um spec do shell e job `frontend` no CI. Depois do merge, o check `frontend` passa a ser exigido na `main`. O W2 pode começar antes de 15/11. Datas inalteradas.
+
 **Frentes ativas:** todas.
 - 25–27/10: fundação (usuário).
 - 28/10 a meados de novembro: BD (P1–P2), UX/UI (U1–U5) e backend (K0–K3).
@@ -106,7 +108,7 @@ O catálogo de referência do S1 (setores, emissores, ativos, corretoras) vem do
 ## Frontend
 | ID | Tarefa | Datas | Depende de | Pronto quando |
 |---|---|---|---|---|
-| W1 | Esqueleto Angular, tokens no `tailwind.config` (conferidos com as variáveis do Figma), interceptors, shell (frame L) com os estados globais (sessão expirada, 404, falha de conexão), specs com Vitest (limite de 80%), `@playwright/test` configurado, job `frontend` no `ci.yml` (D40) | 12/11–14/11 | U1, F3 | Job `frontend` (lint, specs, build) verde e exigido na proteção da `main` |
+| W1 | **Feito em 11/11 (D58), em PR; falta o CI verde e exigir o check.** Esqueleto Angular, tokens em `@theme` no `styles.css` (Tailwind 4, conferidos com as variáveis do Figma), interceptors, shell (frame L) com os estados globais (sessão expirada, 404, falha de conexão), specs com Vitest (limite de 80%), `@playwright/test` configurado, job `frontend` no `ci.yml` (D40) | 12/11–14/11 | U1, F3 | Job `frontend` (lint, specs, build) verde e exigido na proteção da `main` |
 | W2 | Login e cadastro (frames 1 e 2) | 15/11–18/11 | W1, K2, U3 | Erros do backend exibidos no campo certo |
 | W3 | Lista, criação e exclusão de carteiras, com estado vazio e `ConfirmDialog` (frames 3 e C3) | 19/11–23/11 | W2, K3 | Os 4 estados de dados e a confirmação de exclusão cobertos por spec |
 | W4 | Detalhe da carteira com guias Resumo e Histórico, posições agrupadas por classe com `AssetAvatar` e posições encerradas (D45), formulário de operação (criar e editar) com Resumo da operação (D42), histórico com filtro por tipo, catálogo com "Lançar operação", `DerivedValueExplainer` e `BusinessRuleError` (frames 4–7, C1–C3) | 26/11–02/12 | W3, K4, U5 | Fluxo completo usando a API real |

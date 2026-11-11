@@ -7,7 +7,7 @@ description: Agente frontend do projeto Carteira B3 (Angular + Tailwind). Use pa
 
 # Agente Frontend — Angular + Tailwind
 
-> Reescrito em 05/10/2026; ferramentas e testes E2E atualizados em 26/10/2026 (D38, D40); telas do S1 aprovadas no U0 em 26/10/2026 (D41); prévia da operação em 30/10/2026 (D42); guias, filtro por tipo, agrupamento por classe e avatar em 30/10/2026 (D45); telas do produto completo numa página só em 30/10/2026 (D46); Lista e Detalhe com versão única em 31/10/2026 (D48); ações de linha e de cartão como ícones com tooltip em 31/10/2026 (D51); canal único pela API REST e CORS em 01/11/2026 (D52); contrato de erros com `errors[].field` e esquemas de segurança do OpenAPI em 09/11/2026 (K3); renda fixa e cripto no S1 sem preço (D55), códigos de erro de validação (D56) e textos de erro e de violação da microcopy em 10/11/2026. Fontes que este prompt resume e que prevalecem em caso de conflito, nesta ordem: `claude/contexto-projeto.md` → `claude/arquitetura.md` → `database/docs/modelo-er.md`. Leia as três antes de qualquer tarefa. Estrutura do repositório e onde cada arquivo fica: `claude/estrutura-repositorio.md`. Tarefas, datas e critérios de pronto: `claude/plano-de-acao.md`. Git, PR, definição de pronto e ferramentas: `claude/convencoes-equipe.md`. Handoff de cada tela: `claude/handoff-ux.md` (a partir do U5).
+> Reescrito em 05/10/2026; ferramentas e testes E2E atualizados em 26/10/2026 (D38, D40); telas do S1 aprovadas no U0 em 26/10/2026 (D41); prévia da operação em 30/10/2026 (D42); guias, filtro por tipo, agrupamento por classe e avatar em 30/10/2026 (D45); telas do produto completo numa página só em 30/10/2026 (D46); Lista e Detalhe com versão única em 31/10/2026 (D48); ações de linha e de cartão como ícones com tooltip em 31/10/2026 (D51); canal único pela API REST e CORS em 01/11/2026 (D52); contrato de erros com `errors[].field` e esquemas de segurança do OpenAPI em 09/11/2026 (K3); renda fixa e cripto no S1 sem preço (D55), códigos de erro de validação (D56) e textos de erro e de violação da microcopy em 10/11/2026; esqueleto do W1 (Tailwind 4 com `@theme`, `ng-openapi-gen`, sessão restaurada pelo refresh, falha de conexão) em 11/11/2026 (D58). Fontes que este prompt resume e que prevalecem em caso de conflito, nesta ordem: `claude/contexto-projeto.md` → `claude/arquitetura.md` → `database/docs/modelo-er.md`. Leia as três antes de qualquer tarefa. Estrutura do repositório e onde cada arquivo fica: `claude/estrutura-repositorio.md`. Tarefas, datas e critérios de pronto: `claude/plano-de-acao.md`. Git, PR, definição de pronto e ferramentas: `claude/convencoes-equipe.md`. Handoff de cada tela: `claude/handoff-ux.md` (a partir do U5).
 
 ## Contexto do projeto
 Um único sistema atende duas disciplinas da UNIFESP/ICT:
@@ -21,7 +21,7 @@ Um único sistema atende duas disciplinas da UNIFESP/ICT:
 ## Stack
 - Angular (standalone, TypeScript strict) + Tailwind CSS.
 - **Canal único (D52):** toda comunicação com o backend é pela API REST `/api/v1`. O frontend não acessa o banco, os arquivos de `data/raw` nem JSON local com dados de negócio (mock só dentro de spec, com `HttpTestingController`).
-- Cliente da API gerado de `backend/openapi/openapi.json`, versionado pelo backend desde o K1 (`src/app/api/`, não editar à mão); o backend não precisa estar rodando para gerar.
+- Cliente da API gerado de `backend/openapi/openapi.json` pelo `ng-openapi-gen` (`npm run api:generate`, roda antes de `start`, `build` e `test`), em `src/app/api/` (fora do Git, não editar à mão); o backend não precisa estar rodando para gerar. Chamada: `fn(http, rootUrl, params)` das funções geradas ou o serviço `Api` (D58).
 - CORS: o backend aceita só a origem do frontend (`CORS_ORIGIN` no `.env` da raiz, ex.: `http://localhost:4200` na máquina); requisições com credenciais (`withCredentials`) por causa do cookie httpOnly do refresh. Swagger UI do backend em `/api/docs` fora de produção, para consulta.
 - Testes em TypeScript, arquivos `.spec.ts` (D33), com **Vitest**, o executor padrão do Angular CLI atual (D40). Karma não é usado.
 - Testes E2E com **`@playwright/test`**, em `frontend/e2e/*.spec.ts`, rodando no CI (D38).
@@ -43,7 +43,7 @@ A aplicação é entregue por etapas (seção 5 do contexto). **Neste semestre, 
 ## Tarefas do plano
 | ID | Tarefa | Datas | Depende de | Pronto quando |
 |---|---|---|---|---|
-| W1 | Esqueleto Angular, tokens do design system no `tailwind.config` (conferidos com as variáveis do Figma), interceptors, shell (frame L) com os estados globais (sessão expirada, 404, falha de conexão), specs com Vitest (limite de 80% de linhas), `@playwright/test` configurado, job `frontend` no `.github/workflows/ci.yml` (D40) | 12/11–14/11 | U1, F3 | Job `frontend` (lint, specs, build) verde em todo PR |
+| W1 | **Feito em 11/11 (D58).** Esqueleto Angular, tokens do design system em `@theme` no `src/styles.css` (Tailwind 4, conferidos com as variáveis do Figma), interceptors, shell (frame L) com os estados globais (sessão expirada, 404, falha de conexão), specs com Vitest (limite de 80% de linhas), `@playwright/test` configurado, job `frontend` no `.github/workflows/ci.yml` (D40) | 12/11–14/11 | U1, F3 | Job `frontend` (lint, specs, build) verde em todo PR |
 | W2 | Login e cadastro (frames 1 e 2) | 15/11–18/11 | W1, K2, U3 | Erros do backend exibidos no campo certo |
 | W3 | Lista, criação e exclusão de carteiras, com estado vazio e `ConfirmDialog` (frames 3 e C3) | 19/11–23/11 | W2, K3 | Os 4 estados de dados e a confirmação de exclusão cobertos por spec |
 | W4 | Detalhe da carteira com guias Resumo e Histórico, posições agrupadas por classe com `AssetAvatar` e posições encerradas (D45), formulário de operação (criar e editar) com Resumo da operação vindo da prévia (D42), histórico (filtro, edição, exclusão), catálogo com "Lançar operação", `DerivedValueExplainer` e `BusinessRuleError` (frames 4–7, C1–C3) | 26/11–02/12 | W3, K4, U5 | Fluxo completo usando a API real |
@@ -107,7 +107,7 @@ src/app/
 - URLs e configurações via `environment`, nunca fixas no código.
 
 ## Tailwind
-- Cores, tipografia, espaçamentos, raios e sombras como tokens no `tailwind.config`, espelhando 1:1 o design system do UX (claro e escuro) e as variáveis do arquivo Figma. Nada de valores arbitrários (`text-[#1a2b3c]`) fora dos tokens.
+- Cores, tipografia, espaçamentos, raios e sombras como tokens em `@theme` no `src/styles.css` (Tailwind 4, não há `tailwind.config`; D58), espelhando 1:1 o design system do UX (claro e escuro) e as variáveis do arquivo Figma. Nada de valores arbitrários (`text-[#1a2b3c]`) fora dos tokens.
 - Padrões repetidos viram componente Angular, não string longa de classes copiada.
 - Números financeiros com `tabular-nums`, alinhados à direita em tabelas, em formato pt-BR (R$ 1.234,56).
 

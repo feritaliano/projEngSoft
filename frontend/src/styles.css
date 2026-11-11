@@ -1,0 +1,190 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/inter';
+
+/*
+ * Design tokens (claude/design-tokens.md = variables of the Figma file, modes Light and Dark).
+ * Raw values live in CSS variables with the Figma web names; @theme maps them to Tailwind utilities.
+ * Tailwind's default palette, radii, shadows, fonts and text sizes are removed: only tokens exist.
+ */
+:root {
+  color-scheme: light;
+  --color-bg-canvas: #f5f7f9;
+  --color-bg-surface: #ffffff;
+  --color-bg-subtle: #eef1f4;
+  --color-bg-inverse: #14181f;
+  --color-border-default: #d5dbe2;
+  --color-border-strong: #7a8491;
+  --color-text-primary: #14181f;
+  --color-text-secondary: #566170;
+  --color-text-on-primary: #ffffff;
+  --color-text-link: #0b5c70;
+  --color-primary-default: #0b5c70;
+  --color-primary-hover: #08475a;
+  --color-primary-subtle: #e2f0f3;
+  --color-positive-text: #1a6b3b;
+  --color-positive-subtle: #e5f4eb;
+  --color-negative-text: #b3261e;
+  --color-negative-subtle: #fcebe9;
+  --color-negative-default: #b3261e;
+  --color-warning-text: #8a5100;
+  --color-warning-subtle: #fff3dd;
+  --color-focus-ring: #2563eb;
+  --color-overlay-scrim: #14181f;
+  --color-chart-1: #2a78d6;
+  --color-chart-2: #eb6834;
+  --color-chart-3: #1baf7a;
+  --color-chart-4: #eda100;
+  --color-chart-5: #e87ba4;
+  --color-chart-6: #008300;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --color-bg-canvas: #0f1419;
+    --color-bg-surface: #171c23;
+    --color-bg-subtle: #20262e;
+    --color-bg-inverse: #e8ecf1;
+    --color-border-default: #2c343e;
+    --color-border-strong: #6b7684;
+    --color-text-primary: #e8ecf1;
+    --color-text-secondary: #a3adb9;
+    --color-text-on-primary: #0b1e24;
+    --color-text-link: #7cc7da;
+    --color-primary-default: #5bb4cb;
+    --color-primary-hover: #7cc7da;
+    --color-primary-subtle: #12333c;
+    --color-positive-text: #6fcf97;
+    --color-positive-subtle: #12291c;
+    --color-negative-text: #f28b82;
+    --color-negative-subtle: #3a1714;
+    --color-negative-default: #e5675c;
+    --color-warning-text: #f0b35a;
+    --color-warning-subtle: #33240a;
+    --color-focus-ring: #6ea8fe;
+    --color-overlay-scrim: #000000;
+    --color-chart-1: #3987e5;
+    --color-chart-2: #d95926;
+    --color-chart-3: #199e70;
+    --color-chart-4: #c98500;
+    --color-chart-5: #d55181;
+    --color-chart-6: #008300;
+  }
+}
+
+@theme {
+  --color-*: initial;
+  --radius-*: initial;
+  --shadow-*: initial;
+  --font-*: initial;
+  --text-*: initial;
+  --breakpoint-*: initial;
+
+  /* Layout breakpoints of the handoff (U5): < 768 mobile, 768–1023 fluid, ≥ 1024 desktop. */
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+
+  --font-sans: 'Inter Variable', system-ui, sans-serif;
+
+  /* Spacing keeps Tailwind's 4 px step: the tokens spacing/1…12 are p-1…p-12 (4…48 px). */
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+
+  /* elevation/overlay: color #14171F at 16% in the Figma effect. */
+  --shadow-overlay: 0 8px 24px 0 rgb(20 23 31 / 0.16);
+
+  --text-heading-xl: 28px;
+  --text-heading-xl--line-height: 36px;
+  --text-heading-xl--font-weight: 600;
+  --text-heading-lg: 22px;
+  --text-heading-lg--line-height: 30px;
+  --text-heading-lg--font-weight: 600;
+  --text-heading-md: 18px;
+  --text-heading-md--line-height: 26px;
+  --text-heading-md--font-weight: 600;
+  --text-heading-sm: 15px;
+  --text-heading-sm--line-height: 22px;
+  --text-heading-sm--font-weight: 600;
+  --text-body-md: 14px;
+  --text-body-md--line-height: 20px;
+  --text-body-md--font-weight: 400;
+  --text-body-sm: 13px;
+  --text-body-sm--line-height: 18px;
+  --text-body-sm--font-weight: 400;
+  --text-label-md: 14px;
+  --text-label-md--line-height: 20px;
+  --text-label-md--font-weight: 500;
+  --text-label-sm: 12px;
+  --text-label-sm--line-height: 16px;
+  --text-label-sm--font-weight: 500;
+  --text-label-sm--letter-spacing: 0.02em;
+  --text-caption: 12px;
+  --text-caption--line-height: 16px;
+  --text-caption--font-weight: 400;
+  --text-numeric-lg: 24px;
+  --text-numeric-lg--line-height: 32px;
+  --text-numeric-lg--font-weight: 600;
+  --text-numeric-md: 14px;
+  --text-numeric-md--line-height: 20px;
+  --text-numeric-md--font-weight: 500;
+}
+
+@theme inline {
+  --background-color-canvas: var(--color-bg-canvas);
+  --background-color-surface: var(--color-bg-surface);
+  --background-color-subtle: var(--color-bg-subtle);
+  --background-color-inverse: var(--color-bg-inverse);
+  --background-color-primary: var(--color-primary-default);
+  --background-color-primary-hover: var(--color-primary-hover);
+  --background-color-primary-subtle: var(--color-primary-subtle);
+  --background-color-positive-subtle: var(--color-positive-subtle);
+  --background-color-negative: var(--color-negative-default);
+  --background-color-negative-subtle: var(--color-negative-subtle);
+  --background-color-warning-subtle: var(--color-warning-subtle);
+  --background-color-scrim: var(--color-overlay-scrim);
+
+  --text-color-primary: var(--color-text-primary);
+  --text-color-secondary: var(--color-text-secondary);
+  --text-color-on-primary: var(--color-text-on-primary);
+  --text-color-link: var(--color-text-link);
+  --text-color-positive: var(--color-positive-text);
+  --text-color-negative: var(--color-negative-text);
+  --text-color-warning: var(--color-warning-text);
+
+  --border-color-default: var(--color-border-default);
+  --border-color-strong: var(--color-border-strong);
+  --border-color-primary: var(--color-primary-default);
+  --border-color-negative: var(--color-negative-default);
+
+  --outline-color-focus: var(--color-focus-ring);
+
+  --background-color-chart-1: var(--color-chart-1);
+  --background-color-chart-2: var(--color-chart-2);
+  --background-color-chart-3: var(--color-chart-3);
+  --background-color-chart-4: var(--color-chart-4);
+  --background-color-chart-5: var(--color-chart-5);
+  --background-color-chart-6: var(--color-chart-6);
+  --border-color-chart-1: var(--color-chart-1);
+  --border-color-chart-2: var(--color-chart-2);
+  --border-color-chart-3: var(--color-chart-3);
+  --border-color-chart-4: var(--color-chart-4);
+  --border-color-chart-5: var(--color-chart-5);
+  --border-color-chart-6: var(--color-chart-6);
+}
+
+/* Active navigation link (routerLink with ariaCurrentWhenActive="page"). */
+@custom-variant current (&[aria-current='page']);
+
+@layer base {
+  body {
+    @apply bg-canvas text-body-md text-primary;
+  }
+
+  /* Handoff U5 (2.4.7): every focusable element shows the ring on keyboard focus. */
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-focus;
+  }
+}

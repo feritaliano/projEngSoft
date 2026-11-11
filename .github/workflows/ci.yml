@@ -1,5 +1,5 @@
 # CI do Carteira B3 (D40). Cada job vira verificação obrigatória da proteção da `main` assim que existir.
-# Job `database` desde 26/10/2026; `backend` desde o K1 (01/11/2026); `frontend` entra no W1 e `e2e` no R1.
+# Job `database` desde 26/10/2026; `backend` desde o K1 (01/11/2026); `frontend` desde o W1 (12/11/2026); `e2e` entra no R1.
 name: CI
 
 on:
@@ -157,3 +157,33 @@ jobs:
         if: always()
         working-directory: .
         run: docker compose --profile app down -v
+
+  frontend:
+    name: frontend
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+
+      # The client in src/app/api/ is generated, not versioned: it comes from backend/openapi/openapi.json (D52).
+      - name: Generate the API client (ng-openapi-gen)
+        run: npm run api:generate
+
+      - name: Lint (angular-eslint and design tokens only)
+        run: npm run lint
+
+      - name: Specs with coverage (Vitest, at least 80% of lines)
+        run: npm run test:cov
+
+      - name: Build
+        run: npm run build
