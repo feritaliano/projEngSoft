@@ -4,24 +4,10 @@ import {
   AssetDirectory,
   BrokerDirectory,
 } from '../../reference-data/application/directories';
-import type { AssetType } from '../domain/asset-type';
+import type { AssetRef, BrokerRef } from '../domain/catalog-refs';
 import type { StoredOperation } from '../domain/operation';
 import type { OperationType } from '../domain/timeline';
 import { BusinessRule, RuleViolationError } from '../domain/timeline-change';
-
-/** The asset of an operation as the history, the form and the 422 show it (D50: ticker or display name). */
-export interface AssetRef {
-  readonly id: string;
-  /** Null only for fixed income (D50). */
-  readonly ticker: string | null;
-  readonly displayName: string;
-  readonly assetType: AssetType;
-}
-
-export interface BrokerRef {
-  readonly id: string;
-  readonly name: string;
-}
 
 /** An operation with its asset and broker (B5, frame 6; the edit form, frame 5). Decimals as strings (RN11). */
 export interface OperationView {
@@ -146,9 +132,8 @@ export class OperationDetails {
     );
   }
 
-  private async refsOf(
-    pairs: readonly { assetId: string; brokerId: string }[],
-  ) {
+  /** Lookups of the assets and brokers of the pairs; a missing one throws MissingReferenceError (500). */
+  async refsOf(pairs: readonly { assetId: string; brokerId: string }[]) {
     const [assets, brokers] = await Promise.all([
       this.assets.byIds(pairs.map((pair) => pair.assetId)),
       this.brokers.byIds(pairs.map((pair) => pair.brokerId)),
