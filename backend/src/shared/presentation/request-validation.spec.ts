@@ -103,6 +103,17 @@ describe('toFieldErrors (400 with the field, D52, audit of 09/11)', () => {
     ]);
   });
 
+  it('counts the length like the decorator: 4 emoji are TOO_SHORT, not TOO_LONG (D56)', async () => {
+    // 4 characters for class-validator, 8 UTF-16 units for String.length.
+    const errors = await validate(
+      plainToInstance(SignUpDto, { password: '😀😀😀😀' }),
+    );
+
+    expect(toFieldErrors(errors)).toEqual([
+      expect.objectContaining({ code: 'TOO_SHORT', params: { min: 8 } }),
+    ]);
+  });
+
   it('answers REQUIRED for a missing value, with the minimum length when above 1 (D56)', async () => {
     const errors = await validate(plainToInstance(SignUpDto, {}));
 

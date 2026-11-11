@@ -1,5 +1,9 @@
 import { BadRequestException } from '@nestjs/common';
-import { getMetadataStorage, ValidationError } from 'class-validator';
+import {
+  getMetadataStorage,
+  minLength,
+  ValidationError,
+} from 'class-validator';
 import type { FieldErrorCode, FieldErrorParams } from '../domain/domain-error';
 
 /**
@@ -89,7 +93,8 @@ export const CONSTRAINT_CODES: ReadonlyMap<string, ConstraintMapper> = new Map<
     'isLength',
     (args, value) => {
       const min = numberArg('isLength', args, 0);
-      return typeof value === 'string' && value.length < min
+      // class-validator's own count (an emoji is one character), so the code agrees with the check that failed.
+      return typeof value === 'string' && !minLength(value, min)
         ? { code: 'TOO_SHORT', params: { min } }
         : { code: 'TOO_LONG', params: { max: numberArg('isLength', args, 1) } };
     },
