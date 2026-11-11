@@ -19,7 +19,8 @@ carteira-b3/
 │   │   ├── database.md              [ok] subagente do Claude Code (espelho de agentes/agente-banco-de-dados.md)
 │   │   ├── backend.md               [ok] espelho de agentes/agente-backend.md
 │   │   └── frontend.md              [ok] espelho de agentes/agente-frontend.md
-│   ├── settings.json                [ok] permissões (allow / ask / deny, D40) e plugins do projeto (enabledPlugins, D38)
+│   ├── skills/                      [ok] skills do Claude Code (D57): ponytail/, karpathy-guidelines/, skill-inspector/ (cópias sem alteração dos originais)
+│   ├── settings.json                [ok] permissões (allow / ask / deny, D40) e plugins do projeto (enabledPlugins, D38; superpowers, D57)
 │   └── settings.local.json          configurações pessoais (fora do Git)
 ├── .github/
 │   ├── pull_request_template.md     [ok]
@@ -166,6 +167,7 @@ carteira-b3/
 | Microcopy do "como foi calculado" | `claude/microcopy.md` | Sim |
 | Testes E2E | `frontend/e2e/*.spec.ts` (+ `frontend/playwright.config.ts`) | Sim |
 | Plugins do Claude Code do projeto | `.claude/settings.json` (`enabledPlugins`) | Sim |
+| Skills do Claude Code do projeto (D57) | `.claude/skills/<nome>/SKILL.md` | Sim |
 | Arquivos brutos das fontes | `data/raw/` | Não |
 | Configuração pessoal do Claude Code | `.claude/settings.local.json` | Não |
 | Grafo do código (Graphify, D53) | `graphify-out/` (gerado por `graphify update .`); exclusões em `.graphifyignore` | Não (o `.graphifyignore` vai) |

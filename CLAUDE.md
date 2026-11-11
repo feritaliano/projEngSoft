@@ -48,6 +48,13 @@ O grafo do projeto fica em `graphify-out/` (gerado, fora do Git): `graph.json` (
 O agente de UX/UI roda no chat do projeto no claude.ai (Figma), não aqui.
 O conteúdo de `.claude/agents/*.md` é o mesmo de `agentes/*.md`; ao alterar um, altere o outro na mesma tarefa.
 
+## Skills (D57)
+- Em toda tarefa de código (escrever, corrigir, refatorar, revisar), aplique as skills `ponytail` (nível full) e `karpathy-guidelines`, de `.claude/skills/`.
+- A escolha das demais skills segue o `using-superpowers`, do plugin `superpowers` ativado no `.claude/settings.json`.
+- Em conflito, prevalecem este arquivo, `claude/contexto-projeto.md` e os prompts dos agentes. Exemplos: responder em pt-BR, a regra de delegação e os comandos que pedem confirmação.
+- Antes de instalar qualquer skill ou plugin novo, rode o `skill-inspector` (CLI: `uv tool install git+https://github.com/NVIDIA/skillspector.git`; no Windows, `skillspector scan <pasta> --no-llm --format json > relatorio.json`, sem `--output`). Só instale com veredito APPROVE.
+- Repasse esta seção no prompt de todo subagente que for escrever ou revisar código.
+
 ## Ambiente local
 - PostgreSQL 16 via Docker: `docker compose up -d` (serviço `postgres`, contêiner `carteira-b3-db`, porta 5432).
 - Backend no Docker: `docker compose --profile app up -d --build` (serviços `migrate`, `api` e `worker`; Swagger UI em `http://localhost:<API_PORT>/api/docs`).
@@ -81,6 +88,7 @@ O conteúdo de `.claude/agents/*.md` é o mesmo de `agentes/*.md`; ao alterar um
 Resumo; a árvore completa está em `claude/estrutura-repositorio.md`.
 ```
 .claude/agents/   database.md, backend.md, frontend.md
+.claude/skills/   ponytail, karpathy-guidelines, skill-inspector (D57)
 .github/          pull_request_template.md; workflows/ci.yml (K1)
 agentes/          prompts-fonte dos agentes (inclui UX/UI)
 claude/           contexto, arquitetura, plano, convenções, estrutura do repositório, enunciado de BD
