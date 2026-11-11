@@ -25,6 +25,7 @@ describe('toDecimal (RN11, D5)', () => {
     expect(() => toDecimal(value, 'price')).toThrow(
       new InvalidValueError(
         'price',
+        'INVALID_FORMAT',
         'must be a plain decimal string (e.g. "1234.56")',
       ),
     );
@@ -45,7 +46,11 @@ describe('toDecimal (RN11, D5)', () => {
     ['an object', { value: '1' }],
   ])('rejects %s arriving through loosely typed input', (_case, value) => {
     expect(() => toDecimal(value as unknown as string, 'fees')).toThrow(
-      new InvalidValueError('fees', 'must be a decimal string or Decimal'),
+      new InvalidValueError(
+        'fees',
+        'INVALID_FORMAT',
+        'must be a decimal string or Decimal',
+      ),
     );
   });
 

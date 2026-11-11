@@ -67,17 +67,39 @@
             }
           },
           "400": {
-            "description": "Invalid body: errors[] names each field (name, email, password, or a field that should not exist).",
+            "description": "Invalid body: errors[] names each field and why (D56): name REQUIRED or TOO_LONG; email REQUIRED, INVALID_FORMAT or TOO_LONG; password REQUIRED, TOO_SHORT or TOO_LONG; a field that should not exist is INVALID_VALUE.",
             "content": {
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Bad Request",
+                  "status": 400,
+                  "detail": "The request is invalid.",
+                  "instance": "/api/v1/auth/register",
+                  "errors": [
+                    {
+                      "field": "email",
+                      "code": "INVALID_FORMAT",
+                      "message": "email must be an email"
+                    },
+                    {
+                      "field": "password",
+                      "code": "TOO_SHORT",
+                      "message": "password must be longer than or equal to 8 characters",
+                      "params": {
+                        "min": 8
+                      }
+                    }
+                  ]
                 }
               }
             }
           },
           "409": {
-            "description": "E-mail already registered (field: email).",
+            "description": "E-mail already registered: field email, and errors[] with ALREADY_EXISTS (D56).",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -130,11 +152,25 @@
             }
           },
           "400": {
-            "description": "Invalid body: errors[] names each field (email, password, or a field that should not exist).",
+            "description": "Invalid body: errors[] names each field and why (D56): email REQUIRED or INVALID_FORMAT; password REQUIRED; a field that should not exist is INVALID_VALUE.",
             "content": {
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Bad Request",
+                  "status": 400,
+                  "detail": "The request is invalid.",
+                  "instance": "/api/v1/auth/login",
+                  "errors": [
+                    {
+                      "field": "password",
+                      "code": "REQUIRED",
+                      "message": "password is required"
+                    }
+                  ]
                 }
               }
             }
@@ -447,11 +483,28 @@
             }
           },
           "400": {
-            "description": "Invalid body: errors[] names each field (name, or a field that should not exist).",
+            "description": "Invalid body: errors[] names each field and why (D56): name REQUIRED, TOO_LONG or INVALID_VALUE (control characters); a field that should not exist is INVALID_VALUE.",
             "content": {
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Bad Request",
+                  "status": 400,
+                  "detail": "The request is invalid.",
+                  "instance": "/api/v1/portfolios",
+                  "errors": [
+                    {
+                      "field": "name",
+                      "code": "TOO_LONG",
+                      "message": "name must have at most 150 characters",
+                      "params": {
+                        "max": 150
+                      }
+                    }
+                  ]
                 }
               }
             }
@@ -467,7 +520,7 @@
             }
           },
           "409": {
-            "description": "The user already has a portfolio with this name (field: name).",
+            "description": "The user already has a portfolio with this name: field name, and errors[] with ALREADY_EXISTS (D56).",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -577,6 +630,473 @@
           "portfolios"
         ]
       }
+    },
+    "/api/v1/portfolios/{id}/operations": {
+      "get": {
+        "operationId": "OperationsController_list",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "assetId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "example": "6b0d3a52-1f5e-4f0a-9d7c-3e2b8a1c4d90",
+              "type": "string"
+            }
+          },
+          {
+            "name": "brokerId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "example": "0c9e7f3a-5b2d-4e81-a6c4-9d1f2b3e4a57",
+              "type": "string"
+            }
+          },
+          {
+            "name": "assetType",
+            "required": false,
+            "in": "query",
+            "description": "Asset class (D45).",
+            "schema": {
+              "example": "FII",
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/AssetType"
+                }
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100000,
+              "default": 1,
+              "example": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50,
+              "example": 50,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationPageDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query: errors[] names each parameter (assetId, brokerId, assetType, page, pageSize).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed or expired access token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Portfolio not found, or it belongs to another user (RN02).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "summary": "History of operations of a portfolio (B5, D45)",
+        "tags": [
+          "operations"
+        ]
+      },
+      "post": {
+        "operationId": "OperationsController_create",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateOperationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body: errors[] names each field and why (D56). assetId, brokerId: REQUIRED, INVALID_FORMAT, NOT_FOUND. type: REQUIRED, INVALID_VALUE. tradeDate: REQUIRED, INVALID_FORMAT, FUTURE_DATE { today }. quantity: REQUIRED, NOT_POSITIVE, NOT_INTEGER (stock, FII, ETF, BDR), INVALID_STEP { step } (fixed income), TOO_MANY_DECIMALS { maxDecimals } (crypto), TOO_LARGE { maxIntegerDigits }. unitPrice: REQUIRED, NOT_POSITIVE, TOO_MANY_DECIMALS, TOO_LARGE. fees: REQUIRED, NEGATIVE, TOO_MANY_DECIMALS, TOO_LARGE.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Bad Request",
+                  "status": 400,
+                  "detail": "The request is invalid.",
+                  "instance": "/api/v1/portfolios/3f1c2b9e-8d4a-4c6f-9b1e-2a7d5c8e0f13/operations",
+                  "errors": [
+                    {
+                      "field": "quantity",
+                      "code": "INVALID_STEP",
+                      "message": "quantity 0.525 is not allowed for FIXED_INCOME: must be a multiple of 0.01",
+                      "params": {
+                        "step": "0.01"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed or expired access token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Portfolio not found, or it belongs to another user (RN02).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A sell would exceed the position at its date (RN07, RN10): `violation` identifies the offending sell. Nothing was saved.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ProblemDetails"
+                    },
+                    {
+                      "$ref": "#/components/schemas/RuleViolationProblem"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "summary": "Enter an operation (B2, B3, RN04–RN07)",
+        "tags": [
+          "operations"
+        ]
+      }
+    },
+    "/api/v1/portfolios/{id}/operations/{operationId}": {
+      "get": {
+        "operationId": "OperationsController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "operationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed or expired access token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Portfolio or operation not found, or they belong to another user (RN02).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get an operation, for the edit form (B4, D41)",
+        "tags": [
+          "operations"
+        ]
+      },
+      "patch": {
+        "operationId": "OperationsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "operationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateOperationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body: errors[] names each field and why (D56). assetId, brokerId: REQUIRED, INVALID_FORMAT, NOT_FOUND. type: REQUIRED, INVALID_VALUE. tradeDate: REQUIRED, INVALID_FORMAT, FUTURE_DATE { today }. quantity: REQUIRED, NOT_POSITIVE, NOT_INTEGER (stock, FII, ETF, BDR), INVALID_STEP { step } (fixed income), TOO_MANY_DECIMALS { maxDecimals } (crypto), TOO_LARGE { maxIntegerDigits }. unitPrice: REQUIRED, NOT_POSITIVE, TOO_MANY_DECIMALS, TOO_LARGE. fees: REQUIRED, NEGATIVE, TOO_MANY_DECIMALS, TOO_LARGE.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Bad Request",
+                  "status": 400,
+                  "detail": "The request is invalid.",
+                  "instance": "/api/v1/portfolios/3f1c2b9e-8d4a-4c6f-9b1e-2a7d5c8e0f13/operations",
+                  "errors": [
+                    {
+                      "field": "quantity",
+                      "code": "INVALID_STEP",
+                      "message": "quantity 0.525 is not allowed for FIXED_INCOME: must be a multiple of 0.01",
+                      "params": {
+                        "step": "0.01"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed or expired access token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Portfolio or operation not found, or they belong to another user (RN02).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A sell would exceed the position at its date (RN07, RN10): `violation` identifies the offending sell. Nothing was saved.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ProblemDetails"
+                    },
+                    {
+                      "$ref": "#/components/schemas/RuleViolationProblem"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "summary": "Edit an operation and recalculate the timeline (B4, RN10)",
+        "tags": [
+          "operations"
+        ]
+      },
+      "delete": {
+        "operationId": "OperationsController_delete",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "operationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted."
+          },
+          "401": {
+            "description": "Missing, malformed or expired access token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Portfolio or operation not found, or they belong to another user (RN02).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A sell would exceed the position at its date (RN07, RN10): `violation` identifies the offending sell. Nothing was saved.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ProblemDetails"
+                    },
+                    {
+                      "$ref": "#/components/schemas/RuleViolationProblem"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "summary": "Delete an operation and recalculate the timeline (B4, RN10)",
+        "tags": [
+          "operations"
+        ]
+      }
     }
   },
   "info": {
@@ -619,6 +1139,62 @@
           "status"
         ]
       },
+      "FieldErrorCode": {
+        "type": "string",
+        "enum": [
+          "REQUIRED",
+          "INVALID_FORMAT",
+          "INVALID_VALUE",
+          "TOO_SHORT",
+          "TOO_LONG",
+          "FUTURE_DATE",
+          "NOT_POSITIVE",
+          "NEGATIVE",
+          "NOT_INTEGER",
+          "INVALID_STEP",
+          "TOO_MANY_DECIMALS",
+          "TOO_LARGE",
+          "NOT_FOUND",
+          "ALREADY_EXISTS"
+        ],
+        "description": "Why the field was rejected (D56): a closed list, the same on every endpoint. The client shows its own text by field + code."
+      },
+      "FieldErrorParams": {
+        "type": "object",
+        "properties": {
+          "min": {
+            "type": "number",
+            "example": 8,
+            "description": "TOO_SHORT, and REQUIRED of a field with a minimum length: the minimum number of characters."
+          },
+          "max": {
+            "type": "number",
+            "example": 150,
+            "description": "TOO_LONG: the maximum number of characters. TOO_LARGE of page and pageSize: the maximum value."
+          },
+          "maxDecimals": {
+            "type": "number",
+            "example": 8,
+            "description": "TOO_MANY_DECIMALS: the maximum number of decimal places."
+          },
+          "maxIntegerDigits": {
+            "type": "number",
+            "example": 12,
+            "description": "TOO_LARGE of a decimal: the maximum digits before the point."
+          },
+          "step": {
+            "type": "string",
+            "example": "0.01",
+            "description": "INVALID_STEP: the step, as a decimal string."
+          },
+          "today": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-11-10",
+            "description": "FUTURE_DATE: today in São Paulo (D54), YYYY-MM-DD."
+          }
+        }
+      },
       "FieldError": {
         "type": "object",
         "properties": {
@@ -627,13 +1203,27 @@
             "example": "password",
             "description": "Property path in the body or query string; nested properties use dots (address.street, items.0.quantity)."
           },
+          "code": {
+            "example": "TOO_SHORT",
+            "description": "Why the field was rejected (D56): a closed list, the same on every endpoint. The client shows its own text by field + code.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FieldErrorCode"
+              }
+            ]
+          },
           "message": {
             "type": "string",
-            "example": "password must be longer than or equal to 8 characters"
+            "example": "password must have at least 8 characters",
+            "description": "English, for logs and readers of the API; not meant to be shown to the user."
+          },
+          "params": {
+            "$ref": "#/components/schemas/FieldErrorParams"
           }
         },
         "required": [
           "field",
+          "code",
           "message"
         ]
       },
@@ -662,7 +1252,7 @@
           },
           "errors": {
             "maxItems": 50,
-            "description": "400 only: one entry per invalid input, from validation of the body or query and from domain rules (at most 50).",
+            "description": "400: one entry per invalid input, from validation of the body or query and from domain rules (at most 50). 409 of a form: the conflicting field, with ALREADY_EXISTS.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/FieldError"
@@ -671,7 +1261,7 @@
           "field": {
             "type": "string",
             "example": "email",
-            "description": "409 only: the field whose value conflicts with an existing resource (e.g. e-mail already registered)."
+            "description": "409 only: the field whose value conflicts with an existing resource (e.g. e-mail already registered); errors[] repeats it with ALREADY_EXISTS."
           }
         },
         "required": [
@@ -963,6 +1553,13 @@
             "example": 11,
             "description": "Operations of the portfolio, counted in the query (D41). Shown when confirming the deletion: they go with it."
           },
+          "lastTradeDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "example": "2026-10-28",
+            "description": "Trade date of the most recent operation (header \"9 operações · última em 28/10/2026\"); null without operations."
+          },
           "assetCount": {
             "type": "number",
             "example": 6,
@@ -973,6 +1570,7 @@
           "id",
           "name",
           "operationCount",
+          "lastTradeDate",
           "assetCount"
         ]
       },
@@ -989,6 +1587,335 @@
         "required": [
           "name"
         ]
+      },
+      "OperationType": {
+        "type": "string",
+        "enum": [
+          "BUY",
+          "SELL"
+        ]
+      },
+      "AssetRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "6b0d3a52-1f5e-4f0a-9d7c-3e2b8a1c4d90"
+          },
+          "ticker": {
+            "type": "string",
+            "nullable": true,
+            "example": "PETR4",
+            "description": "Null for fixed income (D50)."
+          },
+          "displayName": {
+            "type": "string",
+            "example": "PETR4",
+            "description": "Ticker for stocks, FIIs, ETFs and BDRs; name for crypto; bond type and maturity year for fixed income (D50)."
+          },
+          "assetType": {
+            "example": "STOCK",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AssetType"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "ticker",
+          "displayName",
+          "assetType"
+        ]
+      },
+      "BrokerRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0c9e7f3a-5b2d-4e81-a6c4-9d1f2b3e4a57"
+          },
+          "name": {
+            "type": "string",
+            "example": "XP Investimentos"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "OperationDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "9a4e1c27-6d3b-4f80-b5a2-1e7c9d0f3b64"
+          },
+          "type": {
+            "example": "BUY",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OperationType"
+              }
+            ]
+          },
+          "tradeDate": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-01-05"
+          },
+          "quantity": {
+            "type": "string",
+            "example": "100"
+          },
+          "unitPrice": {
+            "type": "string",
+            "example": "29.95"
+          },
+          "fees": {
+            "type": "string",
+            "example": "5"
+          },
+          "asset": {
+            "$ref": "#/components/schemas/AssetRef"
+          },
+          "broker": {
+            "$ref": "#/components/schemas/BrokerRef"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "tradeDate",
+          "quantity",
+          "unitPrice",
+          "fees",
+          "asset",
+          "broker"
+        ]
+      },
+      "OperationPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "description": "Most recent first: trade date, then order of entry.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OperationDto"
+            }
+          },
+          "total": {
+            "type": "number",
+            "example": 9,
+            "description": "Operations matching the filters, across all pages."
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ]
+      },
+      "ViolatingOperation": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "example": "9a4e1c27-6d3b-4f80-b5a2-1e7c9d0f3b64",
+            "description": "Null only when the offending sell is the operation being created (nothing was saved)."
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "SELL"
+            ],
+            "example": "SELL"
+          },
+          "tradeDate": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-05-22"
+          },
+          "quantity": {
+            "type": "string",
+            "example": "50"
+          },
+          "asset": {
+            "$ref": "#/components/schemas/AssetRef"
+          },
+          "broker": {
+            "$ref": "#/components/schemas/BrokerRef"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "tradeDate",
+          "quantity",
+          "asset",
+          "broker"
+        ]
+      },
+      "RuleViolation": {
+        "type": "object",
+        "properties": {
+          "rule": {
+            "type": "string",
+            "enum": [
+              "RN07",
+              "RN10"
+            ],
+            "example": "RN10",
+            "description": "RN07: the operation being saved is a sell above the position at its date. RN10: the change makes a later sell exceed the position at its date."
+          },
+          "operation": {
+            "description": "The offending sell (the first one, chronologically).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ViolatingOperation"
+              }
+            ]
+          },
+          "availableQuantity": {
+            "type": "string",
+            "example": "40",
+            "description": "Units held at the date of the offending sell, before it."
+          },
+          "soldQuantity": {
+            "type": "string",
+            "example": "50"
+          }
+        },
+        "required": [
+          "rule",
+          "operation",
+          "availableQuantity",
+          "soldQuantity"
+        ]
+      },
+      "RuleViolationProblem": {
+        "type": "object",
+        "properties": {
+          "violation": {
+            "$ref": "#/components/schemas/RuleViolation"
+          }
+        },
+        "required": [
+          "violation"
+        ]
+      },
+      "CreateOperationDto": {
+        "type": "object",
+        "properties": {
+          "assetId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "6b0d3a52-1f5e-4f0a-9d7c-3e2b8a1c4d90",
+            "description": "An active asset of the catalog (C1)."
+          },
+          "brokerId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0c9e7f3a-5b2d-4e81-a6c4-9d1f2b3e4a57",
+            "description": "Broker or exchange (D9)."
+          },
+          "type": {
+            "example": "BUY",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OperationType"
+              }
+            ]
+          },
+          "tradeDate": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-10-28",
+            "description": "YYYY-MM-DD, not after today in São Paulo (RN04, D54)."
+          },
+          "quantity": {
+            "type": "string",
+            "example": "100",
+            "pattern": "^-?\\d+(\\.\\d+)?$",
+            "description": "Greater than zero (RN04): whole units for stocks, FIIs, ETFs and BDRs; multiples of 0.01 for fixed income; up to 8 decimal places for crypto; at most 12 digits before the point."
+          },
+          "unitPrice": {
+            "type": "string",
+            "example": "29.95",
+            "pattern": "^-?\\d+(\\.\\d+)?$",
+            "description": "Greater than zero, up to 8 decimal places, at most 12 digits before the point."
+          },
+          "fees": {
+            "type": "string",
+            "example": "5.00",
+            "pattern": "^-?\\d+(\\.\\d+)?$",
+            "description": "Brokerage and fees of the note: zero or more, up to 2 decimal places."
+          }
+        },
+        "required": [
+          "assetId",
+          "brokerId",
+          "type",
+          "tradeDate",
+          "quantity",
+          "unitPrice",
+          "fees"
+        ]
+      },
+      "UpdateOperationDto": {
+        "type": "object",
+        "properties": {
+          "assetId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "6b0d3a52-1f5e-4f0a-9d7c-3e2b8a1c4d90",
+            "description": "An active asset of the catalog (C1)."
+          },
+          "brokerId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0c9e7f3a-5b2d-4e81-a6c4-9d1f2b3e4a57",
+            "description": "Broker or exchange (D9)."
+          },
+          "type": {
+            "example": "BUY",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OperationType"
+              }
+            ]
+          },
+          "tradeDate": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-10-28",
+            "description": "YYYY-MM-DD, not after today in São Paulo (RN04, D54)."
+          },
+          "quantity": {
+            "type": "string",
+            "example": "100",
+            "pattern": "^-?\\d+(\\.\\d+)?$",
+            "description": "Greater than zero (RN04): whole units for stocks, FIIs, ETFs and BDRs; multiples of 0.01 for fixed income; up to 8 decimal places for crypto; at most 12 digits before the point."
+          },
+          "unitPrice": {
+            "type": "string",
+            "example": "29.95",
+            "pattern": "^-?\\d+(\\.\\d+)?$",
+            "description": "Greater than zero, up to 8 decimal places, at most 12 digits before the point."
+          },
+          "fees": {
+            "type": "string",
+            "example": "5.00",
+            "pattern": "^-?\\d+(\\.\\d+)?$",
+            "description": "Brokerage and fees of the note: zero or more, up to 2 decimal places."
+          }
+        }
       }
     }
   },

@@ -66,6 +66,7 @@ describe('Portfolios (E2E, B1, RN02, D41)', () => {
       name: 'Longo prazo',
       operationCount: 0,
       assetCount: 0,
+      lastTradeDate: null,
     });
     expect(created.headers['cache-control']).toBe('no-store');
 
@@ -153,23 +154,42 @@ describe('Portfolios (E2E, B1, RN02, D41)', () => {
   });
 
   it.each([
-    ['a blank name (domain)', { name: '   ' }, 'name'],
+    [
+      'a blank name (domain)',
+      { name: '   ' },
+      { field: 'name', code: 'REQUIRED' },
+    ],
     // PostgreSQL rejects NUL in text: without the domain check this would be a 500.
-    ['a name with a NUL character', { name: 'Renda\u0000' }, 'name'],
-    ['a name over 150 characters', { name: 'a'.repeat(151) }, 'name'],
-    ['an extra field', { name: 'Renda', userId: 'someone' }, 'userId'],
-  ])('rejects %s with 400 errors[].field', async (_case, payload, field) => {
-    const response = await http()
-      .post('/api/v1/portfolios')
-      .set('Authorization', ana.bearer)
-      .send(payload)
-      .expect(400);
+    [
+      'a name with a NUL character',
+      { name: 'Renda\u0000' },
+      { field: 'name', code: 'INVALID_VALUE' },
+    ],
+    [
+      'a name over 150 characters',
+      { name: 'a'.repeat(151) },
+      { field: 'name', code: 'TOO_LONG', params: { max: 150 } },
+    ],
+    [
+      'an extra field',
+      { name: 'Renda', userId: 'someone' },
+      { field: 'userId', code: 'INVALID_VALUE' },
+    ],
+  ])(
+    'rejects %s with 400 errors[].field and code (D56)',
+    async (_case, payload, error) => {
+      const response = await http()
+        .post('/api/v1/portfolios')
+        .set('Authorization', ana.bearer)
+        .send(payload)
+        .expect(400);
 
-    expect(response.body.errors).toEqual([
-      { field, message: expect.any(String) as unknown },
-    ]);
-    expect(await prisma.portfolio.count()).toBe(0);
-  });
+      expect(response.body.errors).toEqual([
+        { ...error, message: expect.any(String) as unknown },
+      ]);
+      expect(await prisma.portfolio.count()).toBe(0);
+    },
+  );
 
   it('accepts a name of exactly 150 characters, counted as characters like VarChar(150) (RN02)', async () => {
     await createPortfolio(ana, 'a'.repeat(150));
@@ -237,8 +257,15 @@ describe('Portfolios (E2E, B1, RN02, D41)', () => {
         name: 'Longo prazo',
         operationCount: 5,
         assetCount: 2,
+        lastTradeDate: '2026-03-01',
       },
-      { id: other.id, name: 'Testes FII', operationCount: 0, assetCount: 0 },
+      {
+        id: other.id,
+        name: 'Testes FII',
+        operationCount: 0,
+        assetCount: 0,
+        lastTradeDate: null,
+      },
     ]);
 
     await prisma.operation.delete({ where: { id: lastItsa4.id } });

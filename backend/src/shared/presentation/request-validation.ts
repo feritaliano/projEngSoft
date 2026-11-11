@@ -81,6 +81,9 @@ export const CONSTRAINT_CODES: ReadonlyMap<string, ConstraintMapper> = new Map<
 >([
   // A property the DTO does not declare (forbidNonWhitelisted).
   ['whitelistValidation', fixed('INVALID_VALUE')],
+  // The ValidationPipe's own error for a body that is not an object (e.g. an array in a PATCH with only optional
+  // fields): field "body", no value and no target, so it is answered as REQUIRED before reaching this mapper.
+  ['isObject', fixed('REQUIRED')],
   ['isString', fixed('INVALID_FORMAT')],
   [
     'isLength',

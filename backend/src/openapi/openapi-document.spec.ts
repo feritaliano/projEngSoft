@@ -145,7 +145,10 @@ describe('buildOpenApiDocument (D52, audit of 09/11)', () => {
       },
     });
     expect(schemas.FieldError).toMatchObject({
-      required: ['field', 'message'],
+      required: ['field', 'code', 'message'],
+      properties: {
+        code: { allOf: [{ $ref: '#/components/schemas/FieldErrorCode' }] },
+      },
     });
   });
 });

@@ -15,7 +15,7 @@ describe('Quantity', () => {
 
   it('rejects negative values', () => {
     expect(() => Quantity.of('-1', 'quantity')).toThrow(
-      new InvalidValueError('quantity', 'must not be negative'),
+      new InvalidValueError('quantity', 'NEGATIVE', 'must not be negative'),
     );
   });
 

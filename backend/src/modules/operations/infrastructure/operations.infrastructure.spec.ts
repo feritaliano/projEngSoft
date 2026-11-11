@@ -43,7 +43,7 @@ const DRAFT = operationDraft(
 );
 
 /** SQL text of a tagged-template call, with each bound value as `?`. */
-function sqlOf(call: unknown[]): { sql: string; values: unknown[] } {
+function sqlOf(call: unknown): { sql: string; values: unknown[] } {
   const [strings, ...values] = call as [TemplateStringsArray, ...unknown[]];
   const query = Prisma.sql(strings, ...values);
   return { sql: query.sql, values: query.values };

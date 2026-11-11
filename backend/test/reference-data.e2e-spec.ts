@@ -175,7 +175,11 @@ describe('Reference data (E2E, C1, RN03, RN04)', () => {
   it('answers a NUL character with 400 in the search and 404 as ticker, never a database 500', async () => {
     const search = await get('/api/v1/assets?search=itsa%00').expect(400);
     expect(search.body.errors).toEqual([
-      { field: 'search', message: expect.any(String) as unknown },
+      {
+        field: 'search',
+        code: 'INVALID_VALUE',
+        message: expect.any(String) as unknown,
+      },
     ]);
 
     await get('/api/v1/assets/PETR%00').expect(404);
@@ -185,7 +189,12 @@ describe('Reference data (E2E, C1, RN03, RN04)', () => {
     const response = await get('/api/v1/assets?pageSize=101').expect(400);
 
     expect(response.body.errors).toEqual([
-      { field: 'pageSize', message: expect.any(String) as unknown },
+      {
+        field: 'pageSize',
+        code: 'TOO_LARGE',
+        params: { max: 100 },
+        message: expect.any(String) as unknown,
+      },
     ]);
   });
 

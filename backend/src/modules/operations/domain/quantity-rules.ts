@@ -18,13 +18,15 @@ export class InvalidQuantityError extends InvalidValueError {
   constructor(
     readonly assetType: AssetType,
     readonly quantity: Quantity,
-    rule: QuantityRule,
+    code: FieldErrorCode,
+    description: string,
+    params?: FieldErrorParams,
   ) {
     super(
       'quantity',
-      rule.code,
-      `${quantity.toString()} is not allowed for ${assetType}: ${rule.description}`,
-      rule.params,
+      code,
+      `${quantity.toString()} is not allowed for ${assetType}: ${description}`,
+      params,
     );
   }
 }
@@ -67,6 +69,12 @@ export function assertQuantityAllowed(
 ): void {
   const rule = RULES[assetType];
   if (quantity.decimalPlaces() > rule.maxDecimalPlaces) {
-    throw new InvalidQuantityError(assetType, quantity, rule);
+    throw new InvalidQuantityError(
+      assetType,
+      quantity,
+      rule.code,
+      rule.description,
+      rule.params,
+    );
   }
 }

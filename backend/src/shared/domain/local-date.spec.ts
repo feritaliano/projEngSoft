@@ -19,6 +19,7 @@ describe('LocalDate', () => {
       expect(() => LocalDate.parse(value, 'tradeDate')).toThrow(
         new InvalidValueError(
           'tradeDate',
+          'INVALID_FORMAT',
           'must be a date in YYYY-MM-DD format',
         ),
       );

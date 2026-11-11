@@ -25,6 +25,8 @@ export async function configureApiApp(
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
+      // The pipe drops the target by default; the factory reads the decorator arguments from it (D56). Never sent out.
+      validationError: { target: true },
       // 400 with errors: [{ field, message }], for the body and the query string alike.
       exceptionFactory: requestValidationExceptionFactory,
     }),

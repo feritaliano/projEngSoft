@@ -66,8 +66,16 @@ describe('toProblemDetails (RFC 7807)', () => {
 
   it('lists the ValidationPipe errors with their field (audit of 09/11)', () => {
     const exception = new RequestValidationException([
-      { field: 'name', message: 'name must be a string' },
-      { field: 'address.street', message: 'street should not be empty' },
+      {
+        field: 'name',
+        code: 'INVALID_FORMAT',
+        message: 'name must be a string',
+      },
+      {
+        field: 'address.street',
+        code: 'REQUIRED',
+        message: 'street should not be empty',
+      },
     ]);
 
     expect(toProblemDetails(exception, '/api/v1/portfolios')).toEqual({
@@ -76,8 +84,16 @@ describe('toProblemDetails (RFC 7807)', () => {
       status: 400,
       detail: 'The request is invalid.',
       errors: [
-        { field: 'name', message: 'name must be a string' },
-        { field: 'address.street', message: 'street should not be empty' },
+        {
+          field: 'name',
+          code: 'INVALID_FORMAT',
+          message: 'name must be a string',
+        },
+        {
+          field: 'address.street',
+          code: 'REQUIRED',
+          message: 'street should not be empty',
+        },
       ],
       instance: '/api/v1/portfolios',
     });
@@ -86,7 +102,14 @@ describe('toProblemDetails (RFC 7807)', () => {
   it('maps a domain InvalidValueError to the same 400 shape, with the field in errors', () => {
     const problem = toProblemDetails(
       invalidValueProblem(
-        new InvalidValueError('name', 'must have between 1 and 150 characters'),
+        new InvalidValueError(
+          'name',
+          'TOO_LONG',
+          'must have at most 150 characters',
+          {
+            max: 150,
+          },
+        ),
       ),
       '/api/v1/auth/register',
     );
@@ -99,7 +122,9 @@ describe('toProblemDetails (RFC 7807)', () => {
       errors: [
         {
           field: 'name',
-          message: 'name must have between 1 and 150 characters',
+          code: 'TOO_LONG',
+          message: 'name must have at most 150 characters',
+          params: { max: 150 },
         },
       ],
       instance: '/api/v1/auth/register',

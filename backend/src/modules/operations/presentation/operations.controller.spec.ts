@@ -251,12 +251,13 @@ describe('OperationsController (B2–B5, RN04, RN07, RN10)', () => {
 
   it('answers 400 on quantity for the rule of the asset class (RN04, D50)', async () => {
     useCases.create.execute.mockRejectedValue(
-      new InvalidQuantityError('FIXED_INCOME', Quantity.of('0.525'), {
-        maxDecimalPlaces: 2,
-        code: 'INVALID_STEP',
-        params: { step: '0.01' },
-        description: 'must be a multiple of 0.01',
-      }),
+      new InvalidQuantityError(
+        'FIXED_INCOME',
+        Quantity.of('0.525'),
+        'INVALID_STEP',
+        'must be a multiple of 0.01',
+        { step: '0.01' },
+      ),
     );
 
     const response = await inject('POST', BASE, BODY);
@@ -283,9 +284,9 @@ describe('OperationsController (B2–B5, RN04, RN07, RN10)', () => {
 
       expect(response.statusCode).toBe(400);
       expect(
-        (response.json() as { errors: { field: string }[] }).errors.map(
-          (error) => error.field,
-        ),
+        response
+          .json<{ errors: { field: string }[] }>()
+          .errors.map((error) => error.field),
       ).toContain(field);
       expect(useCases.create.execute).not.toHaveBeenCalled();
     },
@@ -300,8 +301,18 @@ describe('OperationsController (B2–B5, RN04, RN07, RN10)', () => {
 
     expect(response.statusCode).toBe(400);
     expect(
-      (response.json() as { errors: { field: string }[] }).errors[0].field,
+      response.json<{ errors: { field: string }[] }>().errors[0].field,
     ).toBe(field);
+  });
+
+  it('rejects a body that is not an object with 400, not 500 (D56)', async () => {
+    const response = await inject('PATCH', `${BASE}/${OP}`, []);
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json<{ errors: unknown[] }>().errors).toEqual([
+      { field: 'body', code: 'REQUIRED', message: 'body is required' },
+    ]);
+    expect(useCases.update.execute).not.toHaveBeenCalled();
   });
 
   it('lets an unexpected error become a generic 500', async () => {

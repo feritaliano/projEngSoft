@@ -194,7 +194,7 @@ describe('AuthController (A1, A2, D39)', () => {
 
   it('maps a domain validation error (e.g. a blank name) to 400 with its field', async () => {
     useCases.signUp.execute.mockRejectedValueOnce(
-      new InvalidValueError('name', 'must have between 1 and 150 characters'),
+      new InvalidValueError('name', 'REQUIRED', 'is required'),
     );
 
     const response = await app.inject({
@@ -210,10 +210,7 @@ describe('AuthController (A1, A2, D39)', () => {
       status: 400,
       detail: 'The request is invalid.',
       errors: [
-        {
-          field: 'name',
-          message: 'name must have between 1 and 150 characters',
-        },
+        { field: 'name', code: 'REQUIRED', message: 'name is required' },
       ],
       instance: '/api/v1/auth/register',
     });

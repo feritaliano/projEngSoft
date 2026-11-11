@@ -108,20 +108,36 @@ describe('Auth (E2E, RN01, A1, A2, D39)', () => {
     expect(await prisma.user.count()).toBe(1);
   });
 
-  // The frontend shows each error next to its input (W2): every 400 names the field (audit of 09/11).
+  // The frontend shows each error next to its input (W2) with the text of its code (D56): every 400 names both.
   it.each([
-    ['an empty name', { ...ANA, name: '' }, 'name'],
-    ['a blank name, rejected by the domain', { ...ANA, name: '   ' }, 'name'],
-    ['a malformed e-mail', { ...ANA, email: 'ana-at-example' }, 'email'],
+    [
+      'an empty name',
+      { ...ANA, name: '' },
+      { field: 'name', code: 'REQUIRED' },
+    ],
+    [
+      'a blank name, rejected by the domain',
+      { ...ANA, name: '   ' },
+      { field: 'name', code: 'REQUIRED' },
+    ],
+    [
+      'a malformed e-mail',
+      { ...ANA, email: 'ana-at-example' },
+      { field: 'email', code: 'INVALID_FORMAT' },
+    ],
     [
       'a password with fewer than 8 characters',
       { ...ANA, password: '1234567' },
-      'password',
+      { field: 'password', code: 'TOO_SHORT', params: { min: 8 } },
     ],
-    ['an extra field', { ...ANA, role: 'admin' }, 'role'],
+    [
+      'an extra field',
+      { ...ANA, role: 'admin' },
+      { field: 'role', code: 'INVALID_VALUE' },
+    ],
   ])(
-    'sign-up rejects %s: 400 problem+json with errors[].field (RN01)',
-    async (_case, payload, field) => {
+    'sign-up rejects %s: 400 problem+json with errors[].field and code (RN01, D56)',
+    async (_case, payload, error) => {
       const response = await http()
         .post('/api/v1/auth/register')
         .send(payload)
@@ -133,23 +149,31 @@ describe('Auth (E2E, RN01, A1, A2, D39)', () => {
         detail: 'The request is invalid.',
       });
       expect(response.body.errors).toEqual([
-        { field, message: expect.any(String) as unknown },
+        { ...error, message: expect.any(String) as unknown },
       ]);
       expect(await prisma.user.count()).toBe(0);
     },
   );
 
   it.each([
-    ['a malformed e-mail', { email: 'ana', password: ANA.password }, 'email'],
-    ['an empty password', { email: ANA.email, password: '' }, 'password'],
+    [
+      'a malformed e-mail',
+      { email: 'ana', password: ANA.password },
+      { field: 'email', code: 'INVALID_FORMAT' },
+    ],
+    [
+      'an empty password',
+      { email: ANA.email, password: '' },
+      { field: 'password', code: 'REQUIRED' },
+    ],
     [
       'an extra field',
       { email: ANA.email, password: ANA.password, remember: true },
-      'remember',
+      { field: 'remember', code: 'INVALID_VALUE' },
     ],
   ])(
-    'login rejects %s: 400 problem+json with errors[].field (A2)',
-    async (_case, payload, field) => {
+    'login rejects %s: 400 problem+json with errors[].field and code (A2, D56)',
+    async (_case, payload, error) => {
       const response = await http()
         .post('/api/v1/auth/login')
         .send(payload)
@@ -157,7 +181,7 @@ describe('Auth (E2E, RN01, A1, A2, D39)', () => {
 
       expect(response.headers['content-type']).toBe(PROBLEM_JSON);
       expect(response.body.errors).toEqual([
-        { field, message: expect.any(String) as unknown },
+        { ...error, message: expect.any(String) as unknown },
       ]);
       expect(await prisma.userSession.count()).toBe(0);
     },
