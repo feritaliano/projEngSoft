@@ -40,7 +40,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
 
       - name: Install PostgreSQL 16 client (psql)
@@ -63,7 +63,16 @@ jobs:
       - name: Schema and migrations in sync
         run: npm run db:drift
 
-      - name: Constraint tests (public, ops and D3)
+      - name: Seed twice (idempotent; 6 asset classes and the handoff catalog)
+        run: |
+          npm run db:seed
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -At -f database/tests/seed-check.sql > "$RUNNER_TEMP/seed-1.txt"
+          npm run db:seed
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -At -f database/tests/seed-check.sql > "$RUNNER_TEMP/seed-2.txt"
+          cat "$RUNNER_TEMP/seed-1.txt"
+          diff "$RUNNER_TEMP/seed-1.txt" "$RUNNER_TEMP/seed-2.txt"
+
+      - name: Constraint tests (public, ops and D3), on the seeded database
         run: npm run db:test
 
       - name: PostgreSQL versions and column options (diagnostic)
