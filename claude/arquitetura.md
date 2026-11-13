@@ -195,16 +195,20 @@ Propriedades obrigatórias:
 
 | Fonte | Tabelas alimentadas | Frequência | Chave natural do upsert |
 |---|---|---|---|
-| B3 lista de empresas / classificação setorial | sectors, issuers, assets | Semanal | sector (parent, name); issuer cnpj; asset ticker/isin |
+| B3 Cadastro de Instrumentos (`InstrumentsConsolidatedFile`) + lista de empresas / classificação setorial (D59) | sectors, issuers, assets | Carga única no S1 (K5, sem cotações nem desativação); semanal a partir do S2 | sector (parent, name); issuer cnpj; asset isin/ticker |
 | CVM cadastro de companhias | issuers (cvm_code, situação) | Semanal | cnpj |
 | B3 COTAHIST (diário + anual para carga inicial) | quotes | Diária, após publicação (horário a confirmar) | (asset_id, quote_date) |
 | BCB SGS | index_values (CDI, Selic, IPCA) | Diária / mensal | (index, date) |
-| Ibovespa | index_values (IBOV) | Diária | (index, date); fonte a confirmar (R3) |
+| B3, página de dados históricos e estatísticas dos índices (Ibovespa, D59) | index_values (IBOV) | Diária | (index, date); a prova de conceito confere se o COTAHIST também traz o índice |
 | CVM DFP/ITR | financial_statements, statement_lines | Semanal (reprocessa o ano corrente) | documento: (issuer, period_end); linha: (documento, scope, account_code) |
 | CVM informe mensal FII | fii_monthly_reports | Mensal | (issuer, month) |
 | CVM informe trimestral estruturado FII (`inf_trimestral_fii_imovel`) | fii_quarterly_reports, fii_report_properties | Semanal (a CVM atualiza com reapresentações) | informe: (issuer cnpj, reference_date); itens: substituídos em bloco quando chega versão maior (item_number = ordem no arquivo). Área e taxas chegam como texto e são normalizadas |
 | CVM IPE | corporate_filings | Diária | cvm_protocol |
-| Proventos e eventos | income_distributions, corporate_events | A definir (R2). Até lá, eventos corporativos por registro manual (D29) | (asset, type, date) |
+| Proventos e eventos: endpoint não oficial `listedCompaniesProxy` do portal de empresas listadas da B3 (D59); rendimentos de FII também no informe mensal da CVM | income_distributions, corporate_events | Diária, uma chamada por emissor com pausa (S6). Adapter isolado, resposta bruta no bronze; registro manual como plano B (D29) | (asset, type, date) |
+| Tesouro Transparente, CSV de taxas dos títulos ofertados (D50, D59) | fixed_income_prices | Diária (S11); carga inicial do arquivo completo, depois incremento | (asset_id, base_date) |
+| Mercado Bitcoin, API pública v4, candle diário em BRL (D59) | crypto_prices | Diária (S11) | (asset_id, date) |
+
+Uso dos dados da B3 (D59, Política de Consumo de Market Data B3 V1.2): só para usuário autenticado, sem download nem exportação de séries de preço da B3, sem API pública de cotações e com fonte e data de referência visíveis. Pesquisa e alternativas descartadas em `claude/fontes-de-dados.md`.
 
 ### 6.4 Leitura (página do ativo, ranking, carteira)
 - **Carteira:** caso de uso de consulta → operações + eventos corporativos → `PositionCalculator` → DTO.
@@ -350,8 +354,8 @@ Testes ligados aos dados:
 | # | Risco | Impacto | Situação |
 |---|---|---|---|
 | R1 | Desdobramentos no S2 sem eventos corporativos. O COTAHIST publica preço não ajustado; sem o evento, a quantidade na carteira fica desatualizada | B8, B9, indicadores por ação e gráficos errados | **Resolvido (D29):** registro manual de `corporate_events` e ajuste na linha do tempo antecipados para o S2 |
-| R2 | Fonte de proventos e eventos automáticos | S6, C7, DY dos indicadores (C4) | Aberto. O DY de C4 entra no S3 com dado parcial ou sai do S3 |
-| R3 | Fonte do Ibovespa | C3, B10 | Aberto; o modelo já suporta qualquer fonte |
+| R2 | Fonte de proventos e eventos automáticos | S6, C7, DY dos indicadores (C4) | **Mitigado (D59):** endpoint não oficial da B3, sem documentação nem garantia, com registro manual como plano B. O DY de C4 entra no S3 com dado parcial ou sai do S3 |
+| R3 | Fonte do Ibovespa | C3, B10 | **Resolvido (D59):** página de dados históricos dos índices da B3 |
 | R4 | A planilha da B3 pode não trazer custos nem corretora no formato esperado (**a confirmar** com um arquivo real) | B12 | A pré-visualização da 6.2 exige completar os dados antes de confirmar |
 | R5 | CVM: reapresentações (versões), escala MIL/UNIDADE, ITR acumulado × trimestral, plano de contas livre abaixo dos níveis fixos | Indicadores errados | Normalização na ingestão; mapeamento só de contas padronizadas; D18 exclui financeiras |
 | R6 | Fonte da vacância de FII | C8 | **Resolvido (D31):** informe trimestral estruturado da CVM. Conferido em 05/10 nos dados de 2025: cada linha é um item declarado, sem identidade estável do imóvel entre trimestres, por isso o modelo guarda informe + itens e não uma série por imóvel |
