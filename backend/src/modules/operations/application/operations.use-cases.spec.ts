@@ -10,6 +10,7 @@ import {
 } from '../../reference-data/application/directories';
 import type { AssetSummary, Broker } from '../../reference-data/domain/catalog';
 import {
+  OperationId,
   OperationInput,
   OperationNotFoundError,
   operationDraft,
@@ -375,12 +376,79 @@ describe('UpdateOperation (B4, RN10)', () => {
     });
     expect(store.rows[0].operation.sequence).toBe(buy.operation.sequence);
     expect(store.calls).toEqual([
+      'read',
+      `find:${buy.operation.id}`,
       'lock:portfolio',
       `lock:operation:${buy.operation.id}`,
       `lock:timelines:${PETR4}`,
       `timeline:${PETR4}`,
       `update:${buy.operation.id}`,
     ]);
+  });
+
+  /** A write that first commits a concurrent edit of the operation (between the read and the lock). */
+  function concurrentEdit(
+    store: InMemoryOperationStore,
+    id: OperationId,
+    overrides: (call: number) => Partial<OperationInput>,
+    times = 1,
+  ) {
+    const write = store.write.bind(store);
+    let call = 0;
+    const spy = jest.spyOn(store, 'write');
+    for (let i = 0; i < times; i += 1) {
+      spy.mockImplementationOnce(async (work) => {
+        call += 1;
+        await write((tx) =>
+          tx.update(
+            id,
+            operationDraft(input(overrides(call)), {
+              assetType: 'STOCK',
+              today: TODAY,
+            }),
+          ),
+        );
+        return write(work);
+      });
+    }
+  }
+
+  it('applies the edit to the operation as locked, keeping a concurrent edit of other fields (no lost update)', async () => {
+    const { store, seed, update } = setup();
+    const id = seed().operation.id as OperationId;
+    concurrentEdit(store, id, () => ({ fees: '7' }));
+
+    const view = await update.execute(ANA, P1, id, { unitPrice: '31' });
+
+    expect(view).toMatchObject({ fees: '7', unitPrice: '31' });
+    expect(store.calls.filter((call) => call === 'read')).toHaveLength(1);
+  });
+
+  it('starts over when a concurrent edit changed the broker after the read (its catalog check no longer applies)', async () => {
+    const { store, seed, update } = setup();
+    const id = seed().operation.id as OperationId;
+    concurrentEdit(store, id, () => ({ brokerId: RICO }));
+
+    const view = await update.execute(ANA, P1, id, { unitPrice: '31' });
+
+    expect(view).toMatchObject({ unitPrice: '31', broker: { name: 'Rico' } });
+    expect(store.calls.filter((call) => call === 'read')).toHaveLength(2);
+  });
+
+  it('gives up as a server fault when the broker keeps changing between the read and the lock', async () => {
+    const { store, seed, update } = setup();
+    const id = seed().operation.id as OperationId;
+    concurrentEdit(
+      store,
+      id,
+      (call) => ({ brokerId: call % 2 === 1 ? RICO : XP }),
+      3,
+    );
+
+    await expect(
+      update.execute(ANA, P1, id, { unitPrice: '31' }),
+    ).rejects.toThrow(/changed during 3 attempts/);
+    expect(store.rows[0].operation.unitPrice.toString()).toBe('29.95');
   });
 
   it('rejects an edit of a buy that leaves a later sell without units (RN10) and changes nothing', async () => {
