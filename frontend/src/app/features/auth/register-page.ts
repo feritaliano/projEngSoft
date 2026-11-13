@@ -19,6 +19,7 @@ import {
   applyServerErrors,
   fieldErrorText,
   focusFirstInvalid,
+  minChars,
 } from '../../shared/forms/field-errors.pt-BR';
 import { Button } from '../../shared/ui/button';
 import { TextField } from '../../shared/ui/text-field';
@@ -88,7 +89,7 @@ export class RegisterPage {
   protected readonly form = inject(NonNullableFormBuilder).group({
     name: ['', Validators.required],
     email: ['', [Validators.required, Validators.email]],
-    password: ['', [Validators.required, Validators.minLength(PASSWORD_MIN_LENGTH)]],
+    password: ['', [Validators.required, minChars(PASSWORD_MIN_LENGTH)]],
   });
   protected readonly loading = signal(false);
 

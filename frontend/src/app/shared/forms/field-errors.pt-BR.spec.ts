@@ -6,6 +6,7 @@ import {
   applyServerErrors,
   fieldErrorText,
   focusFirstInvalid,
+  minChars,
 } from './field-errors.pt-BR';
 
 const touched = (value: string, ...validators: ValidatorFn[]) => {
@@ -41,6 +42,15 @@ describe('fieldErrorText', () => {
 
   it('counts the missing characters of a short password (RN01)', () => {
     expect(fieldErrorText(REGISTER_TEXTS.password, touched('abcde', Validators.minLength(8)))).toBe(
+      'A senha precisa de pelo menos 8 caracteres. Faltam 3.',
+    );
+  });
+
+  it('counts characters as the API does: an emoji is one (RN01)', () => {
+    expect(minChars(8)(new FormControl('😀😀😀😀'))).toEqual({ minlength: { requiredLength: 8 } });
+    expect(minChars(8)(new FormControl('😀😀😀😀😀😀😀😀'))).toBeNull();
+    expect(minChars(8)(new FormControl(''))).toBeNull(); // empty is REQUIRED, not TOO_SHORT
+    expect(fieldErrorText(REGISTER_TEXTS.password, touched('abc😀😀', minChars(8)))).toBe(
       'A senha precisa de pelo menos 8 caracteres. Faltam 3.',
     );
   });

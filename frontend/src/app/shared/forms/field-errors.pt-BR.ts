@@ -1,4 +1,4 @@
-import { AbstractControl, FormGroup } from '@angular/forms';
+import { AbstractControl, FormGroup, ValidatorFn } from '@angular/forms';
 import { FieldError, FieldErrorCode, FieldErrorParams, ProblemDetails } from '../../api/models';
 
 /**
@@ -61,8 +61,19 @@ export function fieldErrorText(
   const { code, params } = codedError(control);
   const values: Record<string, unknown> = { ...defaults, ...params };
   return (texts[code] ?? UNKNOWN_CODE_TEXT).replace(/\{(\w+)\}/g, (_, key: string) =>
-    key === 'n' ? String((values['min'] as number) - control.value.length) : String(values[key]),
+    key === 'n'
+      ? String((values['min'] as number) - charCount(control.value))
+      : String(values[key]),
   );
+}
+
+/** Characters as the API counts them (code points: an emoji is 1), not UTF-16 units like Validators.minLength. */
+const charCount = (value: string) => [...value].length;
+
+/** Minimum length in characters (RN01), with the same error shape as Validators.minLength. */
+export function minChars(min: number): ValidatorFn {
+  return ({ value }: AbstractControl<string>) =>
+    value && charCount(value) < min ? { minlength: { requiredLength: min } } : null;
 }
 
 /** Puts each errors[] entry of a 400/409 on its control; returns false when none matched a field of the form. */
