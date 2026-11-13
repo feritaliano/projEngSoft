@@ -213,7 +213,7 @@ Tipo e nulidade lidos do banco migrado. *Nulo* = coluna que aceita nulo (atribut
 | patrimonio_liquido | `net_worth` | numeric(18,2) | não |  |
 | cotas_emitidas | `shares_outstanding` | bigint | não |  |
 | numero_cotistas | `shareholders_count` | integer | não |  |
-| dividend_yield_mes | `dividend_yield_month` | numeric(10,8) | não |  |
+| dividend_yield_mes | `dividend_yield_month` | numeric(10,8) | não | `Percentual_Dividend_Yield_Mes` da CVM como publicado: rentabilidade efetiva menos a patrimonial do mês, pode ser negativo (D61); não é o DY do app (`FII_DY`) |
 
 ### 2.15 InformeTrimestralFII → `fii_quarterly_reports`
 

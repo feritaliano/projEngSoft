@@ -100,7 +100,7 @@ Mercado Bitcoin v4 (fonte da D59), **não conferido** (F1): pelo formato documen
 | `Patrimonio_Liquido` (complemento) | `net_worth` |
 | `Cotas_Emitidas` (complemento) | `shares_outstanding` |
 | `Total_Numero_Cotistas` (complemento) | `shareholders_count` |
-| `Percentual_Dividend_Yield_Mes` (complemento; já em fração, ex.: 0.007052) | `dividend_yield_month` |
+| `Percentual_Dividend_Yield_Mes` (complemento; já em fração, ex.: 0.007052; é a rentabilidade efetiva menos a patrimonial do mês e pode ser negativo, D61) | `dividend_yield_month` |
 
 ### 2.8 Informe trimestral de FII (CVM) → `fii_quarterly_reports` e `fii_report_properties`
 
@@ -183,7 +183,7 @@ Segundo corte do P1 (P1-2, 13/11/2026), seções 2.3 a 2.11 (arquivos na seção
 | `crypto_prices` | 25: BTC e ETH de 03/11 a 12/11/2026 e os dias das operações de cripto do seed | candles da Foxbit |
 | `quotes` | 97: os 49 ativos negociados de 1.6 nos pregões de 30/10 e 12/11/2026 (ACWX39 sem negócio em 12/11, só em 30/10); ELET3, renda fixa e cripto sem cotação | COTAHIST |
 | `fixed_income_prices` | 50: os 10 títulos de 1.7 em 5 datas-base (03/02, 10/03, 05/11, 10/11 e 11/11/2026) | arquivo 6 |
-| `fii_monthly_reports` | 15: os 8 FIIs em 08 e 09/2026, menos XPML11 09/2026 (F11) | arquivo extra (complemento) |
+| `fii_monthly_reports` | 16: os 8 FIIs em 08 e 09/2026 (XPML11 09/2026 com DY negativo, D61) | arquivo extra (complemento) |
 | `fii_quarterly_reports` | 17: os 8 FIIs em 31/03 e 30/06/2026 e o FII Opportunity em 30/06/2026 | informe trimestral |
 | `fii_report_properties` | 14, um recorte: HGLG11 (6 dos 37 de 30/06), KNRI11 (2 dos 18), MXRF11 (2, venda acabados) e Opportunity (um de cada classe). Os demais informes entram sem imóveis; o KNCR11 (papel) não tem nenhum na fonte | informe trimestral |
 | `corporate_filings` | 14: o Fato Relevante e o Aviso aos Acionistas mais recentes de 2026 de PETR, VALE, ITUB, ITSA, BBDC, WEGE (só aviso), BBAS (só fato) e B3SA | IPE |
@@ -208,7 +208,7 @@ Conferido num banco migrado do zero: seed 2× com as mesmas contagens, `seed-che
 | F7 | FUNDS no Cadastro mistura FII com FIAGRO, FIDC, FIP e FI-Infra, e o `CODBDI` 14 mistura ETF com esses fundos | backend (K5) |
 | F8 | D59 (proposta) atribui rendimentos de FII ao informe mensal da CVM; o dado está no `listedCompaniesProxy` | usuário (aprovação da D59) |
 | F10 | O exemplo da seção 2.4 lia o `factor` do desdobramento como proporção (100 → 1:100). É % de ações novas, como na bonificação: PETR 2008 (100) = 1:2, KLBN 2014 (400) = 1:5, HGLG 2018 (900) = 1:10. O grupamento é a fração (0,01 → 100:1). Seção 2.4 corrigida | backend (S2, ingestão de eventos) |
-| F11 | O informe mensal de FII traz `Percentual_Dividend_Yield_Mes` negativo (XPML11 09/2026: −0,001103) e `fii_monthly_reports` tem CHECK `dividend_yield_month >= 0`. A linha ficou fora do seed | usuário: manter o CHECK e descartar a linha na ingestão, ou aceitar negativo (migration) |
+| F11 | O informe mensal de FII traz `Percentual_Dividend_Yield_Mes` negativo (XPML11 09/2026: −0,001103; 540 linhas de 143 fundos em 2026). O campo é a rentabilidade efetiva menos a patrimonial do mês (XPML11 09/2026: −0,000897 − 0,000206), não proventos ÷ preço; o mesmo informe traz "rendimentos a distribuir" negativo (−R$ 3.043.777), sinal de estorno, ainda na versão 1 | **Decidido (D61, 13/11/2026):** guardar como a CVM publica; CHECK `>= 0` removido (migration `20261113000000_d61_fii_dy_sign`); a linha entrou no seed |
 | F12 | A composição do capital da DFP/ITR não traz a escala: Vale, Itaú, Itaúsa e Ambev informam a quantidade de ações em milhares (Vale: 4.539.007), as demais em unidades. Ficaram fora do seed | backend (S3: ler a escala no formulário ou conferir com o Cadastro da B3) |
 | F13 | O Figma mostra o Tesouro IPCA+ 2035 com PM de R$ 3.846,15; o PU de mercado na época era ~R$ 2.400 (2.5). E o custo total de R$ 16.151,27 da massa das telas 3 e 4 só fecha com a soma exata (como a API faz) se o título custou R$ 2.000,00: o seed usa preço unitário 2000 ÷ 0,52 = 3846,15384615 | UX (dado ilustrativo, sem ação no S1) |
 | F14 | A LC 224/2025 elevou o IRRF sobre JCP de 15% para 17,5% desde 01/01/2026 (Lei 9.249/1995, art. 9º, § 2º). `received_income.withheld_tax` do seed usa 17,5% (todos os JCP recebidos foram aprovados em 2026); JCP declarado em 2025 e pago em 2026 (PETR4 e BBDC4 de dez./2025) e JCP mensal do BBDC4 aprovado em 2025 ficaram sem recebimento no seed | backend (S6) e `memoria-calculo.md` (R18) |

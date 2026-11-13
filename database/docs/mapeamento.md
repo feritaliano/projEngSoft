@@ -274,7 +274,7 @@ Notação: `Tabela (__chave primária__, *chave estrangeira*, atributo)`.
 | patrimonio_liquido | NUMERIC(18,2) | NOT NULL |
 | cotas_emitidas | BIGINT | NOT NULL |
 | numero_cotistas | INT | NOT NULL |
-| dividend_yield_mes | NUMERIC(10,8) | NOT NULL |
+| dividend_yield_mes | NUMERIC(10,8) | NOT NULL; sem limite de sinal (D61): valor da CVM como publicado, pode ser negativo |
 
 - **PK:** (id_informe_mensal)
 - **FK:** id_emissor → Emissor(id_emissor)

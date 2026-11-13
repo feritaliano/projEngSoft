@@ -622,7 +622,8 @@ ON CONFLICT DO NOTHING;
 -- 2.6 fii_monthly_reports: informes de 08/2026 e 09/2026 dos 8 FIIs de 1.6, última versão de cada mês.
 -- Fonte: CVM, informe mensal de FII, arquivo complemento (fontes-poc.md, arquivo extra; seção 2.7)
 --   https://dados.cvm.gov.br/dados/FII/DOC/INF_MENSAL/DADOS/inf_mensal_fii_2026.zip
--- Fora: XPML11 09/2026, com Percentual_Dividend_Yield_Mes negativo (−0,001103) e CHECK >= 0 (achado F11).
+-- dividend_yield_month = Percentual_Dividend_Yield_Mes como publicado: rentabilidade efetiva menos a patrimonial do mês,
+-- que pode ser negativa (XPML11 09/2026: −0,001103; D61, achado F11).
 -- VISC11: Cotas_Emitidas 28828640.0000073 na fonte, gravado 28828640 (shares_outstanding é inteiro).
 INSERT INTO fii_monthly_reports (id, issuer_id, reference_month, version, net_worth, shares_outstanding,
                                  shareholders_count, dividend_yield_month)
@@ -643,7 +644,8 @@ FROM (VALUES
   ('00000000-0000-0000-0000-000000001912', '97521225000125', '2026-09-01', 1, '5304823085.04', 567206273, 1570595, '0.010614'), -- MXRF11
   ('00000000-0000-0000-0000-000000001913', '17554274000125', '2026-08-01', 1, '3328225550.62', 28828640, 345414, '0.007298'), -- VISC11, cotas na fonte 28828640.0000073
   ('00000000-0000-0000-0000-000000001914', '17554274000125', '2026-09-01', 1, '3338022866.46', 28828640, 346772, '0.007298'), -- VISC11, cotas na fonte 28828640.0000073
-  ('00000000-0000-0000-0000-000000001915', '28757546000100', '2026-08-01', 2, '6902667484.70', 64308055, 785753, '0.008757') -- XPML11
+  ('00000000-0000-0000-0000-000000001915', '28757546000100', '2026-08-01', 2, '6902667484.70', 64308055, 785753, '0.008757'), -- XPML11
+  ('00000000-0000-0000-0000-000000001916', '28757546000100', '2026-09-01', 1, '6904091273.75', 64308055, 795394, '-0.001103') -- XPML11
 ) AS v (id, cnpj, reference_month, version, net_worth, shares_outstanding, shareholders_count, dividend_yield_month)
 LEFT JOIN issuers i ON i.cnpj = v.cnpj
 ON CONFLICT (issuer_id, reference_month) DO NOTHING;
