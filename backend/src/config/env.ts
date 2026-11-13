@@ -33,6 +33,9 @@ export const workerEnvSchema = z.object({
 export const JWT_SECRET_PLACEHOLDER =
   'troque-por-um-segredo-aleatorio-de-pelo-menos-32-caracteres';
 
+/** Highest login/sign-up rate limit accepted in production; higher values exist only for test suites. */
+export const PRODUCTION_AUTH_RATE_LIMIT_MAX = 20;
+
 export const apiEnvSchema = workerEnvSchema
   .extend({
     API_PORT: z.coerce.number().int().min(1).max(65535).default(3000),
@@ -52,16 +55,26 @@ export const apiEnvSchema = workerEnvSchema
       .max(3600)
       .default(900),
     REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().min(1).max(30).default(7),
+    // Sign-up and login attempts per minute per client IP; E2E suites raise it (A2, BK-1).
+    AUTH_RATE_LIMIT_MAX: z.coerce.number().int().min(1).max(10_000).default(5),
   })
-  .refine(
-    (env) =>
-      env.NODE_ENV !== 'production' ||
-      env.JWT_ACCESS_SECRET !== JWT_SECRET_PLACEHOLDER,
-    {
-      path: ['JWT_ACCESS_SECRET'],
-      message: 'must be replaced by a random secret in production',
-    },
-  );
+  .superRefine((env, ctx) => {
+    if (env.NODE_ENV !== 'production') return;
+    if (env.JWT_ACCESS_SECRET === JWT_SECRET_PLACEHOLDER) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['JWT_ACCESS_SECRET'],
+        message: 'must be replaced by a random secret in production',
+      });
+    }
+    if (env.AUTH_RATE_LIMIT_MAX > PRODUCTION_AUTH_RATE_LIMIT_MAX) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['AUTH_RATE_LIMIT_MAX'],
+        message: `must be at most ${PRODUCTION_AUTH_RATE_LIMIT_MAX} in production`,
+      });
+    }
+  });
 
 export type WorkerEnv = z.infer<typeof workerEnvSchema>;
 export type ApiEnv = z.infer<typeof apiEnvSchema>;

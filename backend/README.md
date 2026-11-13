@@ -5,7 +5,7 @@ API NestJS (adapter Fastify) e worker, a partir do mesmo código (D24, D52). Arq
 ## Pré-requisitos
 - Node 24 ou mais recente e Docker (os testes de integração e E2E sobem um PostgreSQL 16 com Testcontainers).
 - Na raiz do repositório: `npm install` e `npm run db:generate` (gera o Prisma Client em `src/generated/prisma`).
-- `.env` na raiz, criado a partir do `.env.example`, com `DATABASE_URL`, `CORS_ORIGIN`, `API_PORT`, `NODE_ENV`, `LOG_LEVEL` e `JWT_ACCESS_SECRET` (mais `JWT_ACCESS_TTL_SECONDS` e `REFRESH_TOKEN_TTL_DAYS`, opcionais). Sem uma variável válida, a API e o worker não sobem.
+- `.env` na raiz, criado a partir do `.env.example`, com `DATABASE_URL`, `CORS_ORIGIN`, `API_PORT`, `NODE_ENV`, `LOG_LEVEL` e `JWT_ACCESS_SECRET` (mais `JWT_ACCESS_TTL_SECONDS`, `REFRESH_TOKEN_TTL_DAYS` e `AUTH_RATE_LIMIT_MAX`, opcionais). Sem uma variável válida, a API e o worker não sobem.
 
 ## Comandos (dentro de `backend/`)
 | Comando | O que faz |
@@ -25,7 +25,7 @@ Na raiz: `docker compose --profile app up -d --build` sobe PostgreSQL, `migrate`
 
 ## Endpoints
 - `GET /api/v1/health` (público): 200 com o PostgreSQL respondendo; 503 em `application/problem+json` quando não responde.
-- `POST /api/v1/auth/register`, `/login` (públicos, limite de 5 por minuto): devolvem `{ accessToken, tokenType, expiresIn, user }` e gravam o refresh token num cookie `httpOnly` (`refresh_token`, `Path=/api/v1/auth`).
+- `POST /api/v1/auth/register`, `/login` (públicos, limite por minuto e por IP em `AUTH_RATE_LIMIT_MAX`, padrão 5; no máximo 20 em produção): devolvem `{ accessToken, tokenType, expiresIn, user }` e gravam o refresh token num cookie `httpOnly` (`refresh_token`, `Path=/api/v1/auth`).
 - `POST /api/v1/auth/refresh` (cookie): novo access token e cookie rotacionado; 401 = sessão encerrada, entrar de novo. `POST /api/v1/auth/logout`: 204.
 - Demais rotas exigem `Authorization: Bearer <accessToken>` (401 sem token válido).
 - Qualquer erro (inclusive rota inexistente) volta em RFC 7807 (`application/problem+json`).

@@ -26,6 +26,7 @@ describe('environment validation (zod, D52)', () => {
       API_PORT: 3000,
       JWT_ACCESS_TTL_SECONDS: 900,
       REFRESH_TOKEN_TTL_DAYS: 7,
+      AUTH_RATE_LIMIT_MAX: 5,
     });
   });
 
@@ -120,6 +121,48 @@ describe('environment validation (zod, D52)', () => {
     ).toThrow(
       'JWT_ACCESS_SECRET: must be replaced by a random secret in production',
     );
+  });
+
+  it.each(['1', '10000'])(
+    'accepts AUTH_RATE_LIMIT_MAX=%s outside production (A2, BK-1)',
+    (value) => {
+      expect(
+        parseEnv(apiEnvSchema, { ...validApiEnv, AUTH_RATE_LIMIT_MAX: value })
+          .AUTH_RATE_LIMIT_MAX,
+      ).toBe(Number(value));
+    },
+  );
+
+  it.each(['0', '10001', '2.5', 'many'])(
+    'rejects AUTH_RATE_LIMIT_MAX=%s (A2, BK-1)',
+    (value) => {
+      expect(() =>
+        parseEnv(apiEnvSchema, { ...validApiEnv, AUTH_RATE_LIMIT_MAX: value }),
+      ).toThrow(/AUTH_RATE_LIMIT_MAX:/);
+    },
+  );
+
+  it('caps AUTH_RATE_LIMIT_MAX at 20 in production (A2, BK-1)', () => {
+    const production = { ...validApiEnv, NODE_ENV: 'production' };
+
+    expect(
+      parseEnv(apiEnvSchema, { ...production, AUTH_RATE_LIMIT_MAX: '20' })
+        .AUTH_RATE_LIMIT_MAX,
+    ).toBe(20);
+    expect(() =>
+      parseEnv(apiEnvSchema, { ...production, AUTH_RATE_LIMIT_MAX: '21' }),
+    ).toThrow('AUTH_RATE_LIMIT_MAX: must be at most 20 in production');
+  });
+
+  it('reports both production issues at once', () => {
+    expect(() =>
+      parseEnv(apiEnvSchema, {
+        ...validApiEnv,
+        NODE_ENV: 'production',
+        JWT_ACCESS_SECRET: JWT_SECRET_PLACEHOLDER,
+        AUTH_RATE_LIMIT_MAX: '10000',
+      }),
+    ).toThrow(/JWT_ACCESS_SECRET: .*; AUTH_RATE_LIMIT_MAX: /);
   });
 
   it('never echoes values in the error message (they may be secrets)', () => {
