@@ -141,10 +141,11 @@ Validado em `carteira_dev` numa transação desfeita (`ROLLBACK`) e com pais tem
 | ID | Achado | Para quem |
 |---|---|---|
 | F1 | API v4 do Mercado Bitcoin bloqueada pelo Cloudflare para esta rede (403 em `candles`, `tickers` e `symbols`, também com UA de cliente; a v3 em `www.mercadobitcoin.net/api` respondeu 521). Não houve tentativa de contornar o bloqueio. `crypto_prices` sem seed | usuário → agente de banco |
-| F2 | `amount_per_share` é `NUMERIC(20,8)` e a B3 publica `rate` com 11 casas; 5 linhas do BBDC4 têm 9 casas significativas e foram arredondadas na 8ª. Erro ≤ 5 × 10⁻⁹ por cota (R$ 0,005 por milhão de cotas). `received_income` não é afetado (valor informado pela corretora, D11) | usuário (decisão) |
-| F3 | "RENDIMENTO" em ação (PETR3/PETR4: 0,01649003 e 0,02038398 em 2026, correção de proventos declarados) não tem valor em `income_type` | usuário (decisão) → agente de banco |
+| F2 | `amount_per_share` é `NUMERIC(20,8)` e a B3 publica `rate` com 11 casas; 5 linhas do BBDC4 têm 9 casas significativas e foram arredondadas na 8ª. Erro ≤ 5 × 10⁻⁹ por cota (R$ 0,005 por milhão de cotas). `received_income` não é afetado (valor informado pela corretora, D11) | **Decidido (D60):** aceito; continua `NUMERIC(20,8)`, sem migration |
+| F3 | "RENDIMENTO" em ação (PETR3/PETR4: 0,01649003 e 0,02038398 em 2026, correção de proventos declarados) não tem valor em `income_type` | **Decidido (D60):** fica fora do seed e de `income_type` |
 | F4 | `stockDividends` traz "CIS RED CAP" (cisão com redução de capital), sem valor em `corporate_event_type` | registrar; fora do S1 (D29) |
 | F5 | Cadastro de Instrumentos baixado às 21:42 do mesmo dia veio "Parcial"; o de 30/10 em `data/raw/b3-instrumentos/` é "Final" | backend (K5) |
+| F9 | O `InstrumentsConsolidatedFile` vem em Latin-1 (ISO-8859-1). O K5 tem de converter para UTF-8 antes de procurar o emissor pelo nome (`CrpnNm`); lido como UTF-8, nome com acento (ex.: "KINEA RENDA IMOBILIÁRIA…", "ISHARES IBOVESPA FUNDO DE ÍNDICE") não casa com o do seed e o emissor é duplicado | backend (K5) |
 | F6 | Rodapé da página do IBOV: as duas linhas se chamam "MÍNIMO", e a segunda traz os máximos | backend (S2) |
 | F7 | FUNDS no Cadastro mistura FII com FIAGRO, FIDC, FIP e FI-Infra, e o `CODBDI` 14 mistura ETF com esses fundos | backend (K5) |
 | F8 | D59 (proposta) atribui rendimentos de FII ao informe mensal da CVM; o dado está no `listedCompaniesProxy` | usuário (aprovação da D59) |
@@ -183,3 +184,20 @@ O CSV de GetDownloadPortfolioDay vem em base64 e tem 2 linhas de rodapé com o m
 F8 — Usuário, na aprovação da D59.
 Trocar "Rendimentos de FII pelo informe mensal da CVM" por "Rendimentos de FII pelo listedCompaniesProxy da B3 (valor por cota e data-com); o informe mensal da CVM alimenta PL, cotistas e DY (fii_monthly_reports)".
 ```
+
+## 6. Fontes do catálogo do seed (BD-1, seção 1 do `inserts.sql`)
+
+Baixadas em 12/11/2026 para `data/raw/` (fora do Git). Horários em BRT.
+
+| Arquivo | URL exata | Download | SHA-256 | Registros | Alimenta |
+|---|---|---|---|---|---|
+| `b3-setorial/ClassifSetorial_20261112.xlsx` | `https://sistemaswebb3-listados.b3.com.br/listedCompaniesProxy/CompanyCall/GetDownloadIndustryClassification/eyJsYW5ndWFnZSI6InB0LWJyIn0=` (base64 de `{"language":"pt-br"}`; é o botão "Download" da página "Classificação setorial" da B3) | 12/11/2026 22:56 | `342a9966b1cafe0ee226de66b398a9288c5ad9ba93c40cbc2d2bc3354ba454aa` | 1 planilha, 366 linhas (setor, subsetor, segmento, nome de pregão, código, segmento de listagem) | `sectors` (3 níveis) e `issuers.sector_id` pelo código de 4 letras (`Asst` do Cadastro) |
+| `cvm-cia/cad_cia_aberta.csv` | `https://dados.cvm.gov.br/dados/CIA_ABERTA/CAD/DADOS/cad_cia_aberta.csv` | 12/11/2026 22:55 | `ac6c4ea8dc95cec62dd322c4842304238a6e6869ab1f9c5a4f7c2bc2251bfd07` | 2.680 companhias | `issuers.cnpj` e `issuers.cvm_code` das companhias (situação ATIVO, casadas pelo nome com o `CrpnNm` do Cadastro; a CVM grafa "BANCO" e a B3 "BCO" em Bradesco, Banco do Brasil e Santander, conferidos à mão) |
+| `cvm-intermed/cad_intermed.zip` | `https://dados.cvm.gov.br/dados/INTERMED/CAD/DADOS/cad_intermed.zip` | 12/11/2026 22:41 | `62f3642c539e5f41238c6ecc6678a3658e15df17304f09272a0e98ea4d4b3b53` | 2.354 intermediários (`cad_intermed.csv`) | `brokers.cnpj` (situação "EM FUNCIONAMENTO NORMAL"); a Rico CTVM consta como cancelada por incorporação em 04/10/2018 |
+| `b3-cotahist/COTAHIST_D02012025.ZIP` | `https://bvmf.bmfbovespa.com.br/InstDados/SerHist/COTAHIST_D02012025.ZIP` | 12/11/2026 22:57 | `def09b58768bf69c570a8dbbf7752c9c834abbb75f996fb8ad040912b706e01e` | pregão de 02/01/2025 | ticker, ISIN (`BRELETACNOR6`) e espécie da ELET3, ativo fora de negociação (`is_active = false`) |
+| `cripto/foxbit_markets.json` | `https://api.foxbit.com.br/rest/v3/markets` | 12/11/2026 22:57 | `a181934fa40a6ee0a04207548f8d52a9ed6d93153edebe3f5c7f1c57c0f94188` | 132 mercados, 127 pares de cripto em BRL | `assets.ticker` (símbolo) e `crypto_assets.name` das 12 criptos (D60; o Mercado Bitcoin continua bloqueado, F1) |
+| `cripto/foxbit_currencies.json` | `https://api.foxbit.com.br/rest/v3/currencies` | 12/11/2026 22:57 | `9e73641b803e9a213b5932852bffb1f22fcfd603e8a05b2824d8a5d52025b820` | moedas da Foxbit | conferência dos nomes (não alimenta coluna) |
+
+Também usados, já baixados antes: Cadastro de Instrumentos de 30/10/2026 (`data/raw/b3-instrumentos/`, "Final"; ticker, ISIN, categoria, especificação e nome do emissor), informe mensal de FII da CVM de 2026 (arquivo extra da seção 1; CNPJ dos FIIs), registro de fundos da CVM (`data/raw/cvm-fundos/registro_fundo_classe/registro_fundo.csv`; CNPJ dos ETFs) e o CSV do Tesouro (arquivo 6; tipos e títulos).
+
+A planilha antiga `ClassifSetorial.zip` (`https://bvmf.bmfbovespa.com.br/InstDados/InformacoesEmpresas/ClassifSetorial.zip`) ainda está publicada, mas é de 15/09/2022 e não foi usada.

@@ -1,10 +1,17 @@
 -- Teste das restrições de integridade do schema public (D1).
--- Uso: psql -v ON_ERROR_STOP=1 -f database/tests/constraints.sql  (num banco migrado e vazio)
+-- Uso: npm run db:test  (num banco migrado, com ou sem o seed)
 -- Roda tudo numa transação e desfaz no fim: não deixa dados no banco.
 -- Cada caso inválido precisa falhar com o SQLSTATE esperado; caso contrário o script aborta.
 --   23514 = CHECK, 23505 = UNIQUE, 23503 = FK, 23502 = NOT NULL, 22P02 = valor de enum inválido
 
 BEGIN;
+
+-- Começa do schema public vazio: os casos usam ativos e emissores reais, os mesmos do seed (inserts.sql).
+-- O TRUNCATE está dentro da transação e o ROLLBACK do fim o desfaz; nenhum dado do banco se perde.
+DO $$ BEGIN
+  EXECUTE (SELECT 'TRUNCATE ' || string_agg(format('public.%I', tablename), ', ') || ' CASCADE'
+           FROM pg_tables WHERE schemaname = 'public' AND tablename <> '_prisma_migrations');
+END $$;
 
 CREATE FUNCTION pg_temp.expect_error(label text, stmt text, expected text) RETURNS void AS $$
 BEGIN
