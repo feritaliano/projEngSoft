@@ -478,6 +478,53 @@ describe('Operations (E2E, B2–B5, RN04–RN10, RN12)', () => {
     expect(await operationCount()).toBe(4);
   });
 
+  it('edits 40 operations of the portfolio at the same time without a server error (BK-2, M1)', async () => {
+    const operations: OperationBody[] = [];
+    for (let i = 0; i < 40; i += 1) {
+      operations.push(await enter(buyPetr4()));
+    }
+
+    const responses = await Promise.all(
+      operations.map((operation) =>
+        http()
+          .patch(`${base()}/${operation.id}`)
+          .set('Authorization', ana.bearer)
+          .send({ fees: '1.00' }),
+      ),
+    );
+
+    expect(responses.map((response) => response.status)).toEqual(
+      Array.from({ length: 40 }, () => 200),
+    );
+    expect(
+      await prisma.operation.count({ where: { portfolioId, fees: 1 } }),
+    ).toBe(40);
+  });
+
+  it('answers 200 to 10 concurrent edits of the same operation and keeps the fields of each (no lost update, BK-2)', async () => {
+    const buy = await enter(buyPetr4());
+    const patch = (body: object) =>
+      http()
+        .patch(`${base()}/${buy.id}`)
+        .set('Authorization', ana.bearer)
+        .send(body);
+
+    const responses = await Promise.all(
+      Array.from({ length: 10 }, (_, i) =>
+        patch(i % 2 === 0 ? { fees: '1.00' } : { unitPrice: '31' }),
+      ),
+    );
+
+    expect(responses.map((response) => response.status)).toEqual(
+      Array.from({ length: 10 }, () => 200),
+    );
+    const stored = await http()
+      .get(`${base()}/${buy.id}`)
+      .set('Authorization', ana.bearer)
+      .expect(200);
+    expect(stored.body).toMatchObject({ fees: '1', unitPrice: '31' });
+  });
+
   it('accepts fractional quantities of crypto (8 places) and fixed income (0.01), D44', async () => {
     const btc = await createCryptoAsset(prisma, {
       ticker: 'BTC',
