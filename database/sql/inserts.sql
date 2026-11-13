@@ -1,7 +1,8 @@
 -- Seed do banco Carteira B3 (fonte única; `prisma db seed` só executa este arquivo).
 -- Uso: npm run db:seed (num banco migrado).
 -- Idempotente: rodar duas vezes não muda nada. Cada linha tem UUID fixo e legível, e cada INSERT usa
--- ON CONFLICT (<chave natural>) DO NOTHING: ticker, CNPJ, código do índice, nome do tipo de título, (pai, nome) do
+-- ON CONFLICT DO NOTHING pela chave natural, ou pelo id quando a tabela não tem chave natural (operations,
+-- price_alerts), ou sem alvo quando a PK já é a chave natural (cotações, preços, itens de lista): ticker, CNPJ, código do índice, nome do tipo de título, (pai, nome) do
 -- setor, (tipo, vencimento) do título. Linha cuja chave natural pode ser nula (corretora ou emissor sem CNPJ, setor de
 -- primeiro nível, ativo de renda fixa sem ticker) é filtrada com NOT EXISTS sobre a mesma chave, porque NULL não
 -- conflita no UNIQUE. Assim, o K5 pode fazer upsert pelo ticker/ISIN depois do seed, e o seed depois do K5, sem duplicar.
@@ -12,8 +13,12 @@
 -- eventos corporativos 0022xx, indicadores 0023xx, alertas 0024xx, telas salvas 0025xx.
 -- Ordem das seções: 1. catálogo (BD-1, primeiro corte do P1: o que o S1 lê) → 2. mercado (D59, PF e P1-2) →
 -- 3. imposto de renda (P0) → 4. usuários → 5. acompanhamento e planejamento (P1-2).
--- Toda linha acha o pai pela chave natural (ISIN, ticker, CNPJ, código, e-mail, nome da carteira) com LEFT JOIN: se o
--- pai não existir, a FK vem nula e o INSERT falha no NOT NULL, em vez de pular a linha em silêncio.
+-- Nas seções 2 a 5, a linha acha o pai pela chave natural (ISIN, ticker, CNPJ, código, e-mail, nome da carteira) com
+-- LEFT JOIN: se o pai não existir, a FK vem nula e o INSERT falha no NOT NULL, em vez de pular a linha em silêncio (a
+-- seção 1 usa o UUID fixo do pai; crypto_assets usa JOIN, e o seed-check acusa cripto sem a especialização). Exceções, com FK que
+-- aceita nulo, conferidas pelo database/tests/seed-check.sql: operations.import_batch_id (lote confirmado com tantas
+-- operações quanto linhas), tax_assessments.darf_id (imposto devido > 0 se e só se há DARF) e
+-- saved_screens.sort_indicator_id (só as três telas previstas ficam sem ordenação).
 -- Arquivos de origem, URL, hash e mapeamento: database/docs/fontes-poc.md.
 
 BEGIN;
@@ -409,7 +414,7 @@ ON CONFLICT DO NOTHING;
 --   baixados em 13/11/2026 08:52 (BRT): btcbrl_1d.json (SHA-256 00e705271826ab4a914a71c536e6125fcd2d86cfdf9d4e0c66710d033d69ba4b)
 --   e ethbrl_1d.json (SHA-256 100db70af2b08ef9fc39479fa39a7612992a977a194f4ba763e2d64fdc16271a), data/raw/foxbit-candles/.
 -- Campos (vetor do candle): [0] abertura do período (epoch ms, UTC) → price_date; [4] fechamento → reference_price.
--- Linhas: os 10 dias de 03/11 a 12/11/2026 e os dias das operações de cripto da seção 3.
+-- Linhas: os 10 dias de 03/11 a 12/11/2026 e os dias das operações de cripto da seção 4.
 INSERT INTO crypto_prices (asset_id, price_date, reference_price)
 SELECT a.id, v.price_date::date, v.price::numeric
 FROM (VALUES
@@ -649,8 +654,12 @@ ON CONFLICT (issuer_id, reference_month) DO NOTHING;
 --   baixado em 13/11/2026 08:52 (BRT), SHA-256 deb46b0607fef5ae1a3da22cc925552a1e9cefbcafb684d8dcb76cf91e6e53f5.
 -- Imóveis: item_number = posição da linha no informe. HGLG11 e KNRI11 (tijolo, renda acabados), MXRF11 (venda
 -- acabados) e o FII Opportunity (1.3), o único da fonte com as 4 classes; KNCR11 (papel) não tem imóveis.
+-- Recorte: os informes de 31/03 e os de BTLG11, HGRU11, VISC11 e XPML11 em 30/06 entram sem imóveis (a fonte tem
+-- de 14 a 100 por informe); HGLG11 com 6 dos 37 e KNRI11 com 2 dos 18.
 -- Classe: "Imóveis para renda acabados" → RENT_FINISHED; "renda em construção" → RENT_UNDER_CONSTRUCTION;
--- "venda acabados" → SALE_FINISHED; "venda em construção" → SALE_UNDER_CONSTRUCTION. "-" ou vazio → NULL.
+-- "venda acabados" → SALE_FINISHED; "venda em construção" → SALE_UNDER_CONSTRUCTION. Área e percentuais com "-",
+-- vazio ou área 0 (CHECK area > 0) → NULL; endereço como está na fonte (Bralog: "-"). Valor com mais casas que a
+-- coluna é arredondado pelo NUMERIC (área com 2 casas; percentuais com 8, como a inadimplência do Buenos Aires Corporate).
 INSERT INTO fii_quarterly_reports (id, issuer_id, reference_date, version)
 SELECT v.id::uuid, i.id, v.reference_date::date, v.version
 FROM (VALUES
@@ -681,14 +690,14 @@ SELECT r.id, v.item_number, v.name, v.address, v.property_class::property_class,
        v.vacancy_rate::numeric, v.delinquency_rate::numeric, v.revenue_share::numeric, v.leased_rate::numeric
 FROM (VALUES
   ('11728688000147', '2026-06-30', 1, 'Itupeva G200', 'Estrada Joaquim Bueno Neto, 9835, Itupeva, SP', 'RENT_FINISHED', '89976.04', '0', '0', '0.031818', NULL), -- HGLG11
-  ('11728688000147', '2026-06-30', 2, 'Bralog - CLCR', '-', 'RENT_FINISHED', '48964.10', '0', '0', '0.019892', NULL), -- HGLG11
+  ('11728688000147', '2026-06-30', 2, 'Bralog - CLCR', '-', 'RENT_FINISHED', '48964.105', '0', '0', '0.019892', NULL), -- HGLG11
   ('11728688000147', '2026-06-30', 3, 'HGLG Extrema II Fernão Dias', 'Rua Maria Margarida Pinto Dona Belinha, nº 742, pavilhão B, módulo 3, Bairro dos Pires', 'RENT_FINISHED', '57437.15', '0', '0', '0.026315', NULL), -- HGLG11
   ('11728688000147', '2026-06-30', 4, 'Vinhedo', 'Avenida das Indústrias, s/n, CPI 5000, Vinhedo, SP', 'RENT_FINISHED', '132352.72', '0', '0', '0.088266', NULL), -- HGLG11
-  ('11728688000147', '2026-06-30', 5, 'Syslog', 'Parque Duque, Duque de Caxias - RJ, 25085-009', 'RENT_FINISHED', '27946.44', '0.09816', '0', '0.008841', NULL), -- HGLG11
-  ('11728688000147', '2026-06-30', 6, 'Itupeva G300', 'Estrada Joaquim Bueno Neto, 9835, Itupeva, SP', 'RENT_FINISHED', '69743.60', '0', '0', '0.022828', NULL), -- HGLG11
-  ('12005956000165', '2026-06-30', 1, 'Buenos Aires Corporate', 'Rua Buenos Aires, 15, Centro, Rio de Janeiro - RJ', 'RENT_FINISHED', '6886.88', '0.01851', '0.00465198016020995', '0.002941', NULL), -- KNRI11
+  ('11728688000147', '2026-06-30', 5, 'Syslog', 'Parque Duque, Duque de Caxias - RJ, 25085-009', 'RENT_FINISHED', '27946.4392250412', '0.09816', '0', '0.008841', NULL), -- HGLG11
+  ('11728688000147', '2026-06-30', 6, 'Itupeva G300', 'Estrada Joaquim Bueno Neto, 9835, Itupeva, SP', 'RENT_FINISHED', '69743.6', '0', '0', '0.022828', NULL), -- HGLG11
+  ('12005956000165', '2026-06-30', 1, 'Buenos Aires Corporate', 'Rua Buenos Aires, 15, Centro, Rio de Janeiro - RJ', 'RENT_FINISHED', '6886.875', '0.01851', '0.00465198016020995', '0.002941', NULL), -- KNRI11
   ('12005956000165', '2026-06-30', 2, 'Boulevard Corporate Tower', 'Avenida dos Andradas, 3000, Santa Efigênia, Belo Horizonte - MG', 'RENT_FINISHED', '20426.18', '0', '0', '0.063043', NULL), -- KNRI11
-  ('97521225000125', '2026-06-30', 1, 'ST Louis - Unidade 23', 'Rua Franz Schubert, 180, Sem Complemento, Jardim Paulistano, São Paulo/SP, Brasil, 01454-020', 'SALE_FINISHED', '215.00', NULL, NULL, NULL, NULL), -- MXRF11
+  ('97521225000125', '2026-06-30', 1, 'ST Louis - Unidade 23', 'Rua Franz Schubert, 180, Sem Complemento, Jardim Paulistano, São Paulo/SP, Brasil, 01454-020', 'SALE_FINISHED', '215', NULL, NULL, NULL, NULL), -- MXRF11
   ('97521225000125', '2026-06-30', 2, 'Edificio Centro Executivo do Paco', 'Avenida Jose Caballero, 283, Sem Complemento, Vila Bastos, Santo André/SP, Brasil, 09040-210', 'SALE_FINISHED', '258.52', NULL, NULL, NULL, NULL), -- MXRF11
   ('01235622000161', '2026-06-30', 1, 'ÍCONO PARQUE - FLAMENGO', 'R. Machado de Assis, 40 - Flamengo, Rio de Janeiro - RJ, 22220-060', 'RENT_FINISHED', '2082.62', '0.8333', '0', '0.090622', NULL), -- FTCE11
   ('01235622000161', '2026-06-30', 26, 'PISCINA DE ONDAS', 'Baia Formosa, em zona urbana do Município de Armação dos Búzios/RJ', 'RENT_UNDER_CONSTRUCTION', NULL, NULL, NULL, NULL, '0'), -- FTCE11
@@ -812,7 +821,8 @@ LEFT JOIN financial_statements f ON f.issuer_id = i.id AND f.period_end = v.peri
 ON CONFLICT DO NOTHING;
 
 -- 2.10 corporate_events: desdobramentos, grupamentos e bonificações do campo stockDividends do listedCompaniesProxy
--- (fontes-poc.md, arquivos 4a–4c, e data/raw/b3-empresas/supplement_{BBAS,ITSA,ITUB,KLBN}.json, baixados na PF).
+-- (fontes-poc.md, arquivos 4a–4c da PF, e data/raw/b3-empresas/supplement_{BBAS,ITSA,ITUB,KLBN}.json, baixados em
+-- 12/11/2026 22:40; URL e hash na seção 6.1 do fontes-poc.md).
 -- factor da B3: no desdobramento e na bonificação, % de ações novas (100 → 1:2; 10 → 100:110); no grupamento,
 -- ações novas por ação antiga (0,001 → 1000:1) (achado F10). ex_date = pregão seguinte ao lastDatePrior.
 -- Custo atribuído da bonificação (bonus_unit_cost): não está no listedCompaniesProxy; vem do documento da companhia:
@@ -884,10 +894,12 @@ LEFT JOIN tax_categories c ON c.code = v.code::tax_category_code
 ON CONFLICT (tax_category_id, effective_from) DO NOTHING;
 
 -- ============================================================ 4. usuários (fictícios, P1-2)
--- Dados fictícios e coerentes entre si; preços das operações são os da massa do handoff (claude/handoff-ux.md, D48)
--- ou valores plausíveis, exceto renda fixa (PU de compra do Tesouro na data, 2.5) e cripto (fechamento da Foxbit, 2.3).
+-- Dados fictícios e coerentes entre si. Preços das operações: na "Longo prazo", os da massa do handoff
+-- (claude/handoff-ux.md, D48; título e BTC inclusive, achado F13); nas demais carteiras, valores plausíveis, com renda
+-- fixa ao PU de compra do Tesouro na data (2.5) e cripto ao fechamento da Foxbit no dia (2.3).
 -- Contas, IR e proventos conferidos em database/docs/memoria-calculo.md, seção 7, e em database/tests/seed-check.sql.
--- Pai achado pela chave natural (e-mail, nome da carteira, ticker, nome da corretora); se faltar, o NOT NULL falha.
+-- Pai achado pela chave natural (e-mail, nome da carteira, ticker, nome da corretora); se faltar, o NOT NULL falha,
+-- exceto nas FKs que aceitam nulo (lote de importação, DARF, indicador de ordenação), conferidas pelo seed-check.
 -- Senha de todos os usuários do seed (só desenvolvimento): demo-carteira-2026. Hash argon2id com os parâmetros de
 -- backend/src/modules/users/infrastructure/argon2-password-hasher.ts (19 MiB, 2 iterações, 1 via).
 -- Casos de LEFT JOIN: Gabriela sem carteira; "Testes FII" e "Reserva" sem operações; Dividendos sem carteira ideal.
@@ -896,7 +908,7 @@ ON CONFLICT (tax_category_id, effective_from) DO NOTHING;
 CREATE TEMP VIEW seed_asset_key AS
   SELECT ticker AS key, id FROM assets WHERE ticker IS NOT NULL
   UNION ALL
-  SELECT t.name || ' ' || b.maturity_date, b.asset_id
+  SELECT t.name || ' ' || to_char(b.maturity_date, 'YYYY-MM-DD'), b.asset_id
   FROM fixed_income_bonds b JOIN fixed_income_types t ON t.id = b.fixed_income_type_id;
 
 INSERT INTO users (id, name, email, password_hash, created_at)
@@ -959,7 +971,7 @@ ON CONFLICT (portfolio_id, file_sha256) DO NOTHING;
 -- "Longo prazo": as 9 operações do handoff + Tesouro IPCA+ 2035 e BTC (massa das telas 3 e 4): custo total
 -- R$ 16.151,27 e lucro realizado R$ 693,87 (somas exatas, como a API calcula). O Figma mostra o título com PM de
 -- R$ 3.846,15 e o custo total implica R$ 2.000,00 investidos: preço unitário 2000 ÷ 0,52 = 3846,15384615 (8 casas).
--- Esse PU não é o de mercado (R$ 2.400,72 na data, 2.5; achado F13).
+-- Esse PU não é o de mercado (R$ 2.400,72 em 10/03/2026, a data-base mais próxima em 2.5; achado F13).
 INSERT INTO operations (id, portfolio_id, asset_id, broker_id, import_batch_id, type, trade_date, quantity,
                         unit_price, fees)
 SELECT v.id::uuid, p.id, k.id, b.id, ib.id, v.type::operation_type, v.trade_date::date, v.quantity::numeric,
@@ -1020,7 +1032,7 @@ FROM (VALUES
   ('00000000-0000-0000-0000-000000001353', 'henrique.costa@example.com', 'Aposentadoria', 'BOVA11', 'Ágora Investimentos', NULL, 'BUY', '2026-03-03', '100', '128.00', '8.00'),
   ('00000000-0000-0000-0000-000000001354', 'henrique.costa@example.com', 'Aposentadoria', 'SMAL11', 'Ágora Investimentos', NULL, 'BUY', '2026-03-03', '200', '95.00', '6.00'),
   ('00000000-0000-0000-0000-000000001355', 'henrique.costa@example.com', 'Aposentadoria', 'BOVA11', 'Ágora Investimentos', NULL, 'SELL', '2026-07-20', '100', '140.00', '9.00'),
-  ('00000000-0000-0000-0000-000000001356', 'henrique.costa@example.com', 'Aposentadoria', 'BOVA11', 'Ágora Investimentos', NULL, 'BUY', '2026-10-14', '50', '118.80', '3.00'),
+  ('00000000-0000-0000-0000-000000001356', 'henrique.costa@example.com', 'Aposentadoria', 'BOVA11', 'Ágora Investimentos', NULL, 'BUY', '2026-10-14', '50', '164.00', '3.00'),
   ('00000000-0000-0000-0000-000000001357', 'isabela.nunes@example.com', 'Carteira principal', 'ABEV3', 'Genial Investimentos', 'notas-genial-2026-01.csv', 'BUY', '2026-01-15', '2000', '12.40', '8.00'),
   ('00000000-0000-0000-0000-000000001358', 'isabela.nunes@example.com', 'Carteira principal', 'RENT3', 'Genial Investimentos', 'notas-genial-2026-01.csv', 'BUY', '2026-01-15', '300', '42.00', '6.00'),
   ('00000000-0000-0000-0000-000000001359', 'isabela.nunes@example.com', 'Carteira principal', 'ABEV3', 'Genial Investimentos', NULL, 'SELL', '2026-02-12', '1000', '13.60', '5.00'),

@@ -112,7 +112,8 @@ Mercado Bitcoin v4 (fonte da D59), **não conferido** (F1): pelo formato documen
 | `Nome_Imovel`, `Endereco` | `name`, `address` |
 | `Classe` (Imóveis para renda acabados / renda em construção / venda acabados / venda em construção) | `property_class` (RENT_FINISHED, RENT_UNDER_CONSTRUCTION, SALE_FINISHED, SALE_UNDER_CONSTRUCTION) |
 | `Area` | `area` |
-| `Percentual_Vacancia` (só renda acabados), `Percentual_Inadimplencia`, `Percentual_Receitas_FII`, `Percentual_Locado` (só renda em construção) | `vacancy_rate`, `delinquency_rate`, `revenue_share`, `leased_rate` (já em fração; "-" ou vazio → NULL) |
+| `Percentual_Vacancia` (só renda acabados), `Percentual_Inadimplencia`, `Percentual_Receitas_FII`, `Percentual_Locado` (só renda em construção) | `vacancy_rate`, `delinquency_rate`, `revenue_share`, `leased_rate` (já em fração, arredondados na 8ª casa pela coluna; "-" ou vazio → NULL) |
+| `Area` igual a 0 ou "-" | NULL (CHECK `area > 0`); o endereço "-" é gravado como está |
 
 ### 2.9 IPE (CVM) → `corporate_filings` (Comunicado)
 
@@ -175,7 +176,7 @@ PF (12/11/2026):
 
 Validado em `carteira_dev` numa transação desfeita (`ROLLBACK`) e com pais temporários. Contagens 13 e 26; a segunda execução não muda nada; pai ausente falha com `not_null_violation`. Dependências da seção 1 (BD-1): `economic_indexes` IBOV e os ativos PETR4 (`BRPETRACNPR6`), BBDC4 (`BRBBDCACNPR8`) e HGLG11 (`BRHGLGCTF004`).
 
-Segundo corte do P1 (P1-2, 13/11/2026), seções 2.3 a 2.11 (arquivos na seção 6):
+Segundo corte do P1 (P1-2, 13/11/2026), seções 2.3 a 2.11 (arquivos na seção 6.1):
 
 | Tabela | Linhas | Origem |
 |---|---|---|
@@ -184,11 +185,12 @@ Segundo corte do P1 (P1-2, 13/11/2026), seções 2.3 a 2.11 (arquivos na seção
 | `fixed_income_prices` | 50: os 10 títulos de 1.7 em 5 datas-base (03/02, 10/03, 05/11, 10/11 e 11/11/2026) | arquivo 6 |
 | `fii_monthly_reports` | 15: os 8 FIIs em 08 e 09/2026, menos XPML11 09/2026 (F11) | arquivo extra (complemento) |
 | `fii_quarterly_reports` | 17: os 8 FIIs em 31/03 e 30/06/2026 e o FII Opportunity em 30/06/2026 | informe trimestral |
-| `fii_report_properties` | 14: HGLG11 (6), KNRI11 (2), MXRF11 (2, venda acabados) e Opportunity (um de cada classe); KNCR11 sem imóveis | informe trimestral |
+| `fii_report_properties` | 14, um recorte: HGLG11 (6 dos 37 de 30/06), KNRI11 (2 dos 18), MXRF11 (2, venda acabados) e Opportunity (um de cada classe). Os demais informes entram sem imóveis; o KNCR11 (papel) não tem nenhum na fonte | informe trimestral |
 | `corporate_filings` | 14: o Fato Relevante e o Aviso aos Acionistas mais recentes de 2026 de PETR, VALE, ITUB, ITSA, BBDC, WEGE (só aviso), BBAS (só fato) e B3SA | IPE |
 | `financial_statements` | 11: DFP 2025 de PETR, BBDC, WEGE, KLBN, BBAS, B3SA, SUZB e RENT; ITR 2T26 de PETR, WEGE e BBDC (F12) | DFP, ITR |
 | `statement_lines` | 44: 4 por demonstração (ativo total individual e consolidado; receita e lucro consolidados) | DFP, ITR |
 | `corporate_events` | 11: 5 desdobramentos, 2 grupamentos, 4 bonificações (F10, F15) | arquivos 4a–4c e `b3-empresas/supplement_*.json` |
+| `indicators` | 15 definições (código, grupo, fórmula sobre os dados do ER, unidade); não vem de arquivo | definições usuais de análise fundamentalista |
 
 Conferido num banco migrado do zero: seed 2× com as mesmas contagens, `seed-check.sql` e `db:test` passando.
 
@@ -214,7 +216,8 @@ Conferido num banco migrado do zero: seed 2× com as mesmas contagens, `seed-che
 | F16 | O informe mensal de FII traz `Cotas_Emitidas` fracionário (VISC11: 28828640.0000073); `shares_outstanding` é inteiro. O seed grava o inteiro mais próximo, com o original em comentário | backend (S8) |
 
 ```
-F1 — Agente: banco de dados. Tarefa PF (pendência).
+F1 — OBSOLETO desde 13/11/2026 (bloqueio confirmado também no navegador; preço de cripto pela Foxbit, seção 2.5). Mantido como registro.
+Agente: banco de dados. Tarefa PF (pendência).
 Problema: a API v4 do Mercado Bitcoin respondeu 403 do Cloudflare ("Sorry, you have been blocked") em 12/11/2026 na rede de desenvolvimento.
 Faça: baixe de outra rede (casa, 4G, universidade) e sem contornar bloqueio
 https://api.mercadobitcoin.net/api/v4/candles?symbol=BTC-BRL&resolution=1d&from=<epoch>&to=<epoch>
@@ -278,5 +281,6 @@ Baixadas em 13/11/2026 para `data/raw/` (fora do Git), cada uma na própria past
 | `cvm-ipe/ipe_cia_aberta_2026.zip` | `https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/IPE/DADOS/ipe_cia_aberta_2026.zip` | 13/11/2026 08:52 | `498337a805a0efb1f5856a79fa74c9507141b0b932ddf81f19a627dc46e5279e` | 39.173 documentos | `corporate_filings` |
 | `cvm-dfp/dfp_cia_aberta_2025.zip` | `https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/dfp_cia_aberta_2025.zip` | 13/11/2026 08:52 | `a0aaf1ed8be9f7a644d1ec7eb6c17f2d0860f40416c0e3151c2c690329eeb343` | 761 entregas (índice); BPA, BPP, DRE e composição do capital | `financial_statements`, `statement_lines` (DFP 2025) |
 | `cvm-itr/itr_cia_aberta_2026.zip` | `https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS/itr_cia_aberta_2026.zip` | 13/11/2026 08:58 | `115227a5d0872e23a532c0f17c17683f7218ac225013eea2901844a92b3fe4a9` | 1.498 entregas (índice), de 31/03 a 30/09/2026 | `financial_statements`, `statement_lines` (ITR 2T26) |
+| `b3-empresas/supplement_{BBAS,ITSA,ITUB,KLBN}.json` | `https://sistemaswebb3-listados.b3.com.br/listedCompaniesProxy/CompanyCall/GetListedSupplementCompany/<base64>`, com o base64 de `{"issuingCompany":"<código>","language":"pt-br"}` (o mesmo endpoint dos arquivos 4a–4c) | 12/11/2026 22:40 | BBAS `6dd58623893be3c5b3bbde815c1c71022e33217f6d1f76e9776fb6d75bf5b4ff`; ITSA `3fe45778c1e45be344d9062250198fb0d2105050c322ac8988f91dc12d8e4ede`; ITUB `3c561a6b1540b54b4570f546e7e6203a26f00132ad998f4c67684a3c647e100c`; KLBN `3e2299699d92d9906493bd625b87e6dff815072485c475995d481d972506be2f` | 1 emissor cada | `corporate_events` (`stockDividends`) de BBAS3, ITSA4, ITUB4 e KLBN11 |
 
 Também usados, já baixados antes: informe mensal de FII de 2026 (arquivo extra da seção 1; `fii_monthly_reports`), CSV do Tesouro (arquivo 6; `fixed_income_prices`), `listedCompaniesProxy` (arquivos 4a–4c) e `b3-empresas/supplement_{BBAS,ITSA,ITUB,KLBN}.json` (`corporate_events`), Cadastro de Instrumentos de 30/10/2026 (nome do emissor do FII Opportunity, `FTCE11`). Custo atribuído das bonificações (F15): edital da AGE do Bradesco de 10/03/2022 (R$ 4,128165265), aviso aos acionistas da Itaúsa de 15/12/2025 (R$ 11,370033972) e fato relevante do Itaú Unibanco de 18/12/2025 (R$ 40,00).
