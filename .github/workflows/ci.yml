@@ -9,7 +9,8 @@ on:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # Só em PR: na main, dois merges seguidos rodam completos (B7, revisão de 12/11/2026).
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   database:
@@ -118,6 +119,11 @@ jobs:
         run: npm run db:generate
 
       - run: npm ci
+
+      # Dependências de produção sem vulnerabilidade alta ou crítica (B7). Se falhar sem versão corrigida, registre a
+      # exceção no PR em vez de tirar o passo.
+      - name: npm audit (production dependencies)
+        run: npm audit --omit=dev --audit-level=high
 
       - name: Lint (includes layer boundaries)
         run: npm run lint
