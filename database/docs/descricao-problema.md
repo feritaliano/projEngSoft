@@ -89,7 +89,7 @@ Esta seção descreve o que o banco de dados precisa registrar. Os nomes em **ne
 
 ### 6.5 Fundos imobiliários
 
-- Todo mês o fundo *informa* à CVM o **Informe mensal de FII**, com mês de referência, versão, patrimônio líquido, número de cotas emitidas, número de cotistas e dividend yield do mês.
+- Todo mês o fundo *informa* à CVM o **Informe mensal de FII**, com mês de referência, versão, patrimônio líquido, número de cotas emitidas, número de cotistas e o percentual que a CVM chama de dividend yield do mês. Esse percentual é a rentabilidade efetiva menos a patrimonial do mês, declarada pelo administrador, e pode ser negativo (estorno ou rentabilidade efetiva negativa); o dividend yield que o sistema mostra é calculado a partir dos rendimentos por cota.
 - A cada trimestre o fundo *entrega* o **Informe trimestral de FII**, com data de referência e versão. O informe *lista* os imóveis do fundo: cada **Imóvel do informe** é uma linha desse documento, identificada pela ordem no informe (entidade fraca). Tem nome, endereço, classe (para renda acabado, para renda em construção, para venda acabado ou para venda em construção), área e, quando aplicável, os percentuais de vacância, de inadimplência, de participação nas receitas do fundo e de pré-locação. Fundos de papel, que não têm imóveis, entregam o informe sem itens.
 - A vacância do fundo é calculada como a média da vacância dos imóveis para renda acabados, ponderada pela área. A CVM não atribui código aos imóveis, e o mesmo edifício pode aparecer em várias linhas (por andar ou unidade). Por isso o banco guarda o que cada informe declara, sem criar uma identidade artificial para o imóvel.
 

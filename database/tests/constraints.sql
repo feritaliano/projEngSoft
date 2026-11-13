@@ -98,6 +98,14 @@ SELECT pg_temp.expect_error('critério com mínimo maior que o máximo',
 SELECT pg_temp.expect_error('mesmo ativo duas vezes na lista de observação',
   $q$INSERT INTO watchlist_items (user_id, asset_id) VALUES ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000501'), ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000501')$q$, '23505');
 
+-- Informe mensal de FII (D61): o "DY do mês" da CVM é guardado como publicado, inclusive negativo
+INSERT INTO issuers (id, name, kind, cnpj) VALUES ('00000000-0000-0000-0000-000000000402', 'XP Malls', 'FUND', '28757546000100');
+INSERT INTO fii_monthly_reports (issuer_id, reference_month, version, net_worth, shares_outstanding, shareholders_count, dividend_yield_month)
+  VALUES ('00000000-0000-0000-0000-000000000402', '2026-09-01', 1, 6904091273.75, 64308055, 795394, -0.001103);
+DO $$ BEGIN RAISE NOTICE 'ok  DY do mês negativo aceito, como a CVM publica (D61)'; END $$;
+SELECT pg_temp.expect_error('informe mensal de FII com zero cotas emitidas',
+  $q$INSERT INTO fii_monthly_reports (issuer_id, reference_month, version, net_worth, shares_outstanding, shareholders_count, dividend_yield_month) VALUES ('00000000-0000-0000-0000-000000000402', '2026-10-01', 1, 1, 0, 0, 0)$q$, '23514');
+
 -- ---------------------------------------------------------------- comportamento das FKs
 -- excluir o usuário remove carteiras, operações e filtros (CASCADE), mas não o catálogo
 DELETE FROM users WHERE id = '00000000-0000-0000-0000-000000000001';

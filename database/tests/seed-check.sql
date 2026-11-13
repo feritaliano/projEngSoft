@@ -44,7 +44,7 @@ BEGIN
   -- abaixo, a perda aparece. É mínimo, não igualdade, porque a carga do K5 e o uso da tela acrescentam linhas.
   FOR t, n IN SELECT * FROM (VALUES
       ('assets', 72), ('brokers', 11), ('corporate_events', 11), ('corporate_filings', 14), ('crypto_assets', 12),
-      ('crypto_prices', 25), ('darfs', 10), ('economic_indexes', 5), ('fii_monthly_reports', 15),
+      ('crypto_prices', 25), ('darfs', 10), ('economic_indexes', 5), ('fii_monthly_reports', 16),
       ('fii_quarterly_reports', 17), ('fii_report_properties', 14), ('financial_statements', 11),
       ('fixed_income_bonds', 10), ('fixed_income_prices', 50), ('fixed_income_types', 8), ('import_batches', 10),
       ('income_distributions', 26), ('index_values', 13), ('indicators', 15), ('issuers', 49), ('operations', 68),
