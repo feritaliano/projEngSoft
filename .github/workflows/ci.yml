@@ -1,5 +1,5 @@
 # CI do Carteira B3 (D40). Cada job vira verificação obrigatória da proteção da `main` assim que existir.
-# Job `database` desde 26/10/2026; `backend` desde o K1 (01/11/2026); `frontend` desde o W1 (12/11/2026); `e2e` entra no R1.
+# Job `database` desde 26/10/2026; `backend` desde o K1 (01/11/2026); `frontend` desde o W1 (12/11/2026); `e2e` desde o FE-1 (13/11/2026).
 name: CI
 
 on:
@@ -19,7 +19,7 @@ jobs:
     services:
       postgres:
         # Fixada por digest, igual ao docker-compose.yml: a tag postgres:16 passou a 16.16 em 13/11/2026,
-        # que grava pg_attver em attoptions e mudava o ddl.sql gerado. Atualizar os dois juntos.
+        # que grava pg_attver em attoptions e mudava o ddl.sql gerado. Atualizar junto com o job e2e.
         image: postgres:16.15@sha256:f9a7b9ebf6f56201f949db745e47bc423c0f0f8294bafe991cc10bf74b029657
         env:
           POSTGRES_USER: carteira
@@ -208,3 +208,97 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  # FE-1 (M4, revisão de 12/11/2026): o E2E do frontend contra a API e o PostgreSQL reais, sem mock (D40). Cresce a cada
+  # tela (regra do perfil do frontend); o R1 só acrescenta o fluxo completo do S1.
+  e2e:
+    name: e2e
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        # Mesma imagem fixada do job database e do docker-compose.yml; atualizar os três juntos.
+        image: postgres:16.15@sha256:f9a7b9ebf6f56201f949db745e47bc423c0f0f8294bafe991cc10bf74b029657
+        env:
+          POSTGRES_USER: carteira
+          POSTGRES_PASSWORD: ci-only-password # banco descartável do CI; não é segredo
+          POSTGRES_DB: carteira_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U carteira -d carteira_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://carteira:ci-only-password@localhost:5432/carteira_test
+      SHADOW_DATABASE_URL: postgresql://carteira:ci-only-password@localhost:5432/unused_shadow
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            backend/package-lock.json
+            frontend/package-lock.json
+
+      # run-sql.mjs (db:seed) usa o psql de dentro do contêiner de serviço, como no job database.
+      - name: Database container id
+        run: echo "PG_CONTAINER=${{ job.services.postgres.id }}" >> "$GITHUB_ENV"
+
+      - run: npm ci
+
+      - name: Migrations and seed (catalog of the S1)
+        run: |
+          npm run db:migrate
+          npm run db:seed
+
+      - name: Generate Prisma Client (backend/src/generated/prisma)
+        run: npm run db:generate
+
+      - name: Build the API
+        working-directory: backend
+        run: |
+          npm ci
+          npm run build
+
+      # NODE_ENV fora de production: em produção a API recusa AUTH_RATE_LIMIT_MAX acima de 20 e não sobe (BK-1).
+      # O limite alto existe porque o E2E faz login a cada teste (refresh rotativo, D39).
+      - name: Start the API
+        working-directory: backend
+        env:
+          NODE_ENV: development
+          API_PORT: 3000
+          CORS_ORIGIN: http://localhost:4200
+          JWT_ACCESS_SECRET: ci-only-secret-with-at-least-32-characters
+          AUTH_RATE_LIMIT_MAX: 10000
+        run: |
+          nohup npm run start:prod > "$RUNNER_TEMP/api.log" 2>&1 &
+          curl --fail --silent --show-error --retry 30 --retry-delay 2 --retry-all-errors \
+            http://localhost:3000/api/v1/health
+          echo
+
+      - name: Install the frontend and Chromium
+        working-directory: frontend
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      # O playwright.config.ts sobe o frontend (npm start, que gera o cliente da API antes).
+      - name: E2E (@playwright/test, with axe in light and dark)
+        working-directory: frontend
+        run: npm run e2e
+
+      - name: API log (on failure)
+        if: failure()
+        run: cat "$RUNNER_TEMP/api.log"
+
+      - name: Playwright traces (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: frontend/test-results
+          retention-days: 7
