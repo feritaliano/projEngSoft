@@ -16,6 +16,7 @@
 - [ ] **Agente de banco: P1-2** (segundo corte do seed), 13/11–18/11. Gatilho G-P1 em 18/11.
 - [ ] **Agente de backend: BK-1**, 13/11–14/11.
 - [ ] **Agente de frontend: W2 + FE-1**, 13/11–16/11 (o FE-1 usa a variável do BK-1).
+- [ ] **Agente de frontend: FE-2a** ("Como rodar" com o que já funciona: banco, seed, API, frontend e login do usuário de demonstração pelo Swagger), 13/11–14/11.
 - [ ] **Agente de UX/UI: U7 parte A**, 13/11–17/11.
 
 ## 3. 15/11–20/11
@@ -30,7 +31,7 @@
 - [ ] **Agente de backend: K5** (catálogo completo), 21/11–26/11. Gatilho G-K5 em 26/11.
 - [ ] **Agente de frontend: W4a**, 21/11–26/11.
 - [ ] **Agente de banco: P3**, 23/11–24/11; **P4 (relatório)**, 25/11–30/11. **Enviar a Parte 2 até 30/11.**
-- [ ] **Agente de frontend: FE-2**, 27/11; **W4b**, 27/11–02/12. Gatilho G-W4 em 02/12.
+- [ ] **Agente de frontend: W4b**, 27/11–02/12; o FE-2b atualiza o README a cada tela e com o passo do K5 (26/11). Gatilho G-W4 em 02/12.
 
 ## 5. Decisões e conferências suas (antes de 06/12)
 - [ ] Responder às 5 decisões de `claude/prompts-correcao-s1.md` (B1, B3, B4, B9, M8) (PL4). Depois, pedir no chat do projeto o registro no contexto e na arquitetura.

@@ -155,13 +155,13 @@ Prazo: 16/11 (fim do W2). Esforço: 5–7 h.
 
 ## FE-2 — "Como rodar" no README da raiz (M6, A1)
 ```
-Agente: frontend. Tarefa FE-2 (parte antecipada do R1): correção da revisão de 12/11/2026. Data: 27/11, depois do BK-3 e do K5 (ou do G-K5 em 26/11).
+Agente: frontend. Tarefa FE-2 (parte antecipada do R1): correção da revisão de 12/11/2026. Em duas partes (ajuste de 13/11/2026): FE-2a em 13/11–14/11 com o que já funciona; FE-2b atualiza a seção a cada tela (W2, W3, W4a, W4b) e acrescenta o passo do K5 em 26/11 (ou registra o G-K5).
 Leia claude/revisao-es.md, achados M6 e A1.
 Problema: o README.md da raiz (41 linhas) não cita o frontend, o seed nem a ordem para subir banco, API e tela; um terceiro não chega a usar o sistema.
 Faça: seção única "Como rodar" com pré-requisitos (Docker, Node 24), .env a partir do .env.example, banco, migrations, npm run db:seed, carga do catálogo completo pelo comando do K5 (se o G-K5 cortou o K5, diga que o catálogo fica com os ativos do seed), API (Docker ou npm), frontend (npm start em http://localhost:4200), entrada com o usuário de demonstração do seed (demo@carteirab3.dev, senha do comentário do inserts.sql) ou cadastro de um usuário novo, e onde estão os testes de cada pacote. Siga os passos numa pasta limpa antes de abrir o PR e cole a saída na descrição.
-Pronto quando: seguindo só o README num clone novo, dá para entrar, criar carteira e lançar uma compra pela tela. Atualize a seção a cada tela entregue depois disso; o roteiro de demonstração continua no R1.
+Pronto quando (FE-2a): seguindo só o README num clone novo, sobem banco, migrations, seed, API e frontend, e o login do usuário de demonstração responde 200 pelo Swagger (/api/docs); a seção avisa que as telas estão em construção. Pronto quando (FE-2b): entrar, criar carteira e lançar uma compra pela tela, depois do W4b. A conferência completa pela tela e o roteiro de demonstração ficam no R1.
 Não faça: duplicar o conteúdo de backend/README.md e frontend/README.md; aponte para eles.
-Prazo: 27/11. Esforço: 2–3 h.
+Prazo: FE-2a 14/11; FE-2b junto de cada tela e em 26/11 (K5). Esforço: 2–3 h no FE-2a, minutos por atualização.
 
 Aviso do agente de banco (P1-2, 13/11/2026), para o README e para conferir a tela:
 - Usuário de demonstração: demo@carteirab3.dev, senha demo-carteira-2026 (só desenvolvimento; também está num comentário de database/sql/inserts.sql; nunca em .env). Os outros 9 usuários do seed (@example.com) usam a mesma senha; Gabriela Martins não tem carteira (estado vazio da Lista).
@@ -199,7 +199,7 @@ Com a sua resposta, o registro em `claude/contexto-projeto.md` e `claude/arquite
 | 3 | BK-2 (com o PR 3 do K4) | backend | BK-1 | 15/11–19/11 |
 | 4 | BK-3 | backend | BD-1 e P1-2 (merge do PR; aviso no fim do prompt) | 20/11 |
 | 5 | K5 (`claude/fontes-de-dados.md`, seção 8) | backend | BK-2, PR 3 do K4 | 21/11–26/11 |
-| 6 | FE-2 | frontend | BK-3, K5 ou G-K5; usuário de demonstração do P1-2 (aviso no fim do prompt) | 27/11 |
+| 6 | FE-2a / FE-2b | frontend | FE-2a: P1-2 (usuário de demonstração); FE-2b: cada tela, K5 ou G-K5 | FE-2a 13/11–14/11; FE-2b até 02/12 |
 | 7 | BK-4 | backend | K4 concluído | depois de 06/12, antes do S2 |
 
 Agentes diferentes correm em paralelo; cada agente faz os seus prompts na ordem da tabela. Esforço restante antes de 06/12: 22 a 33 horas (BK-4 fica para depois).
