@@ -393,7 +393,7 @@ CREATE TABLE public.fii_monthly_reports (
     shareholders_count integer NOT NULL,
     dividend_yield_month numeric(10,8) NOT NULL,
     CONSTRAINT fii_monthly_reports_month_check CHECK ((reference_month = (date_trunc('month'::text, (reference_month)::timestamp with time zone))::date)),
-    CONSTRAINT fii_monthly_reports_values_check CHECK (((shares_outstanding > 0) AND (shareholders_count >= 0) AND (dividend_yield_month >= (0)::numeric))),
+    CONSTRAINT fii_monthly_reports_values_check CHECK (((shares_outstanding > 0) AND (shareholders_count >= 0))),
     CONSTRAINT fii_monthly_reports_version_check CHECK ((version >= 1))
 );
 
