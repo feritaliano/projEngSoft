@@ -1,6 +1,6 @@
 # Fontes de dados para o mercado inteiro
 
-> Pesquisa de 12/11/2026. Responde à pergunta: dá para ter no banco todos os ativos da B3 (ou quase todos), com cotação, proventos e índices, sem pagar API? Este documento é uma **proposta**: nada aqui foi registrado como decisão no `contexto-projeto.md` até o usuário aprovar (seção 8).
+> Pesquisa de 12/11/2026. Responde à pergunta: dá para ter no banco todos os ativos da B3 (ou quase todos), com cotação, proventos e índices, sem pagar API? **Aprovada em 12/11/2026 como D59** (`claude/contexto-projeto.md`), com a carga do catálogo completo no S1 (tarefa K5, gatilho G-K5 em 26/11, `claude/plano-de-acao.md`).
 
 ## 1. Resposta curta
 
@@ -40,7 +40,7 @@ O pipeline (bronze → staging → núcleo, idempotente e com fonte e data em ca
 | **CDI, Selic, IPCA, IGP-M** | BCB, API SGS (`api.bcb.gov.br/dados/serie/bcdata.sgs.{codigo}/dados`) | Séries oficiais | Gratuito, sem chave, licença ODbL | Diária ou mensal |
 | **Ibovespa diário** | B3, página de dados históricos e estatísticas dos índices | Série diária oficial | Gratuito, página pública (o pacote `rb3` em R já lê esse arquivo) | Diária |
 | **Proventos e eventos (ações)** | B3, endpoint **não oficial** do portal de empresas listadas (`listedCompaniesProxy`, seção 4.1) | Dividendos, JCP, desdobramentos, grupamentos e bonificações por emissor | Gratuito, sem documentação nem garantia | Diária (consultar por emissor) |
-| **Rendimentos de FII** | CVM, informe mensal estruturado de FII | Rendimentos declarados pelo fundo no mês | Gratuito, ODbL | Mensal (**a conferir** se traz valor por cota e data-com) |
+| **Rendimentos de FII** | B3, `listedCompaniesProxy` (o mesmo endpoint dos proventos de ações) | Valor por cota, data-com e pagamento (HGLG11: R$ 1,17, data-com 30/10/2026). O informe mensal da CVM **não** traz esses campos (PF, F8) | Gratuito, sem documentação nem garantia | Diária (consultar por fundo) |
 | **Demonstrações financeiras** | CVM, DFP e ITR | Todas as companhias abertas | Gratuito, ODbL | Semanal |
 | **FII: dados mensais, imóveis e vacância** | CVM, informes mensal e trimestral estruturados | Todos os FIIs | Gratuito, ODbL | Mensal e trimestral |
 | **Tesouro Direto (taxa e PU)** | Tesouro Transparente, CSV "Taxas dos Títulos Ofertados pelo Tesouro Direto" | Todos os títulos do programa desde dez/2004 | Gratuito; arquivo grande (centenas de MB), baixar o completo uma vez e depois só o incremento | Diária |
@@ -59,12 +59,12 @@ Com isso o banco fica com **todos** os papéis negociados na B3 (catálogo + cot
 | **C. Formulário de Proventos em Dinheiro da B3** | Documento oficial padronizado que a companhia envia à B3 a cada provento aprovado | É **documento** no portal, não dado estruturado; extrair exige parse de PDF |
 | **D. Registro manual** (já previsto na D29 para eventos) | Sempre funciona | Não escala para o mercado inteiro |
 
-**Recomendação:** A como fonte principal, isolada num adapter da ingestão (resposta bruta guardada no bronze), com D como plano B. Se o endpoint quebrar, o sistema continua funcionando com o que já carregou e com os registros manuais. Para FIIs, completar com o informe mensal da CVM.
+**Recomendação:** A como fonte principal, isolada num adapter da ingestão (resposta bruta guardada no bronze), com D como plano B. Se o endpoint quebrar, o sistema continua funcionando com o que já carregou e com os registros manuais. O endpoint também cobre FIIs (valor por cota e data-com); o informe mensal da CVM não traz esses campos (PF, 12/11/2026).
 
 ### 4.2 Ibovespa diário (R3)
 
 - **Recomendação:** a página de dados históricos e estatísticas dos índices da B3 (fonte primária, diária).
-- **A conferir com um arquivo real:** se o COTAHIST também traz linhas de índice. O pacote `rb3` tem um filtro de índices para o COTAHIST, e, se trouxer, a mesma ingestão de cotações resolve o Ibovespa.
+- **Conferido na PF (12/11/2026):** o COTAHIST tem uma linha `IBOV11`, mas ela registra negócios com o índice (27 em 12/11), não o índice calculado (170.843,00 contra 171.324,31 da página). O Ibovespa vem da página de índices.
 - **Fallback:** BCB SGS, que tem só a série mensal (serve para C3 mensal, não para gráfico diário).
 
 ### 4.3 Preço de cripto (D44)
@@ -72,6 +72,7 @@ Com isso o banco fica com **todos** os papéis negociados na B3 (catálogo + cot
 - **Recomendação:** Mercado Bitcoin, API pública v4, candle diário em BRL. É a fonte primária do preço negociado no Brasil, gratuita e sem chave.
 - A política de market data da B3 não se aplica aqui.
 - **A conferir:** os termos de uso da API e os limites de requisição; a documentação pública lista os endpoints de símbolos, candles e ticker.
+- **PF (12/11/2026):** a API respondeu 403 do Cloudflare ("Sorry, you have been blocked") para o cliente automático na rede do usuário (F1). Para o seed, o usuário baixa o JSON dos candles pelo próprio navegador. Para a ingestão automática do S11, a fonte de cripto volta a ser decidida se o bloqueio continuar.
 
 ## 5. Licença dos dados da B3 (risco)
 
@@ -113,15 +114,16 @@ A **Política de Consumo de Market Data B3**, versão 1.2, em vigor desde 01/11/
 - **S2:** sem mudança de escopo; R3 fica resolvido.
 - **S6:** R2 passa de "sem fonte" para "fonte não oficial + plano B manual".
 - **S11:** a fonte de cripto da D44 fica definida.
-- **Opção para decidir (não incluída na proposta):** antecipar para o S1 só a **carga do catálogo** (Cadastro de Instrumentos + emissores), sem cotações. A busca do C1 passaria a ter todos os ativos da B3 já na entrega de 06/12. Custo estimado: 1–2 dias (parser + teste de idempotência). Risco: tira tempo dos 5 itens antes de 06/12 da revisão.
+- **Catálogo completo no S1 (aprovado):** carga única do catálogo (Cadastro de Instrumentos + emissores), sem cotações, como tarefa K5 do backend (18/11–26/11). A busca do C1 passa a ter todos os ativos da B3 na entrega de 06/12. Custo estimado: 1–2 dias (parser + teste de idempotência). Gatilho G-K5 em 26/11: sem a carga testada, ficam os ~50 ativos reais do seed e o K5 volta para o S2.
+- **S2 inteiro no S1 (rejeitado):** 1,5–2,5 semanas sobre um plano com folga zero no W4 e no R1; e cotações sem as telas do S2 não aparecem no S1 (D41, D48).
 
-## 8. Proposta de decisão (para aprovar)
+## 8. Decisão (aprovada em 12/11/2026)
 
-> **D59 (proposta)** — Fontes do mercado inteiro.
+> **D59** — Fontes do mercado inteiro.
 > - Catálogo: B3 Cadastro de Instrumentos + lista de empresas, com CVM para emissores.
 > - Cotações: B3 COTAHIST.
 > - Ibovespa diário: página de índices da B3 (R3 resolvido; conferir se o COTAHIST traz índices).
-> - Proventos e eventos: endpoint não oficial `listedCompaniesProxy` da B3, isolado em adapter com resposta guardada no bronze; registro manual como plano B (R2 mitigado). Rendimentos de FII pelo informe mensal da CVM.
+> - Proventos e eventos: endpoint não oficial `listedCompaniesProxy` da B3, isolado em adapter com resposta guardada no bronze; registro manual como plano B (R2 mitigado). Rendimentos de FII também pelo `listedCompaniesProxy` (valor por cota e data-com); o informe mensal da CVM não traz esses campos (conferido na PF em 12/11/2026, F8).
 > - Tesouro: CSV do Tesouro Transparente.
 > - Cripto: API pública v4 do Mercado Bitcoin (D44, fonte definida).
 > - Uso dos dados da B3 conforme a Política de Consumo de Market Data V1.2: só para usuário logado, sem download nem API pública de preços, com fonte e data visíveis.
@@ -131,7 +133,7 @@ A **Política de Consumo de Market Data B3**, versão 1.2, em vigor desde 01/11/
 
 ```
 Agente: banco-de-dados
-Tarefa: prova de conceito das fontes da D59 (proposta), sem migration e sem código de produção.
+Tarefa: prova de conceito das fontes da D59, até 16/11, sem migration e sem código de produção.
 1. Baixe para data/raw/fontes-poc/ um arquivo de cada:
    - COTAHIST diário do último pregão;
    - Cadastro de Instrumentos (InstrumentsConsolidatedFile) do mesmo dia;
@@ -149,8 +151,24 @@ Tarefa: prova de conceito das fontes da D59 (proposta), sem migration e sem cód
    - quantos tickers distintos o COTAHIST traz por tipo (ação, FII, ETF, BDR) usando CODBDI/TPMERC;
    - se o COTAHIST traz linhas de índice (IBOV);
    - se o informe mensal de FII da CVM traz rendimento por cota e data-com.
-4. Monte as linhas do seed de crypto_prices, index_values (IBOV) e income_distributions a partir desses arquivos, com a fonte citada em comentário no inserts.sql.
+4. Monte as linhas do seed de assets (~50 ativos reais do Cadastro de Instrumentos: ações, units, FIIs, ETFs e BDRs, com emissor e programa do BDR), crypto_prices, index_values (IBOV) e income_distributions a partir desses arquivos, com a fonte citada em comentário no inserts.sql. Escolha os 50 de forma que o K5 depois faça upsert sobre eles sem duplicar (mesmo ISIN e ticker).
 5. Confira se data/raw/ está no .gitignore. Se não estiver, pergunte antes de commitar arquivos grandes ou dados da B3.
+Cláusula de correção: falha encontrada vira prompt para o agente certo.
+```
+
+### Prompt para o agente de backend (K5, carga do catálogo completo)
+
+```
+Agente: backend
+Tarefa: K5 do plano (D59), 18/11–26/11, depois do K4 PR 3 e dos prompts BK-1 e BK-2. Gatilho G-K5 em 26/11.
+Leia: claude/fontes-de-dados.md, database/docs/fontes-poc.md (da prova de conceito), claude/arquitetura.md seção 6.3, database/docs/glossario.md (sectors, issuers, assets).
+1. Módulo ingestion (worker), adapter do Cadastro de Instrumentos da B3 (InstrumentsConsolidatedFile). Comando npm no backend, ex.: npm run ingest:catalog -- --file data/raw/<arquivo> (aceitar arquivo local; download automático é opcional).
+2. Filtro: mercado à vista, ações (ON, PN, PNA, PNB...), units, FIIs, ETFs e BDRs. Sem opções, termo, futuro ou fracionário.
+3. Upsert por chave natural, numa transação por lote: issuers (nome; CNPJ e código CVM quando o arquivo ou o cadastro da CVM trouxer, nulo aceito) e assets (ISIN; ticker; type; share_class; bdr_program pelo SpcfctnCd; is_active = true). Setor só se a classificação setorial da B3 estiver disponível; nulo é aceito pelo schema.
+4. Fora do escopo do K5: cotações, desativar ativos que sumiram do arquivo, ops.ingestion_runs e agendamento (tudo S2).
+5. Testes: parse com trecho real reduzido do arquivo (fixture versionada pequena); idempotência (rodar 2× não muda nenhuma linha); linha inválida registrada e ignorada sem derrubar o lote; upsert sobre os ~50 ativos do seed sem duplicar.
+6. PR com: contagem de ativos por tipo carregados de um arquivo real; tempo de execução; a busca GET /api/v1/assets?search= achando um ativo que não está no seed; comando no backend/README.md.
+7. Regra de licença (D59): nenhum endpoint novo de exportação de dados da B3.
 Cláusula de correção: falha encontrada vira prompt para o agente certo.
 ```
 

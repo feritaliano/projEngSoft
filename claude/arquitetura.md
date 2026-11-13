@@ -204,7 +204,7 @@ Propriedades obrigatórias:
 | CVM informe mensal FII | fii_monthly_reports | Mensal | (issuer, month) |
 | CVM informe trimestral estruturado FII (`inf_trimestral_fii_imovel`) | fii_quarterly_reports, fii_report_properties | Semanal (a CVM atualiza com reapresentações) | informe: (issuer cnpj, reference_date); itens: substituídos em bloco quando chega versão maior (item_number = ordem no arquivo). Área e taxas chegam como texto e são normalizadas |
 | CVM IPE | corporate_filings | Diária | cvm_protocol |
-| Proventos e eventos: endpoint não oficial `listedCompaniesProxy` do portal de empresas listadas da B3 (D59); rendimentos de FII também no informe mensal da CVM | income_distributions, corporate_events | Diária, uma chamada por emissor com pausa (S6). Adapter isolado, resposta bruta no bronze; registro manual como plano B (D29) | (asset, type, date) |
+| Proventos e eventos: endpoint não oficial `listedCompaniesProxy` do portal de empresas listadas da B3 (D59), inclusive rendimentos de FII (valor por cota e data-com); o informe mensal da CVM não traz esses campos | income_distributions, corporate_events | Diária, uma chamada por emissor com pausa (S6). Adapter isolado, resposta bruta no bronze; registro manual como plano B (D29) | (asset, type, date) |
 | Tesouro Transparente, CSV de taxas dos títulos ofertados (D50, D59) | fixed_income_prices | Diária (S11); carga inicial do arquivo completo, depois incremento | (asset_id, base_date) |
 | Mercado Bitcoin, API pública v4, candle diário em BRL (D59) | crypto_prices | Diária (S11) | (asset_id, date) |
 
