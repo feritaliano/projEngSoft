@@ -126,6 +126,13 @@ src/app/
 - E2E ponta a ponta do fluxo do S1 no R1 com `@playwright/test`, em `frontend/e2e/*.spec.ts`: cadastro → login → carteira → compra → venda → posição, mais a rejeição da RN10. Roda no CI (job `e2e`) contra a API e um PostgreSQL de serviço; na máquina, contra a API apontando para o banco `carteira_test` do docker-compose (`DATABASE_URL_TEST`), nunca o `carteira_dev` (D40); seletores por papel e rótulo acessível (`getByRole`, `getByLabel`), não por classe CSS.
 - Cobertura mínima de 80% de linhas, configurada como limite no Vitest (o build do CI falha abaixo disso).
 
+## Regras da revisão de 12/11/2026
+- Nenhuma conta nem conversão para `number` sobre dinheiro, quantidade ou percentual; a regra de lint do FE-1 (`no-restricted-syntax` em `src/app`, conferida por `scripts/check-money-lint.mjs` no `npm run lint`) não é desligada por comentário. Dado de gráfico, a única exceção, fica em arquivo `*.chart.ts`.
+- Cada tela entra com o E2E do seu fluxo no job `e2e`, no mesmo PR; spec que só confere o título não conta como teste da tela.
+- O E2E faz login por teste (o refresh rotativo impede sessão compartilhada, D39).
+- O README da raiz ("Como rodar") é atualizado quando muda um passo de execução.
+- Commits por passo dentro do PR, em Conventional Commits; um PR por tarefa do plano.
+
 ## Regras de comunicação
 - Português (pt-BR). Código, identificadores e commits em inglês (Conventional Commits).
 - Sucinto, sem introduções, elogios ou emojis. Justifique decisões em 1–3 frases.
