@@ -5,11 +5,15 @@
 -- setor, (tipo, vencimento) do título. Linha cuja chave natural pode ser nula (corretora ou emissor sem CNPJ, setor de
 -- primeiro nível, ativo de renda fixa sem ticker) é filtrada com NOT EXISTS sobre a mesma chave, porque NULL não
 -- conflita no UNIQUE. Assim, o K5 pode fazer upsert pelo ticker/ISIN depois do seed, e o seed depois do K5, sem duplicar.
--- Faixas de UUID (último grupo): corretoras 0001xx, setores 0003xx, emissores 0004xx, ativos 0005xx,
--- tipos de título 0006xx, índices econômicos 0009xx; proventos 0000xx (seção 2).
--- Ordem das seções: 1. catálogo (BD-1, primeiro corte do P1: o que o S1 lê) → 2. mercado (D59, PF).
--- As linhas de mercado acham o pai pela chave natural (ISIN, código do índice) com LEFT JOIN: se o pai
--- não existir, a FK vem nula e o INSERT falha no NOT NULL, em vez de pular a linha em silêncio.
+-- Faixas de UUID (último grupo): proventos 0000xx, corretoras 0001xx, setores 0003xx, emissores 0004xx, ativos 0005xx,
+-- tipos de título 0006xx, índices econômicos 0009xx, usuários 0010xx, carteiras 0011xx, lotes de importação 0012xx,
+-- operações 0013xx, proventos recebidos 0014xx, categorias de IR 0015xx, apurações 0016xx, DARF 0017xx,
+-- demonstrações 0018xx, informes mensais de FII 0019xx, informes trimestrais 0020xx, documentos 0021xx,
+-- eventos corporativos 0022xx, indicadores 0023xx, alertas 0024xx, telas salvas 0025xx.
+-- Ordem das seções: 1. catálogo (BD-1, primeiro corte do P1: o que o S1 lê) → 2. mercado (D59, PF e P1-2) →
+-- 3. imposto de renda (P0) → 4. usuários → 5. acompanhamento e planejamento (P1-2).
+-- Toda linha acha o pai pela chave natural (ISIN, ticker, CNPJ, código, e-mail, nome da carteira) com LEFT JOIN: se o
+-- pai não existir, a FK vem nula e o INSERT falha no NOT NULL, em vez de pular a linha em silêncio.
 -- Arquivos de origem, URL, hash e mapeamento: database/docs/fontes-poc.md.
 
 BEGIN;
@@ -150,7 +154,10 @@ FROM (VALUES
   ('00000000-0000-0000-0000-000000000445', '00000000-0000-0000-0000-000000000337', 'JBS N.V.', 'FOREIGN', NULL, NULL),
   ('00000000-0000-0000-0000-000000000446', NULL, 'EVE HOLDING, INC.', 'FOREIGN', NULL, NULL),
   ('00000000-0000-0000-0000-000000000447', NULL, 'ISHARES MSCI ACWI EX U.S. ETF', 'FOREIGN', NULL, NULL),
-  ('00000000-0000-0000-0000-000000000448', NULL, 'Tesouro Nacional', 'GOVERNMENT', NULL, NULL)
+  ('00000000-0000-0000-0000-000000000448', NULL, 'Tesouro Nacional', 'GOVERNMENT', NULL, NULL),
+  -- FII Opportunity (FTCE11): emissor sem ativo no seed (caso de LEFT JOIN) e o único FII da fonte com imóveis
+  -- das 4 classes no informe trimestral (2.7). Nome do Cadastro de Instrumentos (com os dois espaços), CNPJ do informe.
+  ('00000000-0000-0000-0000-000000000449', NULL, 'OPPORTUNITY FDO INV IMOB  RESPONS LIMITADA', 'FUND', '01235622000161', NULL)
 ) AS v (id, sector_id, name, kind, cnpj, cvm_code)
 WHERE NOT EXISTS (SELECT 1 FROM issuers i WHERE i.name = v.name)
 ON CONFLICT (cnpj) DO NOTHING;
@@ -396,10 +403,875 @@ FROM (VALUES
 LEFT JOIN assets a ON a.isin = v.isin
 ON CONFLICT DO NOTHING;
 
--- 2.3 crypto_prices: sem linhas.
--- Fonte prevista (D44, D59): Mercado Bitcoin, API pública v4, candles diários de BTC-BRL
---   https://api.mercadobitcoin.net/api/v4/candles?symbol=BTC-BRL&resolution=1d&from=1790812800&to=1794528000
--- Em 12/11/2026 21:43 (BRT) a API respondeu 403 (bloqueio do Cloudflare) a esta rede; nenhum preço
--- foi transcrito para não inventar dado (achado F1 do fontes-poc.md).
+-- 2.3 crypto_prices: fechamento do candle diário (UTC) em reais.
+-- Fonte: Foxbit, API pública v3 (decisão de 13/11/2026: o Mercado Bitcoin da D59 continua bloqueado, achado F1)
+--   https://api.foxbit.com.br/rest/v3/markets/{btcbrl|ethbrl}/candlesticks?interval=1d&start_time=2026-01-01T00:00:00.000Z&end_time=2026-11-13T00:00:00.000Z&limit=500
+--   baixados em 13/11/2026 08:52 (BRT): btcbrl_1d.json (SHA-256 00e705271826ab4a914a71c536e6125fcd2d86cfdf9d4e0c66710d033d69ba4b)
+--   e ethbrl_1d.json (SHA-256 100db70af2b08ef9fc39479fa39a7612992a977a194f4ba763e2d64fdc16271a), data/raw/foxbit-candles/.
+-- Campos (vetor do candle): [0] abertura do período (epoch ms, UTC) → price_date; [4] fechamento → reference_price.
+-- Linhas: os 10 dias de 03/11 a 12/11/2026 e os dias das operações de cripto da seção 3.
+INSERT INTO crypto_prices (asset_id, price_date, reference_price)
+SELECT a.id, v.price_date::date, v.price::numeric
+FROM (VALUES
+  ('BTC', '2026-04-02', '346388.00000000'), -- abertura 351512.00000000, máxima 354253.00000000, mínima 340099.00000000
+  ('BTC', '2026-07-29', '328452.00000000'), -- abertura 328751.00000000, máxima 332428.00000000, mínima 324659.00000000
+  ('BTC', '2026-09-01', '399998.00000000'), -- abertura 408575.00000000, máxima 411400.00000000, mínima 394330.00000000
+  ('BTC', '2026-11-03', '427004.00000000'), -- abertura 420882.00000000, máxima 429865.00000000, mínima 417403.00000000
+  ('BTC', '2026-11-04', '439570.00000000'), -- abertura 427211.00000000, máxima 444477.00000000, mínima 418000.00000000
+  ('BTC', '2026-11-05', '421237.00000000'), -- abertura 439570.00000000, máxima 442454.00000000, mínima 415347.00000000
+  ('BTC', '2026-11-06', '420533.00000000'), -- abertura 421237.00000000, máxima 424208.00000000, mínima 412000.00000000
+  ('BTC', '2026-11-07', '426513.00000000'), -- abertura 420536.00000000, máxima 428998.00000000, mínima 420061.00000000
+  ('BTC', '2026-11-08', '419347.00000000'), -- abertura 426326.00000000, máxima 429239.00000000, mínima 415000.00000000
+  ('BTC', '2026-11-09', '416229.00000000'), -- abertura 419570.00000000, máxima 422031.00000000, mínima 410863.00000000
+  ('BTC', '2026-11-10', '410987.00000000'), -- abertura 416227.00000000, máxima 418367.00000000, mínima 408000.00000000
+  ('BTC', '2026-11-11', '414919.00000000'), -- abertura 411077.00000000, máxima 418714.00000000, mínima 409000.00000000
+  ('BTC', '2026-11-12', '405388.00000000'), -- abertura 414569.00000000, máxima 415350.00000000, mínima 400310.00000000
+  ('ETH', '2026-05-15', '11281.80000000'), -- abertura 11409.20000000, máxima 11493.40000000, mínima 11160.30000000
+  ('ETH', '2026-10-20', '12343.30000000'), -- abertura 12160.50000000, máxima 12423.20000000, mínima 11990.00000000
+  ('ETH', '2026-11-03', '12556.00000000'), -- abertura 12341.30000000, máxima 12654.30000000, mínima 12278.90000000
+  ('ETH', '2026-11-04', '13228.10000000'), -- abertura 12526.40000000, máxima 13427.10000000, mínima 12285.50000000
+  ('ETH', '2026-11-05', '12380.40000000'), -- abertura 13243.40000000, máxima 13340.70000000, mínima 12220.10000000
+  ('ETH', '2026-11-06', '12386.10000000'), -- abertura 12394.60000000, máxima 12493.70000000, mínima 12157.50000000
+  ('ETH', '2026-11-07', '12583.40000000'), -- abertura 12392.00000000, máxima 12588.90000000, mínima 12391.00000000
+  ('ETH', '2026-11-08', '11902.90000000'), -- abertura 12573.30000000, máxima 12650.00000000, mínima 11684.30000000
+  ('ETH', '2026-11-09', '11808.60000000'), -- abertura 11924.40000000, máxima 12036.60000000, mínima 11650.00000000
+  ('ETH', '2026-11-10', '11431.30000000'), -- abertura 11810.80000000, máxima 11815.20000000, mínima 11259.60000000
+  ('ETH', '2026-11-11', '11523.10000000'), -- abertura 11430.90000000, máxima 11702.40000000, mínima 11388.60000000
+  ('ETH', '2026-11-12', '11455.40000000') -- abertura 11523.20000000, máxima 11570.30000000, mínima 11139.30000000
+) AS v (ticker, price_date, price)
+LEFT JOIN assets a ON a.ticker = v.ticker AND a.type = 'CRYPTO'
+ON CONFLICT DO NOTHING;
+
+-- 2.4 quotes: pregões de 30/10/2026 e 12/11/2026, mercado à vista (TPMERC 010), dos ativos negociados de 1.6.
+-- Fonte: B3, COTAHIST diário (layout SeriesHistoricas_Layout.pdf; fontes-poc.md, seção 2.1)
+--   https://bvmf.bmfbovespa.com.br/InstDados/SerHist/COTAHIST_D30102026.ZIP (data/raw/b3-cotahist/; TXT
+--   SHA-256 na seção 6 do fontes-poc.md) e COTAHIST_D12112026.ZIP (fontes-poc.md, arquivo 1).
+-- Preços = campo ÷ 100 ÷ FATCOT; volume = VOLTOT ÷ 100; ISIN conferido com o do seed em cada linha.
+-- Sem cotação: ELET3 (fora de negociação), renda fixa e cripto (casos de LEFT JOIN).
+INSERT INTO quotes (asset_id, quote_date, open, high, low, close, volume, trades_count)
+SELECT a.id, v.quote_date::date, v.open::numeric, v.high::numeric, v.low::numeric, v.close::numeric,
+       v.volume::numeric, v.trades_count
+FROM (VALUES
+  ('PETR3', '2026-10-30', '59.21', '60.64', '59.16', '60.01', '1350496887', 37408),
+  ('PETR4', '2026-10-30', '52.45', '53.66', '52.36', '52.71', '3265521701', 77862),
+  ('VALE3', '2026-10-30', '59.44', '62.98', '59.42', '62.02', '2153151338', 61220),
+  ('ITUB4', '2026-10-30', '39.2', '39.34', '38.69', '38.69', '1991804592', 77853),
+  ('ITSA4', '2026-10-30', '12.73', '12.73', '12.4', '12.45', '641145566', 54590),
+  ('BBDC3', '2026-10-30', '12.91', '12.93', '12.64', '12.71', '280189167', 27588),
+  ('BBDC4', '2026-10-30', '14', '14.18', '13.81', '13.86', '1209607602', 68548),
+  ('WEGE3', '2026-10-30', '49', '49.66', '48.36', '48.36', '822028790', 50420),
+  ('ABEV3', '2026-10-30', '14.45', '14.74', '14.35', '14.6', '647145191', 46113),
+  ('KLBN11', '2026-10-30', '17.21', '17.25', '16.79', '17.2', '161319565', 18608),
+  ('BBAS3', '2026-10-30', '16.36', '16.75', '16.13', '16.47', '1007019898', 82845),
+  ('B3SA3', '2026-10-30', '13.91', '13.91', '13.31', '13.43', '1236861593', 83835),
+  ('SUZB3', '2026-10-30', '49.42', '50.46', '49.35', '50.14', '619209935', 41864),
+  ('AXIA3', '2026-10-30', '47.4', '47.62', '46.5', '47.43', '719690047', 50777),
+  ('RENT3', '2026-10-30', '28.59', '28.59', '27.63', '27.85', '530923412', 45605),
+  ('EGIE3', '2026-10-30', '26.39', '26.46', '25.91', '26.26', '95325427', 15238),
+  ('TAEE11', '2026-10-30', '39', '39.68', '38.79', '39.59', '127858892', 14660),
+  ('SANB11', '2026-10-30', '24.47', '24.49', '23.77', '23.94', '81631973', 11919),
+  ('PRIO3', '2026-10-30', '71.3', '71.78', '70.3', '71.49', '638696277', 28182),
+  ('VIVT3', '2026-10-30', '30.21', '31.05', '30.2', '30.7', '170780646', 18668),
+  ('GGBR4', '2026-10-30', '25.28', '25.53', '24.92', '25.13', '381373004', 32577),
+  ('CSAN3', '2026-10-30', '2.23', '2.4', '2.16', '2.33', '119453393', 34016),
+  ('RADL3', '2026-10-30', '15.18', '15.98', '14.99', '15.22', '241884621', 42885),
+  ('MXRF11', '2026-10-30', '8.94', '8.96', '8.84', '8.88', '31213326.76', 82311),
+  ('HGLG11', '2026-10-30', '147', '149.5', '146.45', '149.5', '13848556.27', 12168),
+  ('XPML11', '2026-10-30', '97.48', '97.5', '95.64', '96.8', '26138818.74', 28226),
+  ('KNRI11', '2026-10-30', '149.6', '150.64', '148.31', '150.5', '6481473.56', 5900),
+  ('VISC11', '2026-10-30', '98.79', '99.92', '97.56', '99.2', '7409512.45', 8647),
+  ('BTLG11', '2026-10-30', '97.55', '98.1', '96.7', '97.92', '22350480.13', 22212),
+  ('HGRU11', '2026-10-30', '112.95', '114', '112', '114', '7020753.33', 6815),
+  ('KNCR11', '2026-10-30', '104.48', '104.98', '104.02', '104.98', '26818218.31', 23057),
+  ('BOVA11', '2026-10-30', '164.88', '166.44', '164.21', '165.4', '1591118786.25', 53998),
+  ('IVVB11', '2026-10-30', '469.48', '470.34', '463.67', '466.5', '102507951.12', 9052),
+  ('SMAL11', '2026-10-30', '92', '93.1', '90.39', '92.15', '475404232.46', 42747),
+  ('HASH11', '2026-10-30', '54.44', '54.49', '53.34', '53.81', '12916153.5', 3088),
+  ('BOVV11', '2026-10-30', '173.12', '174.69', '172.3', '173.7', '195756921.19', 6795),
+  ('DIVO11', '2026-10-30', '119.35', '120.5', '118.87', '119.74', '74907061.77', 6066),
+  ('AAPL34', '2026-10-30', '93.71', '94.6', '93.37', '93.86', '34914898.81', 1422),
+  ('MSFT34', '2026-10-30', '119.49', '119.7', '116.32', '118.27', '46286074.98', 2772),
+  ('AMZO34', '2026-10-30', '61.63', '65.6', '61.27', '65.6', '70958486.21', 5600),
+  ('GOGL34', '2026-10-30', '127.02', '128', '126.11', '127.5', '97244478.16', 11909),
+  ('NVDC34', '2026-10-30', '23.63', '23.66', '22.81', '23.33', '81906694.41', 11434),
+  ('TSLA34', '2026-10-30', '67.1', '68.15', '65.76', '67.81', '65987110.01', 2457),
+  ('M1TA34', '2026-10-30', '119.2', '121.18', '118.3', '119.78', '26238521.17', 1884),
+  ('JPMC34', '2026-10-30', '187.86', '187.86', '182.61', '183.5', '14782661.79', 864),
+  ('AURA33', '2026-10-30', '134.76', '134.76', '118.57', '121.37', '178966891.57', 21711),
+  ('JBSS32', '2026-10-30', '65.7', '68.45', '64.7', '67.55', '168300513.92', 14718),
+  ('EVEB31', '2026-10-30', '8.89', '8.89', '8.09', '8.09', '114435.22', 120),
+  ('ACWX39', '2026-10-30', '67.13', '67.13', '66.57', '66.57', '1409.17', 2),
+  ('PETR3', '2026-11-12', '49.24', '51.57', '49.24', '51.05', '604660239', 23955),
+  ('PETR4', '2026-11-12', '43.4', '44.97', '43.23', '44.7', '1687713441', 66978),
+  ('VALE3', '2026-11-12', '63.8', '64.48', '62.93', '63.95', '1060761339', 27721),
+  ('ITUB4', '2026-11-12', '41.43', '41.95', '41.12', '41.68', '926876662', 35919),
+  ('ITSA4', '2026-11-12', '13.52', '13.57', '13.36', '13.57', '290546181', 38660),
+  ('BBDC3', '2026-11-12', '13.18', '13.35', '12.95', '13.29', '141981860', 13029),
+  ('BBDC4', '2026-11-12', '14.2', '14.33', '13.92', '14.32', '880641876', 58509),
+  ('WEGE3', '2026-11-12', '51.58', '52.04', '51.17', '51.65', '272892192', 15613),
+  ('ABEV3', '2026-11-12', '15.85', '15.92', '15.62', '15.75', '715316582', 42382),
+  ('KLBN11', '2026-11-12', '17.32', '17.95', '17.3', '17.64', '91805080', 10008),
+  ('BBAS3', '2026-11-12', '15', '15.67', '14.72', '15.48', '2247757830', 48280),
+  ('B3SA3', '2026-11-12', '14.66', '14.9', '14.47', '14.76', '719087009', 44103),
+  ('SUZB3', '2026-11-12', '53.75', '56.06', '53.75', '56.04', '463477265', 26593),
+  ('AXIA3', '2026-11-12', '48.44', '48.6', '47.07', '47.5', '721380767', 42506),
+  ('RENT3', '2026-11-12', '30.07', '30.42', '29.05', '29.58', '348325445', 28339),
+  ('EGIE3', '2026-11-12', '26.58', '26.73', '26.15', '26.35', '63352948', 9029),
+  ('TAEE11', '2026-11-12', '41.6', '41.99', '40.79', '41.57', '190493829', 9634),
+  ('SANB11', '2026-11-12', '28.9', '28.9', '28.17', '28.39', '233332276', 19311),
+  ('PRIO3', '2026-11-12', '61.1', '63.87', '60.79', '63.3', '409755556', 25399),
+  ('VIVT3', '2026-11-12', '34.25', '34.82', '33.55', '33.62', '228307486', 20771),
+  ('GGBR4', '2026-11-12', '25.05', '25.26', '24.69', '24.97', '101749246', 9063),
+  ('CSAN3', '2026-11-12', '3.02', '3.02', '2.8', '2.85', '192560950', 33676),
+  ('RADL3', '2026-11-12', '14.54', '14.58', '14.12', '14.26', '101416014', 14267),
+  ('MXRF11', '2026-11-12', '8.84', '8.85', '8.61', '8.7', '15916057.01', 53703),
+  ('HGLG11', '2026-11-12', '145.97', '146.1', '145.05', '145.69', '10710341.65', 7861),
+  ('XPML11', '2026-11-12', '91.79', '91.79', '89.29', '89.51', '24044775.78', 28523),
+  ('KNRI11', '2026-11-12', '147.82', '148', '146.25', '146.25', '4984950.5', 3466),
+  ('VISC11', '2026-11-12', '98.8', '99', '97.75', '98.01', '5894019.73', 7012),
+  ('BTLG11', '2026-11-12', '98.4', '98.4', '97.43', '97.9', '15154786.43', 15409),
+  ('HGRU11', '2026-11-12', '115.99', '115.99', '114.32', '114.74', '4854189.76', 6751),
+  ('KNCR11', '2026-11-12', '103.94', '104.32', '103.05', '103.45', '27888208.17', 23007),
+  ('BOVA11', '2026-11-12', '167.82', '169.16', '167.38', '168.55', '368520931.49', 42174),
+  ('IVVB11', '2026-11-12', '479.3', '487.39', '478.51', '483.8', '134213750.22', 21313),
+  ('SMAL11', '2026-11-12', '99.39', '100.5', '98.27', '99.05', '474279640.73', 23635),
+  ('HASH11', '2026-11-12', '51.26', '52.27', '50.38', '51.06', '16804856.87', 5639),
+  ('BOVV11', '2026-11-12', '176.88', '177.46', '175.68', '176.97', '54900022.28', 5680),
+  ('DIVO11', '2026-11-12', '122.7', '122.74', '121.3', '122.59', '41065204.95', 8518),
+  ('AAPL34', '2026-11-12', '99.61', '100.85', '99.6', '100.12', '37772892.44', 1399),
+  ('MSFT34', '2026-11-12', '121.75', '124.43', '121', '122.78', '55001540.22', 2558),
+  ('AMZO34', '2026-11-12', '74.45', '76.82', '73.88', '75.24', '44494012.95', 4106),
+  ('GOGL34', '2026-11-12', '136.99', '142.45', '135.81', '140.44', '79292993.3', 7783),
+  ('NVDC34', '2026-11-12', '18.8', '19.63', '17.41', '19.53', '1422976031.67', 42633),
+  ('TSLA34', '2026-11-12', '67.73', '70.75', '67.51', '69.91', '79230801.97', 2492),
+  ('M1TA34', '2026-11-12', '124.8', '126.66', '124.34', '124.97', '25546206.71', 1634),
+  ('JPMC34', '2026-11-12', '191.63', '194.89', '191.63', '194.2', '3253833.92', 615),
+  ('AURA33', '2026-11-12', '147.5', '150', '144.21', '146.3', '122141783.09', 22793),
+  ('JBSS32', '2026-11-12', '68.5', '69.4', '62.93', '66.22', '269878438.71', 42618),
+  ('EVEB31', '2026-11-12', '11.35', '11.4', '10', '10', '111119.53', 67)
+) AS v (ticker, quote_date, open, high, low, close, volume, trades_count)
+LEFT JOIN assets a ON a.ticker = v.ticker
+ON CONFLICT DO NOTHING;
+
+-- 2.5 fixed_income_prices: datas-base de 03/02, 10/03, 05/11, 10/11 e 11/11/2026 dos 10 títulos de 1.7.
+-- Fonte: Tesouro Transparente, PrecoTaxaTesouroDireto.csv (fontes-poc.md, arquivo 6; seção 2.6).
+-- Taxas da manhã em % ÷ 100 (fração ao ano); PU de compra e de venda da manhã.
+INSERT INTO fixed_income_prices (asset_id, base_date, buy_rate, sell_rate, buy_price, sell_price)
+SELECT b.asset_id, v.base_date::date, v.buy_rate::numeric, v.sell_rate::numeric, v.buy_price::numeric, v.sell_price::numeric
+FROM (VALUES
+  ('Tesouro Selic', '2027-03-01', '2026-02-03', '0.0002', '0.0003', '18323.32', '18311.23'),
+  ('Tesouro Selic', '2027-03-01', '2026-03-10', '0.00', '0.0001', '18559.93', '18547.86'),
+  ('Tesouro Selic', '2027-03-01', '2026-11-05', '0.0002', '0.0003', '20240.75', '20229.76'),
+  ('Tesouro Selic', '2027-03-01', '2026-11-10', '0.0002', '0.0003', '20271.62', '20260.66'),
+  ('Tesouro Selic', '2027-03-01', '2026-11-11', '0.0002', '0.0003', '20281.94', '20270.97'),
+  ('Tesouro Selic', '2029-03-01', '2026-02-03', '0.0006', '0.0007', '18292.29', '18276.54'),
+  ('Tesouro Selic', '2029-03-01', '2026-03-10', '0.0006', '0.0007', '18530.01', '18514.25'),
+  ('Tesouro Selic', '2029-03-01', '2026-11-05', '0.0006', '0.0007', '20216.19', '20201.19'),
+  ('Tesouro Selic', '2029-03-01', '2026-11-10', '0.0005', '0.0006', '20248.13', '20233.12'),
+  ('Tesouro Selic', '2029-03-01', '2026-11-11', '0.0005', '0.0006', '20258.59', '20243.58'),
+  ('Tesouro Prefixado', '2028-01-01', '2026-02-03', '0.1263', '0.1275', '798.41', '796.42'),
+  ('Tesouro Prefixado', '2028-01-01', '2026-03-10', '0.1305', '0.1317', '801.73', '799.80'),
+  ('Tesouro Prefixado', '2028-01-01', '2026-11-05', '0.1436', '0.1448', '857.37', '855.88'),
+  ('Tesouro Prefixado', '2028-01-01', '2026-11-10', '0.1408', '0.142', '861.13', '859.65'),
+  ('Tesouro Prefixado', '2028-01-01', '2026-11-11', '0.1413', '0.1425', '861.15', '859.68'),
+  ('Tesouro Prefixado com Juros Semestrais', '2031-01-01', '2026-02-03', '0.1322', '0.1334', '904.30', '900.14'),
+  ('Tesouro Prefixado com Juros Semestrais', '2031-01-01', '2026-03-10', '0.1362', '0.1374', '902.48', '898.42'),
+  ('Tesouro Prefixado com Juros Semestrais', '2031-01-01', '2026-11-05', '0.1526', '0.1538', '887.07', '883.54'),
+  ('Tesouro Prefixado com Juros Semestrais', '2031-01-01', '2026-11-10', '0.1496', '0.1508', '896.21', '892.65'),
+  ('Tesouro Prefixado com Juros Semestrais', '2031-01-01', '2026-11-11', '0.1501', '0.1513', '895.43', '891.87'),
+  ('Tesouro IPCA+', '2029-05-15', '2026-02-03', '0.0756', '0.0768', '3629.01', '3614.49'),
+  ('Tesouro IPCA+', '2029-05-15', '2026-03-10', '0.0765', '0.0777', '3667.89', '3653.14'),
+  ('Tesouro IPCA+', '2029-05-15', '2026-11-05', '0.0776', '0.0788', '3962.27', '3949.84'),
+  ('Tesouro IPCA+', '2029-05-15', '2026-11-10', '0.0751', '0.0763', '3990.06', '3977.60'),
+  ('Tesouro IPCA+', '2029-05-15', '2026-11-11', '0.0746', '0.0758', '3996.08', '3983.62'),
+  ('Tesouro IPCA+', '2035-05-15', '2026-02-03', '0.0736', '0.0748', '2389.62', '2364.25'),
+  ('Tesouro IPCA+', '2035-05-15', '2026-03-10', '0.0746', '0.0758', '2400.72', '2375.19'),
+  ('Tesouro IPCA+', '2035-05-15', '2026-11-05', '0.0794', '0.0806', '2500.90', '2476.57'),
+  ('Tesouro IPCA+', '2035-05-15', '2026-11-10', '0.0771', '0.0783', '2549.56', '2524.76'),
+  ('Tesouro IPCA+', '2035-05-15', '2026-11-11', '0.077', '0.0782', '2552.48', '2527.66'),
+  ('Tesouro IPCA+ com Juros Semestrais', '2032-08-15', '2026-02-03', '0.0757', '0.0769', '4379.00', '4351.65'),
+  ('Tesouro IPCA+ com Juros Semestrais', '2032-08-15', '2026-03-10', '0.0765', '0.0777', '4283.25', '4255.64'),
+  ('Tesouro IPCA+ com Juros Semestrais', '2032-08-15', '2026-11-05', '0.0789', '0.0801', '4447.21', '4421.74'),
+  ('Tesouro IPCA+ com Juros Semestrais', '2032-08-15', '2026-11-10', '0.0767', '0.0779', '4496.79', '4471.06'),
+  ('Tesouro IPCA+ com Juros Semestrais', '2032-08-15', '2026-11-11', '0.0764', '0.0776', '4504.47', '4478.70'),
+  ('Tesouro IGPM+ com Juros Semestrais', '2031-01-01', '2026-02-03', '0.0796', '0.0808', '7567.19', '7532.01'),
+  ('Tesouro IGPM+ com Juros Semestrais', '2031-01-01', '2026-03-10', '0.0791', '0.0803', '7575.95', '7541.90'),
+  ('Tesouro IGPM+ com Juros Semestrais', '2031-01-01', '2026-11-05', '0.0782', '0.0794', '8015.82', '7981.58'),
+  ('Tesouro IGPM+ com Juros Semestrais', '2031-01-01', '2026-11-10', '0.0767', '0.0779', '8071.67', '8037.28'),
+  ('Tesouro IGPM+ com Juros Semestrais', '2031-01-01', '2026-11-11', '0.0764', '0.0776', '8083.81', '8049.40'),
+  ('Tesouro Educa+', '2030-12-15', '2026-02-03', '0.0777', '0.0789', '3790.99', '3779.89'),
+  ('Tesouro Educa+', '2030-12-15', '2026-03-10', '0.0781', '0.0793', '3761.85', '3750.56'),
+  ('Tesouro Educa+', '2030-12-15', '2026-11-05', '0.076', '0.0772', '3437.43', '3428.76'),
+  ('Tesouro Educa+', '2030-12-15', '2026-11-10', '0.0735', '0.0747', '3457.09', '3448.41'),
+  ('Tesouro Educa+', '2030-12-15', '2026-11-11', '0.0729', '0.0741', '3462.03', '3453.36'),
+  ('Tesouro Renda+ Aposentadoria Extra', '2049-12-15', '2026-02-03', '0.0721', '0.0733', '1900.37', '1875.21'),
+  ('Tesouro Renda+ Aposentadoria Extra', '2049-12-15', '2026-03-10', '0.0721', '0.0733', '1925.22', '1899.69'),
+  ('Tesouro Renda+ Aposentadoria Extra', '2049-12-15', '2026-11-05', '0.0767', '0.0779', '1985.68', '1961.44'),
+  ('Tesouro Renda+ Aposentadoria Extra', '2049-12-15', '2026-11-10', '0.0751', '0.0763', '2020.06', '1995.31'),
+  ('Tesouro Renda+ Aposentadoria Extra', '2049-12-15', '2026-11-11', '0.0753', '0.0765', '2016.75', '1992.06')
+) AS v (type_name, maturity_date, base_date, buy_rate, sell_rate, buy_price, sell_price)
+LEFT JOIN fixed_income_types t ON t.name = v.type_name
+LEFT JOIN fixed_income_bonds b ON b.fixed_income_type_id = t.id AND b.maturity_date = v.maturity_date::date
+ON CONFLICT DO NOTHING;
+
+-- 2.6 fii_monthly_reports: informes de 08/2026 e 09/2026 dos 8 FIIs de 1.6, última versão de cada mês.
+-- Fonte: CVM, informe mensal de FII, arquivo complemento (fontes-poc.md, arquivo extra; seção 2.7)
+--   https://dados.cvm.gov.br/dados/FII/DOC/INF_MENSAL/DADOS/inf_mensal_fii_2026.zip
+-- Fora: XPML11 09/2026, com Percentual_Dividend_Yield_Mes negativo (−0,001103) e CHECK >= 0 (achado F11).
+-- VISC11: Cotas_Emitidas 28828640.0000073 na fonte, gravado 28828640 (shares_outstanding é inteiro).
+INSERT INTO fii_monthly_reports (id, issuer_id, reference_month, version, net_worth, shares_outstanding,
+                                 shareholders_count, dividend_yield_month)
+SELECT v.id::uuid, i.id, v.reference_month::date, v.version, v.net_worth::numeric, v.shares_outstanding,
+       v.shareholders_count, v.dividend_yield_month::numeric
+FROM (VALUES
+  ('00000000-0000-0000-0000-000000001901', '11839593000109', '2026-08-01', 2, '7568317626.83', 70940261, 525374, '0.008425'), -- BTLG11
+  ('00000000-0000-0000-0000-000000001902', '11839593000109', '2026-09-01', 1, '7535098792.61', 70940261, 537579, '0.006876'), -- BTLG11
+  ('00000000-0000-0000-0000-000000001903', '11728688000147', '2026-08-01', 2, '7567668488.14', 45601713, 608345, '0.007027'), -- HGLG11
+  ('00000000-0000-0000-0000-000000001904', '11728688000147', '2026-09-01', 1, '7546017797.39', 45601713, 613837, '0.007052'), -- HGLG11
+  ('00000000-0000-0000-0000-000000001905', '29641226000153', '2026-08-01', 1, '3181472851.52', 24834204, 232516, '0.00741'), -- HGRU11
+  ('00000000-0000-0000-0000-000000001906', '29641226000153', '2026-09-01', 1, '3176116740.57', 24834204, 233809, '0.007417'), -- HGRU11
+  ('00000000-0000-0000-0000-000000001907', '16706958000132', '2026-08-01', 2, '10991179817.17', 107089622, 586131, '0.011217'), -- KNCR11
+  ('00000000-0000-0000-0000-000000001908', '16706958000132', '2026-09-01', 1, '10984431830.65', 107089622, 593709, '0.01101'), -- KNCR11
+  ('00000000-0000-0000-0000-000000001909', '12005956000165', '2026-08-01', 2, '4613026520.42', 28204047, 313382, '0.006733'), -- KNRI11
+  ('00000000-0000-0000-0000-000000001910', '12005956000165', '2026-09-01', 1, '4615296750.95', 28204047, 313851, '0.006725'), -- KNRI11
+  ('00000000-0000-0000-0000-000000001911', '97521225000125', '2026-08-01', 1, '5252427199.90', 567206273, 1529305, '0.010126'), -- MXRF11
+  ('00000000-0000-0000-0000-000000001912', '97521225000125', '2026-09-01', 1, '5304823085.04', 567206273, 1570595, '0.010614'), -- MXRF11
+  ('00000000-0000-0000-0000-000000001913', '17554274000125', '2026-08-01', 1, '3328225550.62', 28828640, 345414, '0.007298'), -- VISC11, cotas na fonte 28828640.0000073
+  ('00000000-0000-0000-0000-000000001914', '17554274000125', '2026-09-01', 1, '3338022866.46', 28828640, 346772, '0.007298'), -- VISC11, cotas na fonte 28828640.0000073
+  ('00000000-0000-0000-0000-000000001915', '28757546000100', '2026-08-01', 2, '6902667484.70', 64308055, 785753, '0.008757') -- XPML11
+) AS v (id, cnpj, reference_month, version, net_worth, shares_outstanding, shareholders_count, dividend_yield_month)
+LEFT JOIN issuers i ON i.cnpj = v.cnpj
+ON CONFLICT (issuer_id, reference_month) DO NOTHING;
+
+-- 2.7 fii_quarterly_reports + fii_report_properties: informes de 31/03 e 30/06/2026, versão publicada.
+-- Fonte: CVM, informe trimestral de FII (arquivos geral e imovel)
+--   https://dados.cvm.gov.br/dados/FII/DOC/INF_TRIMESTRAL/DADOS/inf_trimestral_fii_2026.zip
+--   baixado em 13/11/2026 08:52 (BRT), SHA-256 deb46b0607fef5ae1a3da22cc925552a1e9cefbcafb684d8dcb76cf91e6e53f5.
+-- Imóveis: item_number = posição da linha no informe. HGLG11 e KNRI11 (tijolo, renda acabados), MXRF11 (venda
+-- acabados) e o FII Opportunity (1.3), o único da fonte com as 4 classes; KNCR11 (papel) não tem imóveis.
+-- Classe: "Imóveis para renda acabados" → RENT_FINISHED; "renda em construção" → RENT_UNDER_CONSTRUCTION;
+-- "venda acabados" → SALE_FINISHED; "venda em construção" → SALE_UNDER_CONSTRUCTION. "-" ou vazio → NULL.
+INSERT INTO fii_quarterly_reports (id, issuer_id, reference_date, version)
+SELECT v.id::uuid, i.id, v.reference_date::date, v.version
+FROM (VALUES
+  ('00000000-0000-0000-0000-000000002001', '11839593000109', '2026-03-31', 2), -- BTLG11, entregue em 2026-05-26
+  ('00000000-0000-0000-0000-000000002002', '11839593000109', '2026-06-30', 1), -- BTLG11, entregue em 2026-08-13
+  ('00000000-0000-0000-0000-000000002003', '01235622000161', '2026-06-30', 1), -- FTCE11, entregue em 2026-08-13
+  ('00000000-0000-0000-0000-000000002004', '11728688000147', '2026-03-31', 2), -- HGLG11, entregue em 2026-05-19
+  ('00000000-0000-0000-0000-000000002005', '11728688000147', '2026-06-30', 1), -- HGLG11, entregue em 2026-08-13
+  ('00000000-0000-0000-0000-000000002006', '29641226000153', '2026-03-31', 2), -- HGRU11, entregue em 2026-05-19
+  ('00000000-0000-0000-0000-000000002007', '29641226000153', '2026-06-30', 1), -- HGRU11, entregue em 2026-08-13
+  ('00000000-0000-0000-0000-000000002008', '16706958000132', '2026-03-31', 1), -- KNCR11, entregue em 2026-05-14
+  ('00000000-0000-0000-0000-000000002009', '16706958000132', '2026-06-30', 1), -- KNCR11, entregue em 2026-08-14
+  ('00000000-0000-0000-0000-000000002010', '12005956000165', '2026-03-31', 1), -- KNRI11, entregue em 2026-05-15
+  ('00000000-0000-0000-0000-000000002011', '12005956000165', '2026-06-30', 1), -- KNRI11, entregue em 2026-08-14
+  ('00000000-0000-0000-0000-000000002012', '97521225000125', '2026-03-31', 1), -- MXRF11, entregue em 2026-05-14
+  ('00000000-0000-0000-0000-000000002013', '97521225000125', '2026-06-30', 1), -- MXRF11, entregue em 2026-08-13
+  ('00000000-0000-0000-0000-000000002014', '17554274000125', '2026-03-31', 3), -- VISC11, entregue em 2026-05-19
+  ('00000000-0000-0000-0000-000000002015', '17554274000125', '2026-06-30', 1), -- VISC11, entregue em 2026-08-13
+  ('00000000-0000-0000-0000-000000002016', '28757546000100', '2026-03-31', 1), -- XPML11, entregue em 2026-05-14
+  ('00000000-0000-0000-0000-000000002017', '28757546000100', '2026-06-30', 2) -- XPML11, entregue em 2026-08-14
+) AS v (id, cnpj, reference_date, version)
+LEFT JOIN issuers i ON i.cnpj = v.cnpj
+ON CONFLICT (issuer_id, reference_date) DO NOTHING;
+
+INSERT INTO fii_report_properties (fii_quarterly_report_id, item_number, name, address, property_class, area,
+                                   vacancy_rate, delinquency_rate, revenue_share, leased_rate)
+SELECT r.id, v.item_number, v.name, v.address, v.property_class::property_class, v.area::numeric,
+       v.vacancy_rate::numeric, v.delinquency_rate::numeric, v.revenue_share::numeric, v.leased_rate::numeric
+FROM (VALUES
+  ('11728688000147', '2026-06-30', 1, 'Itupeva G200', 'Estrada Joaquim Bueno Neto, 9835, Itupeva, SP', 'RENT_FINISHED', '89976.04', '0', '0', '0.031818', NULL), -- HGLG11
+  ('11728688000147', '2026-06-30', 2, 'Bralog - CLCR', '-', 'RENT_FINISHED', '48964.10', '0', '0', '0.019892', NULL), -- HGLG11
+  ('11728688000147', '2026-06-30', 3, 'HGLG Extrema II Fernão Dias', 'Rua Maria Margarida Pinto Dona Belinha, nº 742, pavilhão B, módulo 3, Bairro dos Pires', 'RENT_FINISHED', '57437.15', '0', '0', '0.026315', NULL), -- HGLG11
+  ('11728688000147', '2026-06-30', 4, 'Vinhedo', 'Avenida das Indústrias, s/n, CPI 5000, Vinhedo, SP', 'RENT_FINISHED', '132352.72', '0', '0', '0.088266', NULL), -- HGLG11
+  ('11728688000147', '2026-06-30', 5, 'Syslog', 'Parque Duque, Duque de Caxias - RJ, 25085-009', 'RENT_FINISHED', '27946.44', '0.09816', '0', '0.008841', NULL), -- HGLG11
+  ('11728688000147', '2026-06-30', 6, 'Itupeva G300', 'Estrada Joaquim Bueno Neto, 9835, Itupeva, SP', 'RENT_FINISHED', '69743.60', '0', '0', '0.022828', NULL), -- HGLG11
+  ('12005956000165', '2026-06-30', 1, 'Buenos Aires Corporate', 'Rua Buenos Aires, 15, Centro, Rio de Janeiro - RJ', 'RENT_FINISHED', '6886.88', '0.01851', '0.00465198016020995', '0.002941', NULL), -- KNRI11
+  ('12005956000165', '2026-06-30', 2, 'Boulevard Corporate Tower', 'Avenida dos Andradas, 3000, Santa Efigênia, Belo Horizonte - MG', 'RENT_FINISHED', '20426.18', '0', '0', '0.063043', NULL), -- KNRI11
+  ('97521225000125', '2026-06-30', 1, 'ST Louis - Unidade 23', 'Rua Franz Schubert, 180, Sem Complemento, Jardim Paulistano, São Paulo/SP, Brasil, 01454-020', 'SALE_FINISHED', '215.00', NULL, NULL, NULL, NULL), -- MXRF11
+  ('97521225000125', '2026-06-30', 2, 'Edificio Centro Executivo do Paco', 'Avenida Jose Caballero, 283, Sem Complemento, Vila Bastos, Santo André/SP, Brasil, 09040-210', 'SALE_FINISHED', '258.52', NULL, NULL, NULL, NULL), -- MXRF11
+  ('01235622000161', '2026-06-30', 1, 'ÍCONO PARQUE - FLAMENGO', 'R. Machado de Assis, 40 - Flamengo, Rio de Janeiro - RJ, 22220-060', 'RENT_FINISHED', '2082.62', '0.8333', '0', '0.090622', NULL), -- FTCE11
+  ('01235622000161', '2026-06-30', 26, 'PISCINA DE ONDAS', 'Baia Formosa, em zona urbana do Município de Armação dos Búzios/RJ', 'RENT_UNDER_CONSTRUCTION', NULL, NULL, NULL, NULL, '0'), -- FTCE11
+  ('01235622000161', '2026-06-30', 45, 'BARAO DA TORRE, 662', 'Rua Barão da Torre, 662 - Ipanema - Rio de Janeiro - RJ', 'SALE_UNDER_CONSTRUCTION', NULL, NULL, NULL, NULL, NULL), -- FTCE11
+  ('01235622000161', '2026-06-30', 55, 'ARETÊ - TORIBA LESTE (SUL A/B/C)', 'Praia Rasa, Búzios - RJ', 'SALE_FINISHED', NULL, NULL, NULL, NULL, NULL) -- FTCE11
+) AS v (cnpj, reference_date, item_number, name, address, property_class, area, vacancy_rate, delinquency_rate,
+        revenue_share, leased_rate)
+LEFT JOIN issuers i ON i.cnpj = v.cnpj
+LEFT JOIN fii_quarterly_reports r ON r.issuer_id = i.id AND r.reference_date = v.reference_date::date
+ON CONFLICT DO NOTHING;
+
+-- 2.8 corporate_filings: o Fato Relevante e o Aviso aos Acionistas mais recentes de 2026 de 8 companhias de 1.3.
+-- Fonte: CVM, documentos IPE de companhias abertas
+--   https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/IPE/DADOS/ipe_cia_aberta_2026.zip
+--   baixado em 13/11/2026 08:52 (BRT), SHA-256 498337a805a0efb1f5856a79fa74c9507141b0b932ddf81f19a627dc46e5279e.
+-- Campos: Categoria → category; Assunto → subject; Data_Referencia → reference_date; Data_Entrega (só a data)
+--   → delivered_at à 00:00 de Brasília; Link_Download → document_url; Protocolo_Entrega → cvm_protocol.
+INSERT INTO corporate_filings (id, issuer_id, category, subject, reference_date, delivered_at, document_url, cvm_protocol)
+SELECT v.id::uuid, i.id, v.category, v.subject, v.reference_date::date,
+       v.delivered_on::timestamp AT TIME ZONE 'America/Sao_Paulo', v.document_url, v.cvm_protocol
+FROM (VALUES
+  ('00000000-0000-0000-0000-000000002101', '33000167000101', 'Fato Relevante', 'Relatório de Produção e Vendas 3T26', '2026-10-28', '2026-10-28', 'https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1581329&numSequencia=1106035&numVersao=1', '009512IPE281020260169680874-88'), -- PETR
+  ('00000000-0000-0000-0000-000000002102', '33000167000101', 'Aviso aos Acionistas', 'Orientações para investidores não residentes, relativas ao pagamento de dividendos referente ao 2T26', '2026-09-29', '2026-09-29', 'https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1572673&numSequencia=1097379&numVersao=1', '009512IPE290920260146059208-14'), -- PETR
+  ('00000000-0000-0000-0000-000000002103', '33592510000154', 'Fato Relevante', 'Atualização de projeções', '2026-07-30', '2026-08-06', 'https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1553067&numSequencia=1077773&numVersao=2', '004170IPE300720260273417956-22'), -- VALE
+  ('00000000-0000-0000-0000-000000002104', '33592510000154', 'Aviso aos Acionistas', 'Vale informa data prevista para a Assembleia Geral Ordinária', '2026-04-30', '2026-01-13', 'https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1466917&numSequencia=991623&numVersao=1', '004170IPE300420260196468480-42'), -- VALE
+  ('00000000-0000-0000-0000-000000002105', '60872504000123', 'Fato Relevante', 'Projeções 2026', '2026-11-03', '2026-11-03', 'https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1583271&numSequencia=1107977&numVersao=1', '019348IPE031120260180348755-03'), -- ITUB
+  ('00000000-0000-0000-0000-000000002106', '60872504000123', 'Aviso aos Acionistas', 'Data de Pagamento de Juros sobre o Capital Próprio', '2026-08-04', '2026-08-04', 'https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1552011&numSequencia=1076717&numVersao=1', '019348IPE040820260147969922-42'), -- ITUB
+  ('00000000-0000-0000-0000-000000002107', '61532644000115', 'Fato Relevante', 'Pagamento de juros sobre capital próprio', '2026-08-10', '2026-08-10', 'https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1555260&numSequencia=1079966&numVersao=1', '007617IPE100820260130671439-81'), -- ITSA
+  ('00000000-0000-0000-0000-000000002108', '61532644000115', 'Aviso aos Acionistas', 'Pagamento das frações de ações decorrentes de bonificação', '2026-02-13', '2026-02-13', 'https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1477730&numSequencia=1002436&numVersao=1', '007617IPE130220260193958382-47'), -- ITSA
+  ('00000000-0000-0000-0000-000000002109', '60746948000112', 'Fato Relevante', 'Renovação do Programa de Recompra de Ações de própria emissão', '2026-10-22', '2026-10-22', 'https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1579530&numSequencia=1104236&numVersao=1', '000906IPE221020260175522911-66'), -- BBDC
+  ('00000000-0000-0000-0000-000000002110', '60746948000112', 'Aviso aos Acionistas', 'Homologação do Aumento de Capital pelo Conselho de Administração', '2026-10-02', '2026-10-02', 'https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1573905&numSequencia=1098611&numVersao=1', '000906IPE021020260118869128-08'), -- BBDC
+  ('00000000-0000-0000-0000-000000002111', '84429695000111', 'Aviso aos Acionistas', 'Dividendos/Juros sobre Capital Próprio', '2026-09-15', '2026-09-15', 'https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1568334&numSequencia=1093040&numVersao=1', '005410IPE150920260191435372-23'), -- WEGE
+  ('00000000-0000-0000-0000-000000002112', '00000000000191', 'Fato Relevante', 'JCP antecipação 3T26', '2026-08-19', '2026-08-19', 'https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1559643&numSequencia=1084349&numVersao=1', '001023IPE190820260184500254-29'), -- BBAS
+  ('00000000-0000-0000-0000-000000002113', '09346601000125', 'Fato Relevante', 'Eleição do Diretor-Presidente da B3', '2026-05-19', '2026-05-19', 'https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1524111&numSequencia=1048817&numVersao=1', '021610IPE190520260130787241-54'), -- B3SA
+  ('00000000-0000-0000-0000-000000002114', '09346601000125', 'Aviso aos Acionistas', 'Dividendos/Juros sobre Capital Próprio', '2026-09-22', '2026-09-22', 'https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1570486&numSequencia=1095192&numVersao=1', '021610IPE220920260177369644-48') -- B3SA
+) AS v (id, cnpj, category, subject, reference_date, delivered_on, document_url, cvm_protocol)
+LEFT JOIN issuers i ON i.cnpj = v.cnpj
+ON CONFLICT (cvm_protocol) DO NOTHING;
+
+-- 2.9 financial_statements + statement_lines: DFP de 2025 de 8 companhias e ITR do 2º tri. de 2026 de 3 delas,
+-- última versão entregue. Linhas: ativo total (1) individual e consolidado; receita (3.01) e lucro (3.11)
+-- consolidados do exercício (ORDEM_EXERC "ÚLTIMO"; no ITR, o acumulado desde 01/01). Valor em reais
+-- (VL_CONTA × 1.000 quando ESCALA_MOEDA = MIL). Ações: arquivo composicao_capital da mesma versão.
+-- Fontes: CVM, https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/dfp_cia_aberta_2025.zip
+--   (SHA-256 a0aaf1ed8be9f7a644d1ec7eb6c17f2d0860f40416c0e3151c2c690329eeb343) e
+--   https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS/itr_cia_aberta_2026.zip
+--   (SHA-256 115227a5d0872e23a532c0f17c17683f7218ac225013eea2901844a92b3fe4a9), baixados em 13/11/2026 (BRT).
+-- Fora: Vale, Itaú, Itaúsa e Ambev, cuja composição do capital está em milhares sem a escala no CSV (achado F12).
+INSERT INTO financial_statements (id, issuer_id, filing_type, fiscal_year_start, period_end, version, filed_at,
+                                  common_shares, preferred_shares, treasury_common, treasury_preferred)
+SELECT v.id::uuid, i.id, v.filing_type::filing_type, v.fiscal_year_start::date, v.period_end::date, v.version,
+       v.filed_on::timestamp AT TIME ZONE 'America/Sao_Paulo', v.common_shares, v.preferred_shares,
+       v.treasury_common, v.treasury_preferred
+FROM (VALUES
+  ('00000000-0000-0000-0000-000000001801', '33000167000101', 'DFP', '2025-01-01', '2025-12-31', 1, '2026-03-05', 7442231382, 5446501379, 0, 0), -- PETR
+  ('00000000-0000-0000-0000-000000001802', '60746948000112', 'DFP', '2025-01-01', '2025-12-31', 2, '2026-03-25', 5303870781, 5288141247, 7500000, 7500000), -- BBDC
+  ('00000000-0000-0000-0000-000000001803', '84429695000111', 'DFP', '2025-01-01', '2025-12-31', 1, '2026-02-25', 4197317998, 0, 1622025, 0), -- WEGE
+  ('00000000-0000-0000-0000-000000001804', '89637490000145', 'DFP', '2025-01-01', '2025-12-31', 1, '2026-02-11', 2312800469, 3928678381, 21208284, 84842901), -- KLBN
+  ('00000000-0000-0000-0000-000000001805', '00000000000191', 'DFP', '2025-01-01', '2025-12-31', 1, '2026-02-11', 5730834040, 0, 22370399, 0), -- BBAS
+  ('00000000-0000-0000-0000-000000001806', '09346601000125', 'DFP', '2025-01-01', '2025-12-31', 1, '2026-02-26', 5266500000, 0, 231938708, 0), -- B3SA
+  ('00000000-0000-0000-0000-000000001807', '16404287000155', 'DFP', '2025-01-01', '2025-12-31', 1, '2026-02-10', 1264117615, 0, 28208827, 0), -- SUZB
+  ('00000000-0000-0000-0000-000000001808', '16670085000155', 'DFP', '2025-01-01', '2025-12-31', 1, '2026-02-26', 1082620720, 41638625, 28136325, 1082149), -- RENT
+  ('00000000-0000-0000-0000-000000001809', '33000167000101', 'ITR', '2026-01-01', '2026-06-30', 1, '2026-08-06', 7442231382, 5446501379, 0, 0), -- PETR
+  ('00000000-0000-0000-0000-000000001810', '84429695000111', 'ITR', '2026-01-01', '2026-06-30', 1, '2026-07-22', 4197317998, 0, 1488307, 0), -- WEGE
+  ('00000000-0000-0000-0000-000000001811', '60746948000112', 'ITR', '2026-01-01', '2026-06-30', 1, '2026-08-05', 5303870781, 5288141247, 10650000, 10650000) -- BBDC
+) AS v (id, cnpj, filing_type, fiscal_year_start, period_end, version, filed_on, common_shares, preferred_shares,
+        treasury_common, treasury_preferred)
+LEFT JOIN issuers i ON i.cnpj = v.cnpj
+ON CONFLICT (issuer_id, period_end) DO NOTHING;
+
+INSERT INTO statement_lines (financial_statement_id, scope, account_code, account_description, value)
+SELECT f.id, v.scope::statement_scope, v.account_code, v.account_description, v.value::numeric
+FROM (VALUES
+  ('33000167000101', '2025-12-31', 'CONSOLIDATED', '1', 'Ativo Total', '1223389000000.00'), -- PETR
+  ('33000167000101', '2025-12-31', 'CONSOLIDATED', '3.01', 'Receita de Venda de Bens e/ou Serviços', '497549000000.00'), -- PETR
+  ('33000167000101', '2025-12-31', 'CONSOLIDATED', '3.11', 'Lucro/Prejuízo Consolidado do Período', '110605000000.00'), -- PETR
+  ('33000167000101', '2025-12-31', 'INDIVIDUAL', '1', 'Ativo Total', '1592566000000.00'), -- PETR
+  ('60746948000112', '2025-12-31', 'CONSOLIDATED', '1', 'Ativo Total', '2330327216000.00'), -- BBDC
+  ('60746948000112', '2025-12-31', 'CONSOLIDATED', '3.01', 'Receitas de Intermediação Financeira', '270183106000.00'), -- BBDC
+  ('60746948000112', '2025-12-31', 'CONSOLIDATED', '3.11', 'Lucro ou Prejuízo Líquido Consolidado do Período', '23924636000.00'), -- BBDC
+  ('60746948000112', '2025-12-31', 'INDIVIDUAL', '1', 'Ativo Total', '1865604850000.00'), -- BBDC
+  ('84429695000111', '2025-12-31', 'CONSOLIDATED', '1', 'Ativo Total', '42645030000.00'), -- WEGE
+  ('84429695000111', '2025-12-31', 'CONSOLIDATED', '3.01', 'Receita de Venda de Bens e/ou Serviços', '40804110000.00'), -- WEGE
+  ('84429695000111', '2025-12-31', 'CONSOLIDATED', '3.11', 'Lucro/Prejuízo Consolidado do Período', '6775958000.00'), -- WEGE
+  ('84429695000111', '2025-12-31', 'INDIVIDUAL', '1', 'Ativo Total', '22689918000.00'), -- WEGE
+  ('89637490000145', '2025-12-31', 'CONSOLIDATED', '1', 'Ativo Total', '63796777000.00'), -- KLBN
+  ('89637490000145', '2025-12-31', 'CONSOLIDATED', '3.01', 'Receita de Venda de Bens e/ou Serviços', '20697507000.00'), -- KLBN
+  ('89637490000145', '2025-12-31', 'CONSOLIDATED', '3.11', 'Lucro/Prejuízo Consolidado do Período', '1678211000.00'), -- KLBN
+  ('89637490000145', '2025-12-31', 'INDIVIDUAL', '1', 'Ativo Total', '56261343000.00'), -- KLBN
+  ('00000000000191', '2025-12-31', 'CONSOLIDATED', '1', 'Ativo Total', '2455143253000.00'), -- BBAS
+  ('00000000000191', '2025-12-31', 'CONSOLIDATED', '3.01', 'Receitas de Intermediação Financeira', '319462104000.00'), -- BBAS
+  ('00000000000191', '2025-12-31', 'CONSOLIDATED', '3.11', 'Lucro ou Prejuízo Líquido Consolidado do Período', '16781938000.00'), -- BBAS
+  ('00000000000191', '2025-12-31', 'INDIVIDUAL', '1', 'Ativo Total', '2414775306000.00'), -- BBAS
+  ('09346601000125', '2025-12-31', 'CONSOLIDATED', '1', 'Ativo Total', '48487647000.00'), -- B3SA
+  ('09346601000125', '2025-12-31', 'CONSOLIDATED', '3.01', 'Receita de Venda de Bens e/ou Serviços', '11121545000.00'), -- B3SA
+  ('09346601000125', '2025-12-31', 'CONSOLIDATED', '3.11', 'Lucro/Prejuízo Consolidado do Período', '4586872000.00'), -- B3SA
+  ('09346601000125', '2025-12-31', 'INDIVIDUAL', '1', 'Ativo Total', '48850175000.00'), -- B3SA
+  ('16404287000155', '2025-12-31', 'CONSOLIDATED', '1', 'Ativo Total', '167935519000.00'), -- SUZB
+  ('16404287000155', '2025-12-31', 'CONSOLIDATED', '3.01', 'Receita de Venda de Bens e/ou Serviços', '50115679000.00'), -- SUZB
+  ('16404287000155', '2025-12-31', 'CONSOLIDATED', '3.11', 'Lucro/Prejuízo Consolidado do Período', '13437687000.00'), -- SUZB
+  ('16404287000155', '2025-12-31', 'INDIVIDUAL', '1', 'Ativo Total', '163908054000.00'), -- SUZB
+  ('16670085000155', '2025-12-31', 'CONSOLIDATED', '1', 'Ativo Total', '85566576000.00'), -- RENT
+  ('16670085000155', '2025-12-31', 'CONSOLIDATED', '3.01', 'Receita de Venda de Bens e/ou Serviços', '41781588000.00'), -- RENT
+  ('16670085000155', '2025-12-31', 'CONSOLIDATED', '3.11', 'Lucro/Prejuízo Consolidado do Período', '1870470000.00'), -- RENT
+  ('16670085000155', '2025-12-31', 'INDIVIDUAL', '1', 'Ativo Total', '69605003000.00'), -- RENT
+  ('33000167000101', '2026-06-30', 'CONSOLIDATED', '1', 'Ativo Total', '1279019000000.00'), -- PETR
+  ('33000167000101', '2026-06-30', 'CONSOLIDATED', '3.01', 'Receita de Venda de Bens e/ou Serviços', '293216000000.00'), -- PETR
+  ('33000167000101', '2026-06-30', 'CONSOLIDATED', '3.11', 'Lucro/Prejuízo Consolidado do Período', '85256000000.00'), -- PETR
+  ('33000167000101', '2026-06-30', 'INDIVIDUAL', '1', 'Ativo Total', '1639874000000.00'), -- PETR
+  ('84429695000111', '2026-06-30', 'CONSOLIDATED', '1', 'Ativo Total', '46666431000.00'), -- WEGE
+  ('84429695000111', '2026-06-30', 'CONSOLIDATED', '3.01', 'Receita de Venda de Bens e/ou Serviços', '19611868000.00'), -- WEGE
+  ('84429695000111', '2026-06-30', 'CONSOLIDATED', '3.11', 'Lucro/Prejuízo Consolidado do Período', '3226245000.00'), -- WEGE
+  ('84429695000111', '2026-06-30', 'INDIVIDUAL', '1', 'Ativo Total', '24914890000.00'), -- WEGE
+  ('60746948000112', '2026-06-30', 'CONSOLIDATED', '1', 'Ativo Total', '2468826550000.00'), -- BBDC
+  ('60746948000112', '2026-06-30', 'CONSOLIDATED', '3.01', 'Receitas de Intermediação Financeira', '155209600000.00'), -- BBDC
+  ('60746948000112', '2026-06-30', 'CONSOLIDATED', '3.11', 'Lucro ou Prejuízo Líquido Consolidado do Período', '12476353000.00'), -- BBDC
+  ('60746948000112', '2026-06-30', 'INDIVIDUAL', '1', 'Ativo Total', '1974637832000.00') -- BBDC
+) AS v (cnpj, period_end, scope, account_code, account_description, value)
+LEFT JOIN issuers i ON i.cnpj = v.cnpj
+LEFT JOIN financial_statements f ON f.issuer_id = i.id AND f.period_end = v.period_end::date
+ON CONFLICT DO NOTHING;
+
+-- 2.10 corporate_events: desdobramentos, grupamentos e bonificações do campo stockDividends do listedCompaniesProxy
+-- (fontes-poc.md, arquivos 4a–4c, e data/raw/b3-empresas/supplement_{BBAS,ITSA,ITUB,KLBN}.json, baixados na PF).
+-- factor da B3: no desdobramento e na bonificação, % de ações novas (100 → 1:2; 10 → 100:110); no grupamento,
+-- ações novas por ação antiga (0,001 → 1000:1) (achado F10). ex_date = pregão seguinte ao lastDatePrior.
+-- Custo atribuído da bonificação (bonus_unit_cost): não está no listedCompaniesProxy; vem do documento da companhia:
+--   BBDC 2022: edital da AGE de 10/03/2022, R$ 4,128165265 por ação (arredondado na 8ª casa);
+--   ITSA 2025: aviso aos acionistas de 15/12/2025, R$ 11,370033972 por ação (arredondado na 8ª casa);
+--   ITUB 2025: fato relevante de 18/12/2025, R$ 40,00 por ação.
+-- Fora: grupamento + desdobramento simultâneos do BBDC em 2009 e grupamento da PETR em 2000 (pregão seguinte em
+-- feriado de Corpus Christi, não conferido); bonificação da KLBN em 2025 (custo da unit só em fonte secundária);
+-- "CIS RED CAP" e "RESG TOTAL RV" sem valor em corporate_event_type (achado F4).
+-- Nenhuma carteira do seed tem posição atravessando um ex_date (o seed-check confere).
+INSERT INTO corporate_events (id, asset_id, type, ex_date, ratio_from, ratio_to, bonus_unit_cost, source)
+SELECT v.id::uuid, a.id, v.type::corporate_event_type, v.ex_date::date, v.ratio_from::numeric, v.ratio_to::numeric,
+       v.bonus_unit_cost::numeric, 'B3'
+FROM (VALUES
+  ('00000000-0000-0000-0000-000000002201', 'PETR3',  'SPLIT',         '2008-04-28', '1',    '2',   NULL),         -- DESDOBRAMENTO 100, lastDatePrior 25/04/2008
+  ('00000000-0000-0000-0000-000000002202', 'PETR4',  'SPLIT',         '2008-04-28', '1',    '2',   NULL),         -- idem
+  ('00000000-0000-0000-0000-000000002203', 'BBAS3',  'SPLIT',         '2024-04-16', '1',    '2',   NULL),         -- DESDOBRAMENTO 100, 15/04/2024
+  ('00000000-0000-0000-0000-000000002204', 'HGLG11', 'SPLIT',         '2018-04-18', '1',    '10',  NULL),         -- DESDOBRAMENTO 900, 17/04/2018
+  ('00000000-0000-0000-0000-000000002205', 'KLBN11', 'SPLIT',         '2014-03-25', '1',    '5',   NULL),         -- DESDOBRAMENTO 400, 24/03/2014
+  ('00000000-0000-0000-0000-000000002206', 'BBAS3',  'REVERSE_SPLIT', '2004-01-26', '1000', '1',   NULL),         -- GRUPAMENTO 0,001, 23/01/2004
+  ('00000000-0000-0000-0000-000000002207', 'ITUB4',  'REVERSE_SPLIT', '2011-11-01', '100',  '1',   NULL),         -- GRUPAMENTO 0,01, 31/10/2011
+  ('00000000-0000-0000-0000-000000002208', 'BBDC3',  'BONUS',         '2022-04-19', '100',  '110', '4.12816527'), -- BONIFICACAO 10, 18/04/2022
+  ('00000000-0000-0000-0000-000000002209', 'BBDC4',  'BONUS',         '2022-04-19', '100',  '110', '4.12816527'), -- idem
+  ('00000000-0000-0000-0000-000000002210', 'ITSA4',  'BONUS',         '2025-12-19', '100',  '102', '11.37003397'), -- BONIFICACAO 2, 18/12/2025
+  ('00000000-0000-0000-0000-000000002211', 'ITUB4',  'BONUS',         '2025-12-26', '100',  '103', '40.00')       -- BONIFICACAO 3, 23/12/2025
+) AS v (id, ticker, type, ex_date, ratio_from, ratio_to, bonus_unit_cost)
+LEFT JOIN assets a ON a.ticker = v.ticker
+ON CONFLICT (asset_id, type, ex_date) DO NOTHING;
+
+-- 2.11 indicators: catálogo de indicadores da análise (S3/S4). Fórmula sobre os dados do ER; percentuais como
+-- fração 0–1. Definições usuais de análise fundamentalista (Investidor10, uma das referências do tema).
+INSERT INTO indicators (id, code, name, indicator_group, formula, unit, applies_to) VALUES
+  ('00000000-0000-0000-0000-000000002301', 'PL',          'P/L',                        'VALUATION',     'Preço da ação / lucro por ação (LPA)', 'RATIO', 'STOCK'),
+  ('00000000-0000-0000-0000-000000002302', 'PVP',         'P/VP',                       'VALUATION',     'Preço da ação / valor patrimonial por ação (VPA)', 'RATIO', 'STOCK'),
+  ('00000000-0000-0000-0000-000000002303', 'DY',          'Dividend yield',             'VALUATION',     'Proventos por ação com data-com nos últimos 12 meses / preço da ação', 'PERCENT', 'STOCK'),
+  ('00000000-0000-0000-0000-000000002304', 'EV_EBITDA',   'EV/EBITDA',                  'VALUATION',     '(Valor de mercado + dívida líquida) / EBITDA dos últimos 12 meses', 'RATIO', 'STOCK'),
+  ('00000000-0000-0000-0000-000000002305', 'LPA',         'Lucro por ação',             'VALUATION',     'Lucro líquido dos últimos 12 meses / (ações emitidas − ações em tesouraria)', 'CURRENCY', 'STOCK'),
+  ('00000000-0000-0000-0000-000000002306', 'VPA',         'Valor patrimonial por ação', 'VALUATION',     'Patrimônio líquido / (ações emitidas − ações em tesouraria)', 'CURRENCY', 'STOCK'),
+  ('00000000-0000-0000-0000-000000002307', 'MARG_LIQ',    'Margem líquida',             'EFFICIENCY',    'Lucro líquido / receita líquida, últimos 12 meses', 'PERCENT', 'STOCK'),
+  ('00000000-0000-0000-0000-000000002308', 'MARG_EBITDA', 'Margem EBITDA',              'EFFICIENCY',    'EBITDA / receita líquida, últimos 12 meses', 'PERCENT', 'STOCK'),
+  ('00000000-0000-0000-0000-000000002309', 'ROE',         'ROE',                        'PROFITABILITY', 'Lucro líquido dos últimos 12 meses / patrimônio líquido', 'PERCENT', 'STOCK'),
+  ('00000000-0000-0000-0000-000000002310', 'ROA',         'ROA',                        'PROFITABILITY', 'Lucro líquido dos últimos 12 meses / ativo total', 'PERCENT', 'STOCK'),
+  ('00000000-0000-0000-0000-000000002311', 'DL_EBITDA',   'Dívida líquida / EBITDA',    'DEBT',          '(Empréstimos e financiamentos − caixa e equivalentes) / EBITDA dos últimos 12 meses', 'RATIO', 'STOCK'),
+  ('00000000-0000-0000-0000-000000002312', 'CAGR_LUC5',   'CAGR do lucro (5 anos)',     'GROWTH',        '(Lucro líquido do último exercício / lucro líquido de 5 exercícios antes)^(1/5) − 1', 'PERCENT', 'STOCK'),
+  ('00000000-0000-0000-0000-000000002313', 'FII_DY',      'Dividend yield do FII',      'FII',           'Rendimentos por cota com data-com nos últimos 12 meses / preço da cota', 'PERCENT', 'FII'),
+  ('00000000-0000-0000-0000-000000002314', 'FII_PVP',     'P/VP do FII',                'FII',           'Preço da cota / (patrimônio líquido / cotas emitidas) do último informe mensal', 'RATIO', 'FII'),
+  ('00000000-0000-0000-0000-000000002315', 'FII_VAC',     'Vacância física',            'FII',           'Média da vacância dos imóveis de renda acabados do último informe trimestral, ponderada pela área', 'PERCENT', 'FII')
+ON CONFLICT (code) DO NOTHING;
+
+-- ============================================================ 3. imposto de renda (P0)
+-- Normas e domínio fechado em database/docs/memoria-calculo.md, seções 1 e 3: 4 categorias reais (todas com DARF 6015)
+-- e a regra vigente de cada uma desde 01/01/2005 (Lei 11.033/2004). Abaixo das ±10 tuplas pelo mesmo critério da D60d.
+INSERT INTO tax_categories (id, code, name, revenue_code) VALUES
+  ('00000000-0000-0000-0000-000000001501', 'COMMON_STOCK', 'Operações comuns com ações no mercado à vista', '6015'),
+  ('00000000-0000-0000-0000-000000001502', 'COMMON_OTHER', 'Operações comuns com ETF, BDR e demais ativos', '6015'),
+  ('00000000-0000-0000-0000-000000001503', 'DAY_TRADE',    'Operações day trade', '6015'),
+  ('00000000-0000-0000-0000-000000001504', 'FII',          'Alienação de cotas de fundos imobiliários', '6015')
+ON CONFLICT (code) DO NOTHING;
+
+INSERT INTO tax_rules (tax_category_id, effective_from, rate, sales_exemption_limit)
+SELECT c.id, DATE '2005-01-01', v.rate::numeric, v.sales_exemption_limit::numeric
+FROM (VALUES
+  ('COMMON_STOCK', '0.15', '20000.00'), -- R1, R4
+  ('COMMON_OTHER', '0.15', NULL),       -- R1, R5, R6
+  ('DAY_TRADE',    '0.20', NULL),       -- R2
+  ('FII',          '0.20', NULL)        -- R3
+) AS v (code, rate, sales_exemption_limit)
+LEFT JOIN tax_categories c ON c.code = v.code::tax_category_code
+ON CONFLICT (tax_category_id, effective_from) DO NOTHING;
+
+-- ============================================================ 4. usuários (fictícios, P1-2)
+-- Dados fictícios e coerentes entre si; preços das operações são os da massa do handoff (claude/handoff-ux.md, D48)
+-- ou valores plausíveis, exceto renda fixa (PU de compra do Tesouro na data, 2.5) e cripto (fechamento da Foxbit, 2.3).
+-- Contas, IR e proventos conferidos em database/docs/memoria-calculo.md, seção 7, e em database/tests/seed-check.sql.
+-- Pai achado pela chave natural (e-mail, nome da carteira, ticker, nome da corretora); se faltar, o NOT NULL falha.
+-- Senha de todos os usuários do seed (só desenvolvimento): demo-carteira-2026. Hash argon2id com os parâmetros de
+-- backend/src/modules/users/infrastructure/argon2-password-hasher.ts (19 MiB, 2 iterações, 1 via).
+-- Casos de LEFT JOIN: Gabriela sem carteira; "Testes FII" e "Reserva" sem operações; Dividendos sem carteira ideal.
+
+-- Chave de ativo das seções 4 e 5: ticker, ou "<tipo de título> <vencimento>" para renda fixa (sem ticker, RN03).
+CREATE TEMP VIEW seed_asset_key AS
+  SELECT ticker AS key, id FROM assets WHERE ticker IS NOT NULL
+  UNION ALL
+  SELECT t.name || ' ' || b.maturity_date, b.asset_id
+  FROM fixed_income_bonds b JOIN fixed_income_types t ON t.id = b.fixed_income_type_id;
+
+INSERT INTO users (id, name, email, password_hash, created_at)
+SELECT v.id::uuid, v.name, v.email, v.password_hash, v.created_at::timestamptz
+FROM (VALUES
+  ('00000000-0000-0000-0000-000000001001', 'Conta de Demonstração', 'demo@carteirab3.dev', '$argon2id$v=19$m=19456,p=1,t=2$bkCOqkD4dy5ZYfyBeledrw$PENbUhTIZsmrJrf7hZ/+7WH4efEYbBJe8FI/tj3rBls', '2025-02-01 09:00:00-03'),
+  ('00000000-0000-0000-0000-000000001002', 'Bruno Almeida', 'bruno.almeida@example.com', '$argon2id$v=19$m=19456,p=1,t=2$WeUIopoMBT8SdnzA34gZBQ$kKqPKQkxq8H/W1eMqk3QGxpt8UHBcj7cyVjr+Z60Kdk', '2025-12-15 18:20:00-03'),
+  ('00000000-0000-0000-0000-000000001003', 'Carla Souza', 'carla.souza@example.com', '$argon2id$v=19$m=19456,p=1,t=2$+essLD3zbVSA/o7JLAnS4w$BLf2+kVvT21BIAXptxzrAkB760oT9oAUJz0QLRCZUp4', '2025-11-28 10:05:00-03'),
+  ('00000000-0000-0000-0000-000000001004', 'Diego Ferreira', 'diego.ferreira@example.com', '$argon2id$v=19$m=19456,p=1,t=2$dQH6TfCAc75/0ZH3JqLvBw$ol7kkHhgc2wWM5OsQe3R+Qo3mNQvuKpjfZ2MCkXHiI0', '2026-01-18 21:40:00-03'),
+  ('00000000-0000-0000-0000-000000001005', 'Eduarda Lima', 'eduarda.lima@example.com', '$argon2id$v=19$m=19456,p=1,t=2$aGqqWWdMSYKA/qoFmxK6+Q$dGJdjOZlE8uHfJhuIQgN3V//2OJrFVOBAcQoS3gHY+s', '2026-01-30 08:15:00-03'),
+  ('00000000-0000-0000-0000-000000001006', 'Felipe Rocha', 'felipe.rocha@example.com', '$argon2id$v=19$m=19456,p=1,t=2$RbR11Bk4EQnKjK4kg0HYpA$gAtAyE+/5NbLWKd990XoweRGEhP7rBLB+Iojf6raMMg', '2025-12-30 14:00:00-03'),
+  ('00000000-0000-0000-0000-000000001007', 'Gabriela Martins', 'gabriela.martins@example.com', '$argon2id$v=19$m=19456,p=1,t=2$tYP11tWNbnYEks46fiV7eQ$eNi4PT9rC3zGwU44cD4FuUyHzvzf6JMrHLzw4CL5Db0', '2026-09-14 19:30:00-03'),
+  ('00000000-0000-0000-0000-000000001008', 'Henrique Costa', 'henrique.costa@example.com', '$argon2id$v=19$m=19456,p=1,t=2$DRfttg6VjI1rQE0jOHYtzA$Lsa0PgKvfXcbM2ye4DS7koGghFVFETsr+pDVGotKOJ8', '2026-02-25 12:45:00-03'),
+  ('00000000-0000-0000-0000-000000001009', 'Isabela Nunes', 'isabela.nunes@example.com', '$argon2id$v=19$m=19456,p=1,t=2$f71xZ/TSZKyNNVW1jovrMQ$r0ASQQBo+CCkLbLBDf1k897Zt4ItQ8isJlb96gEgaFg', '2026-01-10 16:10:00-03'),
+  ('00000000-0000-0000-0000-000000001010', 'João Pereira', 'joao.pereira@example.com', '$argon2id$v=19$m=19456,p=1,t=2$z23ZtrT/CGz0H/NO8OkqWQ$7o5qhdpIquL8mDkh/qBO2Iynr/YZr4rT5oboIFJtCeI', '2026-04-28 20:00:00-03')
+) AS v (id, name, email, password_hash, created_at)
+ON CONFLICT (email) DO NOTHING;
+
+-- Carteiras do usuário de demonstração: as três da Lista do Figma (Longo prazo, Dividendos, Testes FII).
+INSERT INTO portfolios (id, user_id, name, created_at)
+SELECT v.id::uuid, u.id, v.name, v.created_at::timestamptz
+FROM (VALUES
+  ('00000000-0000-0000-0000-000000001101', 'demo@carteirab3.dev', 'Longo prazo', '2026-01-05 08:30:00-03'),
+  ('00000000-0000-0000-0000-000000001102', 'demo@carteirab3.dev', 'Dividendos', '2025-02-12 09:10:00-03'),
+  ('00000000-0000-0000-0000-000000001103', 'demo@carteirab3.dev', 'Testes FII', '2026-10-29 17:00:00-03'),
+  ('00000000-0000-0000-0000-000000001104', 'bruno.almeida@example.com', 'Ações BR', '2026-01-10 19:00:00-03'),
+  ('00000000-0000-0000-0000-000000001105', 'carla.souza@example.com', 'Renda FII', '2025-12-01 11:00:00-03'),
+  ('00000000-0000-0000-0000-000000001106', 'diego.ferreira@example.com', 'Internacional', '2026-01-20 22:00:00-03'),
+  ('00000000-0000-0000-0000-000000001107', 'eduarda.lima@example.com', 'Reserva e cripto', '2026-02-01 10:30:00-03'),
+  ('00000000-0000-0000-0000-000000001108', 'felipe.rocha@example.com', 'Corretora XP', '2026-01-02 15:00:00-03'),
+  ('00000000-0000-0000-0000-000000001109', 'henrique.costa@example.com', 'Aposentadoria', '2026-03-01 09:00:00-03'),
+  ('00000000-0000-0000-0000-000000001110', 'henrique.costa@example.com', 'Reserva', '2026-03-01 09:05:00-03'),
+  ('00000000-0000-0000-0000-000000001111', 'isabela.nunes@example.com', 'Carteira principal', '2026-01-12 13:00:00-03'),
+  ('00000000-0000-0000-0000-000000001112', 'joao.pereira@example.com', 'Bolsa e BDR', '2026-05-01 10:00:00-03')
+) AS v (id, email, name, created_at)
+LEFT JOIN users u ON u.email = v.email
+ON CONFLICT (user_id, name) DO NOTHING;
+
+-- Lotes de importação: file_sha256 = SHA-256 do nome do arquivo (arquivo fictício). Só lote confirmado tem operações.
+INSERT INTO import_batches (id, portfolio_id, file_name, file_sha256, status, row_count, imported_at, confirmed_at)
+SELECT v.id::uuid, p.id, v.file_name, v.file_sha256, v.status::import_batch_status, v.row_count,
+       v.imported_at::timestamptz, v.confirmed_at::timestamptz
+FROM (VALUES
+  ('00000000-0000-0000-0000-000000001201', 'felipe.rocha@example.com', 'Corretora XP', 'notas-corretagem-2026-01-02.csv', 'd27055481faa2de2967775d4db8e91428f0a67c378e8b652fd150c47ad14d5a6', 'CONFIRMED', 4, '2026-03-01 10:12:00-03', '2026-03-01 10:15:00-03'),
+  ('00000000-0000-0000-0000-000000001202', 'felipe.rocha@example.com', 'Corretora XP', 'notas-corretagem-2026-06.csv', 'ccdb050fd49c1e80c986e0bccb555ae3ad5ec168b020a65bc83af4cacb97a4c1', 'CONFIRMED', 3, '2026-07-01 20:02:00-03', '2026-07-01 20:04:00-03'),
+  ('00000000-0000-0000-0000-000000001203', 'felipe.rocha@example.com', 'Corretora XP', 'notas-corretagem-2026-06-copia.csv', '4e4b26f38cbc9ac450f0644f0ef0bc5934ad276d2146f793ef606df6666d4d1a', 'DISCARDED', 3, '2026-07-01 20:06:00-03', NULL),
+  ('00000000-0000-0000-0000-000000001204', 'felipe.rocha@example.com', 'Corretora XP', 'notas-corretagem-2026-10.csv', '7a2725b5b26832d03d509e1007797de9414c21851e3893d02a5ec9e0f72f8232', 'PENDING', 2, '2026-11-10 21:30:00-03', NULL),
+  ('00000000-0000-0000-0000-000000001205', 'bruno.almeida@example.com', 'Ações BR', 'extrato-btg-2026-01.csv', 'cdd2fecf51cd476f99340458c74595cc693fd03b8c4c914e4aa6336645695474', 'CONFIRMED', 2, '2026-01-13 19:00:00-03', '2026-01-13 19:01:00-03'),
+  ('00000000-0000-0000-0000-000000001206', 'bruno.almeida@example.com', 'Ações BR', 'extrato-btg-2026-03.csv', '04ccc16bf24d5a7e2b98b038631c7cd3ab60a9a9f1254cf11f071eca2ad11f30', 'DISCARDED', 1, '2026-03-19 08:40:00-03', NULL),
+  ('00000000-0000-0000-0000-000000001207', 'isabela.nunes@example.com', 'Carteira principal', 'notas-genial-2026-01.csv', '06fdc5b243bd3ff34ac47268f6479a08d9facc74bcaf591a31b4b2d46eb58505', 'CONFIRMED', 2, '2026-01-16 12:00:00-03', '2026-01-16 12:03:00-03'),
+  ('00000000-0000-0000-0000-000000001208', 'joao.pereira@example.com', 'Bolsa e BDR', 'notas-santander-2026-05.csv', 'e34ce52216363876bd96de14bb52e8fb99f0d293200c01560fe74abeb745a912', 'CONFIRMED', 2, '2026-05-06 18:30:00-03', '2026-05-06 18:31:00-03'),
+  ('00000000-0000-0000-0000-000000001209', 'diego.ferreira@example.com', 'Internacional', 'notas-inter-2026-11.csv', '95b68e90169cb6b1d6ee8f92d81d6f04616a58f1bf784842c06183f3fe1c41ef', 'PENDING', 3, '2026-11-12 23:10:00-03', NULL),
+  ('00000000-0000-0000-0000-000000001210', 'carla.souza@example.com', 'Renda FII', 'notas-nuinvest-2025-12.csv', 'c927af2bdfa06fb1a46e84e1ca46b145dc0705d7e8997d5c7121a8f908bdbb2b', 'DISCARDED', 2, '2025-12-11 09:00:00-03', NULL)
+) AS v (id, email, portfolio, file_name, file_sha256, status, row_count, imported_at, confirmed_at)
+LEFT JOIN users u ON u.email = v.email
+LEFT JOIN portfolios p ON p.user_id = u.id AND p.name = v.portfolio
+ON CONFLICT (portfolio_id, file_sha256) DO NOTHING;
+
+-- Operações: ORDER BY id dá a sequence na ordem de lançamento (desempate de operações do mesmo dia, RN09).
+-- "Longo prazo": as 9 operações do handoff + Tesouro IPCA+ 2035 e BTC (massa das telas 3 e 4): custo total
+-- R$ 16.151,27 e lucro realizado R$ 693,87 (somas exatas, como a API calcula). O Figma mostra o título com PM de
+-- R$ 3.846,15 e o custo total implica R$ 2.000,00 investidos: preço unitário 2000 ÷ 0,52 = 3846,15384615 (8 casas).
+-- Esse PU não é o de mercado (R$ 2.400,72 na data, 2.5; achado F13).
+INSERT INTO operations (id, portfolio_id, asset_id, broker_id, import_batch_id, type, trade_date, quantity,
+                        unit_price, fees)
+SELECT v.id::uuid, p.id, k.id, b.id, ib.id, v.type::operation_type, v.trade_date::date, v.quantity::numeric,
+       v.unit_price::numeric, v.fees::numeric
+FROM (VALUES
+  ('00000000-0000-0000-0000-000000001301', 'demo@carteirab3.dev', 'Longo prazo', 'PETR4', 'XP Investimentos', NULL, 'BUY', '2026-01-05', '100', '29.95', '5.00'),
+  ('00000000-0000-0000-0000-000000001302', 'demo@carteirab3.dev', 'Longo prazo', 'WEGE3', 'XP Investimentos', NULL, 'BUY', '2026-01-05', '40', '36.00', '4.90'),
+  ('00000000-0000-0000-0000-000000001303', 'demo@carteirab3.dev', 'Longo prazo', 'MXRF11', 'NuInvest', NULL, 'BUY', '2026-01-08', '200', '10.10', '4.00'),
+  ('00000000-0000-0000-0000-000000001304', 'demo@carteirab3.dev', 'Longo prazo', 'ITSA4', 'Rico', NULL, 'BUY', '2026-01-20', '300', '9.85', '6.00'),
+  ('00000000-0000-0000-0000-000000001305', 'demo@carteirab3.dev', 'Longo prazo', 'WEGE3', 'XP Investimentos', NULL, 'SELL', '2026-02-10', '40', '46.55', '4.30'),
+  ('00000000-0000-0000-0000-000000001306', 'demo@carteirab3.dev', 'Longo prazo', 'Tesouro IPCA+ 2035-05-15', 'XP Investimentos', NULL, 'BUY', '2026-03-02', '0.52', '3846.15384615', '0.00'),
+  ('00000000-0000-0000-0000-000000001307', 'demo@carteirab3.dev', 'Longo prazo', 'PETR4', 'XP Investimentos', NULL, 'BUY', '2026-03-14', '50', '36.00', '4.90'),
+  ('00000000-0000-0000-0000-000000001308', 'demo@carteirab3.dev', 'Longo prazo', 'MXRF11', 'NuInvest', NULL, 'SELL', '2026-05-22', '50', '9.88', '0.40'),
+  ('00000000-0000-0000-0000-000000001309', 'demo@carteirab3.dev', 'Longo prazo', 'PETR4', 'XP Investimentos', NULL, 'SELL', '2026-06-02', '50', '38.00', '4.90'),
+  ('00000000-0000-0000-0000-000000001310', 'demo@carteirab3.dev', 'Longo prazo', 'BTC', 'Mercado Bitcoin', NULL, 'BUY', '2026-07-29', '0.0125', '328000.00', '0.00'),
+  ('00000000-0000-0000-0000-000000001311', 'demo@carteirab3.dev', 'Longo prazo', 'BOVA11', 'Rico', NULL, 'BUY', '2026-10-28', '20', '118.30', '3.00'),
+  ('00000000-0000-0000-0000-000000001312', 'demo@carteirab3.dev', 'Dividendos', 'HGLG11', 'NuInvest', NULL, 'BUY', '2025-02-12', '10', '158.40', '1.90'),
+  ('00000000-0000-0000-0000-000000001313', 'demo@carteirab3.dev', 'Dividendos', 'TAEE11', 'XP Investimentos', NULL, 'BUY', '2025-05-06', '30', '35.10', '2.10'),
+  ('00000000-0000-0000-0000-000000001314', 'demo@carteirab3.dev', 'Dividendos', 'HGLG11', 'NuInvest', NULL, 'BUY', '2025-10-20', '10', '155.20', '1.90'),
+  ('00000000-0000-0000-0000-000000001315', 'demo@carteirab3.dev', 'Dividendos', 'BBDC4', 'XP Investimentos', NULL, 'BUY', '2026-01-12', '100', '15.80', '3.20'),
+  ('00000000-0000-0000-0000-000000001316', 'demo@carteirab3.dev', 'Dividendos', 'TAEE11', 'XP Investimentos', NULL, 'BUY', '2026-02-09', '20', '37.60', '1.80'),
+  ('00000000-0000-0000-0000-000000001317', 'demo@carteirab3.dev', 'Dividendos', 'BBDC4', 'Itaú Corretora', NULL, 'BUY', '2026-03-02', '100', '17.10', '3.40'),
+  ('00000000-0000-0000-0000-000000001318', 'bruno.almeida@example.com', 'Ações BR', 'PETR4', 'BTG Pactual', 'extrato-btg-2026-01.csv', 'BUY', '2026-01-12', '800', '30.50', '9.80'),
+  ('00000000-0000-0000-0000-000000001319', 'bruno.almeida@example.com', 'Ações BR', 'VALE3', 'BTG Pactual', 'extrato-btg-2026-01.csv', 'BUY', '2026-01-12', '300', '62.00', '8.50'),
+  ('00000000-0000-0000-0000-000000001320', 'bruno.almeida@example.com', 'Ações BR', 'PETR4', 'BTG Pactual', NULL, 'SELL', '2026-03-18', '800', '36.20', '11.20'),
+  ('00000000-0000-0000-0000-000000001321', 'bruno.almeida@example.com', 'Ações BR', 'PETR4', 'BTG Pactual', NULL, 'BUY', '2026-05-04', '400', '33.10', '6.00'),
+  ('00000000-0000-0000-0000-000000001322', 'bruno.almeida@example.com', 'Ações BR', 'VALE3', 'BTG Pactual', NULL, 'SELL', '2026-07-07', '300', '54.00', '6.90'),
+  ('00000000-0000-0000-0000-000000001323', 'bruno.almeida@example.com', 'Ações BR', 'VALE3', 'BTG Pactual', NULL, 'BUY', '2026-08-11', '200', '57.00', '5.00'),
+  ('00000000-0000-0000-0000-000000001324', 'bruno.almeida@example.com', 'Ações BR', 'PETR4', 'BTG Pactual', NULL, 'SELL', '2026-09-15', '400', '38.40', '7.00'),
+  ('00000000-0000-0000-0000-000000001325', 'bruno.almeida@example.com', 'Ações BR', 'VALE3', 'BTG Pactual', NULL, 'SELL', '2026-09-15', '200', '60.00', '5.50'),
+  ('00000000-0000-0000-0000-000000001326', 'bruno.almeida@example.com', 'Ações BR', 'ITUB4', 'XP Investimentos', NULL, 'BUY', '2026-10-05', '200', '39.80', '4.50'),
+  ('00000000-0000-0000-0000-000000001327', 'carla.souza@example.com', 'Renda FII', 'HGLG11', 'NuInvest', NULL, 'BUY', '2025-12-10', '50', '156.00', '4.00'),
+  ('00000000-0000-0000-0000-000000001328', 'carla.souza@example.com', 'Renda FII', 'MXRF11', 'NuInvest', NULL, 'BUY', '2025-12-10', '1000', '9.70', '5.00'),
+  ('00000000-0000-0000-0000-000000001329', 'carla.souza@example.com', 'Renda FII', 'MXRF11', 'NuInvest', NULL, 'SELL', '2026-02-20', '300', '9.85', '1.50'),
+  ('00000000-0000-0000-0000-000000001330', 'carla.souza@example.com', 'Renda FII', 'MXRF11', 'NuInvest', NULL, 'SELL', '2026-04-14', '300', '9.80', '1.50'),
+  ('00000000-0000-0000-0000-000000001331', 'carla.souza@example.com', 'Renda FII', 'KNRI11', 'XP Investimentos', NULL, 'BUY', '2026-06-08', '20', '160.00', '2.00'),
+  ('00000000-0000-0000-0000-000000001332', 'diego.ferreira@example.com', 'Internacional', 'IVVB11', 'Inter DTVM', NULL, 'BUY', '2026-01-22', '50', '380.00', '6.00'),
+  ('00000000-0000-0000-0000-000000001333', 'diego.ferreira@example.com', 'Internacional', 'AAPL34', 'Inter DTVM', NULL, 'BUY', '2026-01-22', '300', '62.00', '5.00'),
+  ('00000000-0000-0000-0000-000000001334', 'diego.ferreira@example.com', 'Internacional', 'IVVB11', 'Inter DTVM', NULL, 'SELL', '2026-02-24', '20', '395.00', '2.50'),
+  ('00000000-0000-0000-0000-000000001335', 'diego.ferreira@example.com', 'Internacional', 'AAPL34', 'Inter DTVM', NULL, 'SELL', '2026-05-12', '300', '55.00', '4.00'),
+  ('00000000-0000-0000-0000-000000001336', 'diego.ferreira@example.com', 'Internacional', 'NVDC34', 'Inter DTVM', NULL, 'BUY', '2026-06-03', '400', '30.00', '5.00'),
+  ('00000000-0000-0000-0000-000000001337', 'diego.ferreira@example.com', 'Internacional', 'NVDC34', 'Inter DTVM', NULL, 'SELL', '2026-08-19', '400', '40.00', '6.00'),
+  ('00000000-0000-0000-0000-000000001338', 'eduarda.lima@example.com', 'Reserva e cripto', 'Tesouro Selic 2029-03-01', 'XP Investimentos', NULL, 'BUY', '2026-02-03', '0.85', '18292.29', '0.00'),
+  ('00000000-0000-0000-0000-000000001339', 'eduarda.lima@example.com', 'Reserva e cripto', 'Tesouro IPCA+ 2029-05-15', 'XP Investimentos', NULL, 'BUY', '2026-03-10', '1.20', '3667.89', '0.00'),
+  ('00000000-0000-0000-0000-000000001340', 'eduarda.lima@example.com', 'Reserva e cripto', 'BTC', 'Foxbit', NULL, 'BUY', '2026-04-02', '0.005', '346388.00', '0.00'),
+  ('00000000-0000-0000-0000-000000001341', 'eduarda.lima@example.com', 'Reserva e cripto', 'ETH', 'Foxbit', NULL, 'BUY', '2026-05-15', '0.25', '11281.80', '0.00'),
+  ('00000000-0000-0000-0000-000000001342', 'eduarda.lima@example.com', 'Reserva e cripto', 'BTC', 'Foxbit', NULL, 'BUY', '2026-09-01', '0.0035', '399998.00', '0.00'),
+  ('00000000-0000-0000-0000-000000001343', 'eduarda.lima@example.com', 'Reserva e cripto', 'ETH', 'Foxbit', NULL, 'SELL', '2026-10-20', '0.1', '12343.30', '0.00'),
+  ('00000000-0000-0000-0000-000000001344', 'eduarda.lima@example.com', 'Reserva e cripto', 'Tesouro Prefixado 2028-01-01', 'XP Investimentos', NULL, 'BUY', '2026-11-05', '2.00', '857.37', '0.00'),
+  ('00000000-0000-0000-0000-000000001345', 'felipe.rocha@example.com', 'Corretora XP', 'ITUB4', 'XP Investimentos', 'notas-corretagem-2026-01-02.csv', 'BUY', '2026-01-08', '300', '33.50', '7.00'),
+  ('00000000-0000-0000-0000-000000001346', 'felipe.rocha@example.com', 'Corretora XP', 'BBAS3', 'XP Investimentos', 'notas-corretagem-2026-01-02.csv', 'BUY', '2026-01-08', '400', '24.10', '7.20'),
+  ('00000000-0000-0000-0000-000000001347', 'felipe.rocha@example.com', 'Corretora XP', 'ITUB4', 'Rico', 'notas-corretagem-2026-01-02.csv', 'BUY', '2026-02-05', '100', '35.00', '3.00'),
+  ('00000000-0000-0000-0000-000000001348', 'felipe.rocha@example.com', 'Corretora XP', 'WEGE3', 'XP Investimentos', 'notas-corretagem-2026-01-02.csv', 'BUY', '2026-02-19', '100', '47.00', '3.50'),
+  ('00000000-0000-0000-0000-000000001349', 'felipe.rocha@example.com', 'Corretora XP', 'ITUB4', 'XP Investimentos', 'notas-corretagem-2026-06.csv', 'SELL', '2026-06-16', '300', '41.00', '9.00'),
+  ('00000000-0000-0000-0000-000000001350', 'felipe.rocha@example.com', 'Corretora XP', 'ITUB4', 'Rico', 'notas-corretagem-2026-06.csv', 'SELL', '2026-06-16', '100', '41.10', '3.20'),
+  ('00000000-0000-0000-0000-000000001351', 'felipe.rocha@example.com', 'Corretora XP', 'BBAS3', 'XP Investimentos', 'notas-corretagem-2026-06.csv', 'SELL', '2026-06-22', '400', '22.00', '6.00'),
+  ('00000000-0000-0000-0000-000000001352', 'felipe.rocha@example.com', 'Corretora XP', 'ITUB4', 'XP Investimentos', NULL, 'BUY', '2026-08-03', '200', '38.50', '4.60'),
+  ('00000000-0000-0000-0000-000000001353', 'henrique.costa@example.com', 'Aposentadoria', 'BOVA11', 'Ágora Investimentos', NULL, 'BUY', '2026-03-03', '100', '128.00', '8.00'),
+  ('00000000-0000-0000-0000-000000001354', 'henrique.costa@example.com', 'Aposentadoria', 'SMAL11', 'Ágora Investimentos', NULL, 'BUY', '2026-03-03', '200', '95.00', '6.00'),
+  ('00000000-0000-0000-0000-000000001355', 'henrique.costa@example.com', 'Aposentadoria', 'BOVA11', 'Ágora Investimentos', NULL, 'SELL', '2026-07-20', '100', '140.00', '9.00'),
+  ('00000000-0000-0000-0000-000000001356', 'henrique.costa@example.com', 'Aposentadoria', 'BOVA11', 'Ágora Investimentos', NULL, 'BUY', '2026-10-14', '50', '118.80', '3.00'),
+  ('00000000-0000-0000-0000-000000001357', 'isabela.nunes@example.com', 'Carteira principal', 'ABEV3', 'Genial Investimentos', 'notas-genial-2026-01.csv', 'BUY', '2026-01-15', '2000', '12.40', '8.00'),
+  ('00000000-0000-0000-0000-000000001358', 'isabela.nunes@example.com', 'Carteira principal', 'RENT3', 'Genial Investimentos', 'notas-genial-2026-01.csv', 'BUY', '2026-01-15', '300', '42.00', '6.00'),
+  ('00000000-0000-0000-0000-000000001359', 'isabela.nunes@example.com', 'Carteira principal', 'ABEV3', 'Genial Investimentos', NULL, 'SELL', '2026-02-12', '1000', '13.60', '5.00'),
+  ('00000000-0000-0000-0000-000000001360', 'isabela.nunes@example.com', 'Carteira principal', 'RENT3', 'Genial Investimentos', NULL, 'SELL', '2026-04-23', '300', '34.00', '4.00'),
+  ('00000000-0000-0000-0000-000000001361', 'isabela.nunes@example.com', 'Carteira principal', 'EGIE3', 'Genial Investimentos', NULL, 'BUY', '2026-06-25', '500', '40.00', '6.00'),
+  ('00000000-0000-0000-0000-000000001362', 'isabela.nunes@example.com', 'Carteira principal', 'ABEV3', 'Genial Investimentos', NULL, 'SELL', '2026-09-24', '1000', '14.20', '6.00'),
+  ('00000000-0000-0000-0000-000000001363', 'isabela.nunes@example.com', 'Carteira principal', 'EGIE3', 'Genial Investimentos', NULL, 'SELL', '2026-09-24', '500', '43.00', '6.00'),
+  ('00000000-0000-0000-0000-000000001364', 'joao.pereira@example.com', 'Bolsa e BDR', 'BBDC4', 'Santander Corretora', 'notas-santander-2026-05.csv', 'BUY', '2026-05-05', '500', '17.20', '5.00'),
+  ('00000000-0000-0000-0000-000000001365', 'joao.pereira@example.com', 'Bolsa e BDR', 'MSFT34', 'Santander Corretora', 'notas-santander-2026-05.csv', 'BUY', '2026-05-05', '200', '70.00', '4.00'),
+  ('00000000-0000-0000-0000-000000001366', 'joao.pereira@example.com', 'Bolsa e BDR', 'MSFT34', 'Santander Corretora', NULL, 'SELL', '2026-06-17', '100', '76.00', '3.00'),
+  ('00000000-0000-0000-0000-000000001367', 'joao.pereira@example.com', 'Bolsa e BDR', 'BBDC4', 'Santander Corretora', NULL, 'SELL', '2026-10-08', '500', '19.80', '8.00'),
+  ('00000000-0000-0000-0000-000000001368', 'joao.pereira@example.com', 'Bolsa e BDR', 'MSFT34', 'Santander Corretora', NULL, 'SELL', '2026-10-08', '100', '78.00', '3.00')
+) AS v (id, email, portfolio, asset, broker, batch_file, type, trade_date, quantity, unit_price, fees)
+LEFT JOIN users u ON u.email = v.email
+LEFT JOIN portfolios p ON p.user_id = u.id AND p.name = v.portfolio
+LEFT JOIN seed_asset_key k ON k.key = v.asset
+LEFT JOIN brokers b ON b.name = v.broker
+LEFT JOIN import_batches ib ON ib.portfolio_id = p.id
+                           AND ib.file_sha256 = encode(sha256(convert_to(v.batch_file, 'UTF8')), 'hex')
+ORDER BY v.id
+ON CONFLICT (id) DO NOTHING;
+
+-- Proventos recebidos: posição da carteira na corretora no fim da data-com × valor por cota (2.2), só os pagos até
+-- 13/11/2026. IRRF: 17,5% sobre JCP (Lei 9.249/1995, art. 9º, § 2º, na redação da LC 224/2025, desde 01/01/2026;
+-- todos os JCP abaixo foram aprovados em 2026); dividendos e rendimentos de FII sem retenção.
+INSERT INTO received_income (id, income_distribution_id, portfolio_id, broker_id, base_quantity, gross_amount,
+                             withheld_tax, received_at)
+SELECT v.id::uuid, d.id, p.id, b.id, v.base_quantity, v.gross_amount::numeric, v.withheld_tax::numeric,
+       v.received_at::date
+FROM (VALUES
+  ('00000000-0000-0000-0000-000000001401', '00000000-0000-0000-0000-000000000004', 'demo@carteirab3.dev', 'Longo prazo', 'XP Investimentos', 150, '46.97', '8.22', '2026-05-20'), -- PETR4 JCP
+  ('00000000-0000-0000-0000-000000001402', '00000000-0000-0000-0000-000000000005', 'demo@carteirab3.dev', 'Longo prazo', 'XP Investimentos', 150, '46.97', '8.22', '2026-06-22'), -- PETR4 JCP
+  ('00000000-0000-0000-0000-000000001403', '00000000-0000-0000-0000-000000000006', 'demo@carteirab3.dev', 'Longo prazo', 'XP Investimentos', 150, '52.57', '9.20', '2026-08-20'), -- PETR4 JCP
+  ('00000000-0000-0000-0000-000000001404', '00000000-0000-0000-0000-000000000006', 'bruno.almeida@example.com', 'Ações BR', 'BTG Pactual', 400, '140.19', '24.53', '2026-08-20'), -- PETR4 JCP
+  ('00000000-0000-0000-0000-000000001405', '00000000-0000-0000-0000-000000000007', 'demo@carteirab3.dev', 'Longo prazo', 'XP Investimentos', 150, '52.57', '9.20', '2026-09-21'), -- PETR4 JCP
+  ('00000000-0000-0000-0000-000000001406', '00000000-0000-0000-0000-000000000007', 'bruno.almeida@example.com', 'Ações BR', 'BTG Pactual', 400, '140.19', '24.53', '2026-09-21'), -- PETR4 JCP
+  ('00000000-0000-0000-0000-000000001407', '00000000-0000-0000-0000-000000000013', 'demo@carteirab3.dev', 'Dividendos', 'XP Investimentos', 100, '29.73', '5.20', '2026-09-15'), -- BBDC4 JCP
+  ('00000000-0000-0000-0000-000000001408', '00000000-0000-0000-0000-000000000013', 'demo@carteirab3.dev', 'Dividendos', 'Itaú Corretora', 100, '29.73', '5.20', '2026-09-15'), -- BBDC4 JCP
+  ('00000000-0000-0000-0000-000000001409', '00000000-0000-0000-0000-000000000014', 'demo@carteirab3.dev', 'Dividendos', 'XP Investimentos', 100, '34.69', '6.07', '2026-09-15'), -- BBDC4 JCP
+  ('00000000-0000-0000-0000-000000001410', '00000000-0000-0000-0000-000000000014', 'demo@carteirab3.dev', 'Dividendos', 'Itaú Corretora', 100, '34.69', '6.07', '2026-09-15'), -- BBDC4 JCP
+  ('00000000-0000-0000-0000-000000001411', '00000000-0000-0000-0000-000000000014', 'joao.pereira@example.com', 'Bolsa e BDR', 'Santander Corretora', 500, '173.45', '30.35', '2026-09-15'), -- BBDC4 JCP
+  ('00000000-0000-0000-0000-000000001412', '00000000-0000-0000-0000-000000000017', 'demo@carteirab3.dev', 'Dividendos', 'NuInvest', 20, '22.00', '0', '2026-02-13'), -- HGLG11 FII_INCOME
+  ('00000000-0000-0000-0000-000000001413', '00000000-0000-0000-0000-000000000017', 'carla.souza@example.com', 'Renda FII', 'NuInvest', 50, '55.00', '0', '2026-02-13'), -- HGLG11 FII_INCOME
+  ('00000000-0000-0000-0000-000000001414', '00000000-0000-0000-0000-000000000018', 'demo@carteirab3.dev', 'Dividendos', 'NuInvest', 20, '22.00', '0', '2026-03-13'), -- HGLG11 FII_INCOME
+  ('00000000-0000-0000-0000-000000001415', '00000000-0000-0000-0000-000000000018', 'carla.souza@example.com', 'Renda FII', 'NuInvest', 50, '55.00', '0', '2026-03-13'), -- HGLG11 FII_INCOME
+  ('00000000-0000-0000-0000-000000001416', '00000000-0000-0000-0000-000000000019', 'demo@carteirab3.dev', 'Dividendos', 'NuInvest', 20, '22.00', '0', '2026-04-15'), -- HGLG11 FII_INCOME
+  ('00000000-0000-0000-0000-000000001417', '00000000-0000-0000-0000-000000000019', 'carla.souza@example.com', 'Renda FII', 'NuInvest', 50, '55.00', '0', '2026-04-15'), -- HGLG11 FII_INCOME
+  ('00000000-0000-0000-0000-000000001418', '00000000-0000-0000-0000-000000000020', 'demo@carteirab3.dev', 'Dividendos', 'NuInvest', 20, '22.00', '0', '2026-05-15'), -- HGLG11 FII_INCOME
+  ('00000000-0000-0000-0000-000000001419', '00000000-0000-0000-0000-000000000020', 'carla.souza@example.com', 'Renda FII', 'NuInvest', 50, '55.00', '0', '2026-05-15'), -- HGLG11 FII_INCOME
+  ('00000000-0000-0000-0000-000000001420', '00000000-0000-0000-0000-000000000021', 'demo@carteirab3.dev', 'Dividendos', 'NuInvest', 20, '22.00', '0', '2026-06-15'), -- HGLG11 FII_INCOME
+  ('00000000-0000-0000-0000-000000001421', '00000000-0000-0000-0000-000000000021', 'carla.souza@example.com', 'Renda FII', 'NuInvest', 50, '55.00', '0', '2026-06-15'), -- HGLG11 FII_INCOME
+  ('00000000-0000-0000-0000-000000001422', '00000000-0000-0000-0000-000000000022', 'demo@carteirab3.dev', 'Dividendos', 'NuInvest', 20, '22.00', '0', '2026-07-14'), -- HGLG11 FII_INCOME
+  ('00000000-0000-0000-0000-000000001423', '00000000-0000-0000-0000-000000000022', 'carla.souza@example.com', 'Renda FII', 'NuInvest', 50, '55.00', '0', '2026-07-14'), -- HGLG11 FII_INCOME
+  ('00000000-0000-0000-0000-000000001424', '00000000-0000-0000-0000-000000000023', 'demo@carteirab3.dev', 'Dividendos', 'NuInvest', 20, '23.40', '0', '2026-08-14'), -- HGLG11 FII_INCOME
+  ('00000000-0000-0000-0000-000000001425', '00000000-0000-0000-0000-000000000023', 'carla.souza@example.com', 'Renda FII', 'NuInvest', 50, '58.50', '0', '2026-08-14'), -- HGLG11 FII_INCOME
+  ('00000000-0000-0000-0000-000000001426', '00000000-0000-0000-0000-000000000024', 'demo@carteirab3.dev', 'Dividendos', 'NuInvest', 20, '23.40', '0', '2026-09-15'), -- HGLG11 FII_INCOME
+  ('00000000-0000-0000-0000-000000001427', '00000000-0000-0000-0000-000000000024', 'carla.souza@example.com', 'Renda FII', 'NuInvest', 50, '58.50', '0', '2026-09-15'), -- HGLG11 FII_INCOME
+  ('00000000-0000-0000-0000-000000001428', '00000000-0000-0000-0000-000000000025', 'demo@carteirab3.dev', 'Dividendos', 'NuInvest', 20, '23.40', '0', '2026-10-15'), -- HGLG11 FII_INCOME
+  ('00000000-0000-0000-0000-000000001429', '00000000-0000-0000-0000-000000000025', 'carla.souza@example.com', 'Renda FII', 'NuInvest', 50, '58.50', '0', '2026-10-15') -- HGLG11 FII_INCOME
+) AS v (id, distribution_id, email, portfolio, broker, base_quantity, gross_amount, withheld_tax, received_at)
+LEFT JOIN income_distributions d ON d.id = v.distribution_id::uuid
+LEFT JOIN users u ON u.email = v.email
+LEFT JOIN portfolios p ON p.user_id = u.id AND p.name = v.portfolio
+LEFT JOIN brokers b ON b.name = v.broker
+ON CONFLICT (portfolio_id, income_distribution_id, broker_id) DO NOTHING;
+
+-- DARF: só o pagamento informado (D10). O de outubro/2026 vence em 30/11/2026 e ainda não foi pago.
+INSERT INTO darfs (id, user_id, reference_month, amount_paid, paid_at)
+SELECT v.id::uuid, u.id, v.reference_month::date, v.amount_paid::numeric, v.paid_at::date
+FROM (VALUES
+  ('00000000-0000-0000-0000-000000001701', 'bruno.almeida@example.com', '2026-03-01', '679.40', '2026-04-30'),
+  ('00000000-0000-0000-0000-000000001702', 'bruno.almeida@example.com', '2026-09-01', '40.80', '2026-10-30'),
+  ('00000000-0000-0000-0000-000000001703', 'carla.souza@example.com', '2026-04-01', '13.80', '2026-05-29'),
+  ('00000000-0000-0000-0000-000000001704', 'diego.ferreira@example.com', '2026-02-01', '44.27', '2026-03-31'),
+  ('00000000-0000-0000-0000-000000001705', 'diego.ferreira@example.com', '2026-08-01', '282.00', '2026-09-30'),
+  ('00000000-0000-0000-0000-000000001706', 'felipe.rocha@example.com', '2026-06-01', '296.43', '2026-07-31'),
+  ('00000000-0000-0000-0000-000000001707', 'henrique.costa@example.com', '2026-07-01', '177.45', '2026-08-31'),
+  ('00000000-0000-0000-0000-000000001708', 'isabela.nunes@example.com', '2026-09-01', '128.41', '2026-10-30'),
+  ('00000000-0000-0000-0000-000000001709', 'joao.pereira@example.com', '2026-06-01', '89.25', '2026-07-31'),
+  ('00000000-0000-0000-0000-000000001710', 'joao.pereira@example.com', '2026-10-01', NULL, NULL)
+) AS v (id, email, reference_month, amount_paid, paid_at)
+LEFT JOIN users u ON u.email = v.email
+ON CONFLICT (user_id, reference_month) DO NOTHING;
+
+-- Apurações fechadas: insumos do mês (vendas, resultado, prejuízo compensado), por usuário e categoria (D8, D35).
+-- O DARF que quita a apuração é achado pelo mês de referência dele (Carla: fev. + abr./2026 somam R$ 13,80, R17).
+INSERT INTO tax_assessments (id, user_id, darf_id, tax_category_id, reference_month, total_sales, net_result,
+                             loss_offset, closed_at)
+SELECT v.id::uuid, u.id, d.id, c.id, v.reference_month::date, v.total_sales::numeric, v.net_result::numeric,
+       v.loss_offset::numeric, v.closed_at::timestamptz
+FROM (VALUES
+  ('00000000-0000-0000-0000-000000001601', 'bruno.almeida@example.com', '2026-03-01', 'COMMON_STOCK', '2026-03-01', '28960.00', '4539.00', '0', '2026-04-05 20:00:00-03'),
+  ('00000000-0000-0000-0000-000000001602', 'bruno.almeida@example.com', NULL, 'COMMON_STOCK', '2026-07-01', '16200.00', '-2415.40', '0', '2026-08-05 20:00:00-03'),
+  ('00000000-0000-0000-0000-000000001603', 'bruno.almeida@example.com', '2026-09-01', 'COMMON_STOCK', '2026-09-01', '27360.00', '2696.50', '2415.40', '2026-10-05 20:00:00-03'),
+  ('00000000-0000-0000-0000-000000001604', 'carla.souza@example.com', '2026-04-01', 'FII', '2026-02-01', '2955.00', '42.00', '0', '2026-03-05 20:00:00-03'),
+  ('00000000-0000-0000-0000-000000001605', 'carla.souza@example.com', '2026-04-01', 'FII', '2026-04-01', '2940.00', '27.00', '0', '2026-05-05 20:00:00-03'),
+  ('00000000-0000-0000-0000-000000001606', 'demo@carteirab3.dev', NULL, 'COMMON_STOCK', '2026-02-01', '1862.00', '412.80', '0', '2026-03-05 20:00:00-03'),
+  ('00000000-0000-0000-0000-000000001607', 'demo@carteirab3.dev', NULL, 'FII', '2026-05-01', '494.00', '-12.40', '0', '2026-06-05 20:00:00-03'),
+  ('00000000-0000-0000-0000-000000001608', 'demo@carteirab3.dev', NULL, 'COMMON_STOCK', '2026-06-01', '1900.00', '293.47', '0', '2026-07-05 20:00:00-03'),
+  ('00000000-0000-0000-0000-000000001609', 'diego.ferreira@example.com', '2026-02-01', 'COMMON_OTHER', '2026-02-01', '7900.00', '295.10', '0', '2026-03-05 20:00:00-03'),
+  ('00000000-0000-0000-0000-000000001610', 'diego.ferreira@example.com', NULL, 'COMMON_OTHER', '2026-05-01', '16500.00', '-2109.00', '0', '2026-06-05 20:00:00-03'),
+  ('00000000-0000-0000-0000-000000001611', 'diego.ferreira@example.com', '2026-08-01', 'COMMON_OTHER', '2026-08-01', '16000.00', '3989.00', '2109.00', '2026-09-05 20:00:00-03'),
+  ('00000000-0000-0000-0000-000000001612', 'felipe.rocha@example.com', '2026-06-01', 'COMMON_STOCK', '2026-06-01', '25210.00', '1984.60', '0', '2026-07-05 20:00:00-03'),
+  ('00000000-0000-0000-0000-000000001613', 'henrique.costa@example.com', '2026-07-01', 'COMMON_OTHER', '2026-07-01', '14000.00', '1183.00', '0', '2026-08-05 20:00:00-03'),
+  ('00000000-0000-0000-0000-000000001614', 'isabela.nunes@example.com', NULL, 'COMMON_STOCK', '2026-02-01', '13600.00', '1191.00', '0', '2026-03-05 20:00:00-03'),
+  ('00000000-0000-0000-0000-000000001615', 'isabela.nunes@example.com', NULL, 'COMMON_STOCK', '2026-04-01', '10200.00', '-2410.00', '0', '2026-05-05 20:00:00-03'),
+  ('00000000-0000-0000-0000-000000001616', 'isabela.nunes@example.com', '2026-09-01', 'COMMON_STOCK', '2026-09-01', '35700.00', '3278.00', '2410.00', '2026-10-05 20:00:00-03'),
+  ('00000000-0000-0000-0000-000000001617', 'joao.pereira@example.com', '2026-06-01', 'COMMON_OTHER', '2026-06-01', '7600.00', '595.00', '0', '2026-07-05 20:00:00-03'),
+  ('00000000-0000-0000-0000-000000001618', 'joao.pereira@example.com', '2026-10-01', 'COMMON_OTHER', '2026-10-01', '7800.00', '795.00', '0', '2026-11-05 20:00:00-03'),
+  ('00000000-0000-0000-0000-000000001619', 'joao.pereira@example.com', NULL, 'COMMON_STOCK', '2026-10-01', '9900.00', '1287.00', '0', '2026-11-05 20:00:00-03')
+) AS v (id, email, darf_month, category, reference_month, total_sales, net_result, loss_offset, closed_at)
+LEFT JOIN users u ON u.email = v.email
+LEFT JOIN darfs d ON d.user_id = u.id AND d.reference_month = v.darf_month::date
+LEFT JOIN tax_categories c ON c.code = v.category::tax_category_code
+ON CONFLICT (user_id, reference_month, tax_category_id) DO NOTHING;
+
+-- ============================================================ 5. acompanhamento e planejamento (fictícios)
+
+INSERT INTO watchlist_items (user_id, asset_id, added_at)
+SELECT u.id, k.id, v.added_at::timestamptz
+FROM (VALUES
+  ('demo@carteirab3.dev', 'VALE3', '2026-02-02 10:00:00-03'),
+  ('demo@carteirab3.dev', 'ITUB4', '2026-02-02 10:01:00-03'),
+  ('demo@carteirab3.dev', 'IVVB11', '2026-06-10 21:15:00-03'),
+  ('demo@carteirab3.dev', 'KNRI11', '2026-09-05 08:40:00-03'),
+  ('gabriela.martins@example.com', 'PETR4', '2026-09-14 19:40:00-03'),
+  ('gabriela.martins@example.com', 'WEGE3', '2026-09-14 19:41:00-03'),
+  ('gabriela.martins@example.com', 'KNRI11', '2026-09-15 07:30:00-03'),
+  ('gabriela.martins@example.com', 'AAPL34', '2026-09-20 22:10:00-03'),
+  ('gabriela.martins@example.com', 'BTC', '2026-10-02 12:00:00-03'),
+  ('gabriela.martins@example.com', 'Tesouro IPCA+ 2035-05-15', '2026-10-02 12:05:00-03'),
+  ('bruno.almeida@example.com', 'BBAS3', '2026-04-01 18:00:00-03'),
+  ('bruno.almeida@example.com', 'B3SA3', '2026-04-01 18:01:00-03'),
+  ('carla.souza@example.com', 'XPML11', '2026-01-15 09:30:00-03')
+) AS v (email, asset, added_at)
+LEFT JOIN users u ON u.email = v.email
+LEFT JOIN seed_asset_key k ON k.key = v.asset
+ON CONFLICT DO NOTHING;
+
+-- Alertas: disparado quando o fechamento de uma cotação de 2.4 cruza o alvo (ABOVE: close >= alvo; BELOW: close <= alvo).
+INSERT INTO price_alerts (id, user_id, asset_id, target_price, direction, created_at, triggered_at, triggered_quote_date)
+SELECT v.id::uuid, u.id, k.id, v.target_price::numeric, v.direction::price_direction, v.created_at::timestamptz,
+       v.triggered_at::timestamptz, v.triggered_quote_date::date
+FROM (VALUES
+  ('00000000-0000-0000-0000-000000002401', 'demo@carteirab3.dev', 'PETR4', '45.00', 'BELOW', '2026-11-01 09:00:00-03', '2026-11-12 18:30:00-03', '2026-11-12'), -- close 44,70
+  ('00000000-0000-0000-0000-000000002402', 'demo@carteirab3.dev', 'WEGE3', '50.00', 'ABOVE', '2026-10-15 20:00:00-03', '2026-11-12 18:30:00-03', '2026-11-12'), -- 48,36 em 30/10; 51,65
+  ('00000000-0000-0000-0000-000000002403', 'demo@carteirab3.dev', 'HGLG11', '140.00', 'BELOW', '2026-09-20 11:00:00-03', NULL, NULL),
+  ('00000000-0000-0000-0000-000000002404', 'bruno.almeida@example.com', 'VALE3', '63.00', 'ABOVE', '2026-10-20 19:00:00-03', '2026-11-12 18:30:00-03', '2026-11-12'), -- 63,95
+  ('00000000-0000-0000-0000-000000002405', 'bruno.almeida@example.com', 'ITUB4', '37.00', 'BELOW', '2026-10-06 08:00:00-03', NULL, NULL),
+  ('00000000-0000-0000-0000-000000002406', 'carla.souza@example.com', 'MXRF11', '8.90', 'BELOW', '2026-10-01 10:00:00-03', '2026-10-30 18:30:00-03', '2026-10-30'), -- 8,88
+  ('00000000-0000-0000-0000-000000002407', 'carla.souza@example.com', 'KNRI11', '160.00', 'ABOVE', '2026-06-09 09:00:00-03', NULL, NULL),
+  ('00000000-0000-0000-0000-000000002408', 'diego.ferreira@example.com', 'AAPL34', '95.00', 'ABOVE', '2026-10-25 21:00:00-03', '2026-11-12 18:30:00-03', '2026-11-12'), -- 93,86 em 30/10; 100,12
+  ('00000000-0000-0000-0000-000000002409', 'diego.ferreira@example.com', 'NVDC34', '20.00', 'BELOW', '2026-11-03 22:00:00-03', '2026-11-12 18:30:00-03', '2026-11-12'), -- 19,53
+  ('00000000-0000-0000-0000-000000002410', 'gabriela.martins@example.com', 'BOVA11', '170.00', 'ABOVE', '2026-11-05 07:00:00-03', NULL, NULL),
+  ('00000000-0000-0000-0000-000000002411', 'gabriela.martins@example.com', 'BBAS3', '16.00', 'BELOW', '2026-10-20 12:00:00-03', '2026-11-12 18:30:00-03', '2026-11-12'), -- 16,47 em 30/10; 15,48
+  ('00000000-0000-0000-0000-000000002412', 'gabriela.martins@example.com', 'TAEE11', '40.00', 'ABOVE', '2026-10-01 12:00:00-03', '2026-11-12 18:30:00-03', '2026-11-12'), -- 39,59 em 30/10; 41,57
+  ('00000000-0000-0000-0000-000000002413', 'isabela.nunes@example.com', 'BTC', '450000.00', 'ABOVE', '2026-10-10 10:00:00-03', NULL, NULL) -- cripto: sem cotação em quotes
+) AS v (id, email, asset, target_price, direction, created_at, triggered_at, triggered_quote_date)
+LEFT JOIN users u ON u.email = v.email
+LEFT JOIN seed_asset_key k ON k.key = v.asset
+ON CONFLICT (id) DO NOTHING;
+
+-- Telas salvas: com e sem indicador de ordenação; "Sem critério" não tem critérios (LEFT JOIN).
+INSERT INTO saved_screens (id, user_id, sort_indicator_id, name, asset_type, sort_direction)
+SELECT v.id::uuid, u.id, i.id, v.name, v.asset_type::analysis_asset_type, v.sort_direction::sort_direction
+FROM (VALUES
+  ('00000000-0000-0000-0000-000000002501', 'demo@carteirab3.dev', 'PL', 'Ações baratas', 'STOCK', 'ASC'),
+  ('00000000-0000-0000-0000-000000002502', 'demo@carteirab3.dev', 'FII_DY', 'FIIs de renda', 'FII', 'DESC'),
+  ('00000000-0000-0000-0000-000000002503', 'gabriela.martins@example.com', 'DY', 'Dividendos altos', 'STOCK', 'DESC'),
+  ('00000000-0000-0000-0000-000000002504', 'gabriela.martins@example.com', 'ROE', 'Rentáveis e pouco endividadas', 'STOCK', 'DESC'),
+  ('00000000-0000-0000-0000-000000002505', 'gabriela.martins@example.com', 'FII_PVP', 'FIIs descontados', 'FII', 'ASC'),
+  ('00000000-0000-0000-0000-000000002506', 'bruno.almeida@example.com', NULL, 'Valor', 'STOCK', 'ASC'),
+  ('00000000-0000-0000-0000-000000002507', 'carla.souza@example.com', 'FII_VAC', 'Vacância baixa', 'FII', 'ASC'),
+  ('00000000-0000-0000-0000-000000002508', 'diego.ferreira@example.com', NULL, 'Lucro por ação', 'STOCK', 'DESC'),
+  ('00000000-0000-0000-0000-000000002509', 'isabela.nunes@example.com', 'PVP', 'Bancos', 'STOCK', 'ASC'),
+  ('00000000-0000-0000-0000-000000002510', 'henrique.costa@example.com', NULL, 'Sem critério', 'STOCK', 'ASC'),
+  ('00000000-0000-0000-0000-000000002511', 'joao.pereira@example.com', 'MARG_LIQ', 'Margem alta', 'STOCK', 'DESC')
+) AS v (id, email, sort_indicator, name, asset_type, sort_direction)
+LEFT JOIN users u ON u.email = v.email
+LEFT JOIN indicators i ON i.code = v.sort_indicator
+ON CONFLICT (user_id, name) DO NOTHING;
+
+INSERT INTO screen_criteria (saved_screen_id, indicator_id, min_value, max_value)
+SELECT s.id, i.id, v.min_value::numeric, v.max_value::numeric
+FROM (VALUES
+  ('demo@carteirab3.dev', 'Ações baratas', 'PL', NULL, '10'),
+  ('demo@carteirab3.dev', 'Ações baratas', 'PVP', NULL, '1.5'),
+  ('demo@carteirab3.dev', 'FIIs de renda', 'FII_DY', '0.08', NULL),
+  ('demo@carteirab3.dev', 'FIIs de renda', 'FII_PVP', NULL, '1.05'),
+  ('gabriela.martins@example.com', 'Dividendos altos', 'DY', '0.06', NULL),
+  ('gabriela.martins@example.com', 'Rentáveis e pouco endividadas', 'ROE', '0.15', NULL),
+  ('gabriela.martins@example.com', 'Rentáveis e pouco endividadas', 'DL_EBITDA', NULL, '2'),
+  ('gabriela.martins@example.com', 'FIIs descontados', 'FII_PVP', NULL, '0.95'),
+  ('gabriela.martins@example.com', 'FIIs descontados', 'FII_VAC', NULL, '0.10'),
+  ('bruno.almeida@example.com', 'Valor', 'PL', '0', '8'),
+  ('carla.souza@example.com', 'Vacância baixa', 'FII_VAC', NULL, '0.05'),
+  ('diego.ferreira@example.com', 'Lucro por ação', 'LPA', '1', NULL),
+  ('isabela.nunes@example.com', 'Bancos', 'PVP', NULL, '1.2'),
+  ('isabela.nunes@example.com', 'Bancos', 'ROE', '0.12', NULL),
+  ('joao.pereira@example.com', 'Margem alta', 'MARG_LIQ', '0.20', NULL)
+) AS v (email, screen, indicator, min_value, max_value)
+LEFT JOIN users u ON u.email = v.email
+LEFT JOIN saved_screens s ON s.user_id = u.id AND s.name = v.screen
+LEFT JOIN indicators i ON i.code = v.indicator
+ON CONFLICT DO NOTHING;
+
+-- Carteira ideal: soma 100% por carteira (o backend valida a soma; seed-check confere). 0% é aceito (Felipe, cripto).
+INSERT INTO target_allocations (portfolio_id, asset_class, target_percent)
+SELECT p.id, v.asset_class::asset_type, v.target_percent::numeric
+FROM (VALUES
+  ('demo@carteirab3.dev', 'Longo prazo', 'STOCK', '0.40'),
+  ('demo@carteirab3.dev', 'Longo prazo', 'FII', '0.20'),
+  ('demo@carteirab3.dev', 'Longo prazo', 'ETF', '0.15'),
+  ('demo@carteirab3.dev', 'Longo prazo', 'BDR', '0.05'),
+  ('demo@carteirab3.dev', 'Longo prazo', 'FIXED_INCOME', '0.15'),
+  ('demo@carteirab3.dev', 'Longo prazo', 'CRYPTO', '0.05'),
+  ('felipe.rocha@example.com', 'Corretora XP', 'STOCK', '0.70'),
+  ('felipe.rocha@example.com', 'Corretora XP', 'ETF', '0.10'),
+  ('felipe.rocha@example.com', 'Corretora XP', 'FIXED_INCOME', '0.20'),
+  ('felipe.rocha@example.com', 'Corretora XP', 'CRYPTO', '0'),
+  ('eduarda.lima@example.com', 'Reserva e cripto', 'FIXED_INCOME', '0.80'),
+  ('eduarda.lima@example.com', 'Reserva e cripto', 'CRYPTO', '0.20'),
+  ('henrique.costa@example.com', 'Aposentadoria', 'STOCK', '0.30'),
+  ('henrique.costa@example.com', 'Aposentadoria', 'ETF', '0.50'),
+  ('henrique.costa@example.com', 'Aposentadoria', 'FIXED_INCOME', '0.20')
+) AS v (email, portfolio, asset_class, target_percent)
+LEFT JOIN users u ON u.email = v.email
+LEFT JOIN portfolios p ON p.user_id = u.id AND p.name = v.portfolio
+ON CONFLICT DO NOTHING;
+
+-- Metas: no máximo uma por tipo e carteira; prazo opcional, no 1º dia do mês e não antes do mês de criação.
+INSERT INTO portfolio_goals (portfolio_id, type, target_amount, target_month, created_at)
+SELECT p.id, v.type::goal_type, v.target_amount::numeric, v.target_month::date, v.created_at::timestamptz
+FROM (VALUES
+  ('demo@carteirab3.dev', 'Longo prazo', 'NET_WORTH', '100000.00', '2030-12-01', '2026-01-05 08:35:00-03'),
+  ('demo@carteirab3.dev', 'Longo prazo', 'MONTHLY_INCOME', '1000.00', NULL, '2026-01-05 08:36:00-03'),
+  ('demo@carteirab3.dev', 'Dividendos', 'MONTHLY_INCOME', '300.00', '2028-12-01', '2025-02-12 09:15:00-03'),
+  ('bruno.almeida@example.com', 'Ações BR', 'NET_WORTH', '50000.00', NULL, '2026-01-10 19:05:00-03'),
+  ('carla.souza@example.com', 'Renda FII', 'MONTHLY_INCOME', '500.00', '2027-12-01', '2025-12-01 11:05:00-03'),
+  ('diego.ferreira@example.com', 'Internacional', 'NET_WORTH', '30000.00', '2028-06-01', '2026-01-20 22:05:00-03'),
+  ('eduarda.lima@example.com', 'Reserva e cripto', 'NET_WORTH', '25000.00', '2027-06-01', '2026-02-01 10:35:00-03'),
+  ('felipe.rocha@example.com', 'Corretora XP', 'NET_WORTH', '80000.00', '2029-12-01', '2026-01-02 15:05:00-03'),
+  ('felipe.rocha@example.com', 'Corretora XP', 'MONTHLY_INCOME', '400.00', NULL, '2026-01-02 15:06:00-03'),
+  ('henrique.costa@example.com', 'Aposentadoria', 'NET_WORTH', '500000.00', '2045-01-01', '2026-03-01 09:10:00-03'),
+  ('henrique.costa@example.com', 'Aposentadoria', 'MONTHLY_INCOME', '3000.00', '2045-01-01', '2026-03-01 09:11:00-03'),
+  ('isabela.nunes@example.com', 'Carteira principal', 'NET_WORTH', '60000.00', NULL, '2026-01-12 13:05:00-03')
+) AS v (email, portfolio, type, target_amount, target_month, created_at)
+LEFT JOIN users u ON u.email = v.email
+LEFT JOIN portfolios p ON p.user_id = u.id AND p.name = v.portfolio
+ON CONFLICT DO NOTHING;
+
+DROP VIEW seed_asset_key;
 
 COMMIT;
