@@ -1,7 +1,7 @@
 -- Conferência do seed (database/sql/inserts.sql), num banco migrado depois de npm run db:seed.
 -- Uso no CI: roda depois de cada uma das duas execuções do seed e as contagens têm de ser iguais (idempotência).
--- Aborta se faltar uma das 6 classes de ativo, a especialização de um título ou cripto, ou um ativo ou
--- corretora da massa do handoff (usados pelo teste do seed do backend, BK-3).
+-- Aborta se faltar uma das 6 classes de ativo, a especialização de um título ou cripto, um ativo ou corretora da
+-- massa do handoff (usados pelo teste do seed do backend, BK-3) ou os casos de LEFT JOIN do P2.
 
 DO $$
 BEGIN
@@ -14,9 +14,14 @@ BEGIN
                 WHERE a.type = 'CRYPTO' AND c.asset_id IS NULL) THEN
     RAISE EXCEPTION 'seed: título de renda fixa ou cripto sem a especialização';
   END IF;
-  IF (SELECT count(*) FROM assets WHERE ticker IN ('PETR4', 'WEGE3', 'MXRF11', 'ITSA4', 'BOVA11')) <> 5
+  IF (SELECT count(*) FROM assets
+      WHERE ticker IN ('PETR4', 'WEGE3', 'MXRF11', 'ITSA4', 'BOVA11', 'BBDC4', 'HGLG11') AND is_active) <> 7
      OR (SELECT count(*) FROM brokers WHERE name IN ('XP Investimentos', 'NuInvest', 'Rico')) <> 3 THEN
-    RAISE EXCEPTION 'seed: falta ativo ou corretora da massa do handoff';
+    RAISE EXCEPTION 'seed: falta ativo ou corretora da massa do handoff ou da seção de mercado';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM assets WHERE NOT is_active)
+     OR NOT EXISTS (SELECT 1 FROM issuers WHERE sector_id IS NULL) THEN
+    RAISE EXCEPTION 'seed: faltam os casos de LEFT JOIN (ativo fora de negociação, emissor sem setor)';
   END IF;
 END $$;
 

@@ -34,7 +34,6 @@ jobs:
     env:
       DATABASE_URL: postgresql://carteira:ci-only-password@localhost:5432/carteira_dev
       SHADOW_DATABASE_URL: postgresql://carteira:ci-only-password@localhost:5432/carteira_shadow
-      PSQL: local # database/scripts/run-sql.mjs usa o psql do runner
     steps:
       - uses: actions/checkout@v4
 
@@ -43,14 +42,13 @@ jobs:
           node-version: 24
           cache: npm
 
-      - name: Install PostgreSQL 16 client (psql)
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq postgresql-client-16
-          echo "/usr/lib/postgresql/16/bin" >> "$GITHUB_PATH"
+      # psql e pg_dump sempre de dentro do contêiner de serviço (mesma versão do servidor, hotfix #22):
+      # run-sql.mjs e export-ddl.mjs leem PG_CONTAINER; o runner não instala cliente PostgreSQL.
+      - name: Database container id
+        run: echo "PG_CONTAINER=${{ job.services.postgres.id }}" >> "$GITHUB_ENV"
 
       - name: Create shadow database (prisma migrate diff)
-        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "CREATE DATABASE carteira_shadow"
+        run: docker exec "$PG_CONTAINER" psql -U carteira -d carteira_dev -v ON_ERROR_STOP=1 -c "CREATE DATABASE carteira_shadow"
 
       - run: npm ci
 
@@ -63,12 +61,13 @@ jobs:
       - name: Schema and migrations in sync
         run: npm run db:drift
 
-      - name: Seed twice (idempotent; 6 asset classes and the handoff catalog)
+      - name: Seed twice (idempotent; counts per table must match)
         run: |
+          check() { docker exec -i "$PG_CONTAINER" psql -U carteira -d carteira_dev -v ON_ERROR_STOP=1 -qAt < database/tests/seed-check.sql; }
           npm run db:seed
-          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -At -f database/tests/seed-check.sql > "$RUNNER_TEMP/seed-1.txt"
+          check > "$RUNNER_TEMP/seed-1.txt"
           npm run db:seed
-          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -At -f database/tests/seed-check.sql > "$RUNNER_TEMP/seed-2.txt"
+          check > "$RUNNER_TEMP/seed-2.txt"
           cat "$RUNNER_TEMP/seed-1.txt"
           diff "$RUNNER_TEMP/seed-1.txt" "$RUNNER_TEMP/seed-2.txt"
 
@@ -76,16 +75,12 @@ jobs:
         run: npm run db:test
 
       - name: PostgreSQL versions and column options (diagnostic)
-        env:
-          PG_CONTAINER: ${{ job.services.postgres.id }}
         run: |
           docker exec "$PG_CONTAINER" pg_dump --version
-          psql "$DATABASE_URL" -c "select version()"
-          psql "$DATABASE_URL" -c "select attrelid::regclass, attname, attoptions from pg_attribute where attoptions is not null and attrelid::regclass::text like 'public.%' limit 5"
+          docker exec "$PG_CONTAINER" psql -U carteira -d carteira_dev -c "select version()"
+          docker exec "$PG_CONTAINER" psql -U carteira -d carteira_dev -c "select attrelid::regclass, attname, attoptions from pg_attribute where attoptions is not null and attrelid::regclass::text like 'public.%' limit 5"
 
       - name: ddl.sql matches the migrated database
-        env:
-          PG_CONTAINER: ${{ job.services.postgres.id }} # pg_dump do contêiner, mesma versão do servidor
         run: |
           npm run db:ddl
           git diff --exit-code -- database/sql/ddl.sql
