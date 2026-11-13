@@ -1,5 +1,4 @@
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
-import { getOptionsToken } from '@nestjs/throttler';
 import request from 'supertest';
 import { Money } from '../src/shared/domain/money';
 import { PrismaService } from '../src/shared/infrastructure/prisma/prisma.service';
@@ -111,12 +110,7 @@ describe('Positions and summary (E2E, B6, B7, D41, D55, RN05–RN12)', () => {
   }
 
   beforeAll(async () => {
-    app = await createApiApp({
-      override: (builder) =>
-        builder
-          .overrideProvider(getOptionsToken())
-          .useValue([{ ttl: 60_000, limit: 10_000 }]),
-    });
+    app = await createApiApp();
     prisma = app.get(PrismaService);
   });
 

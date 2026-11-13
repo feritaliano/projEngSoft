@@ -29,9 +29,6 @@ import {
 import { AuthController } from './presentation/auth.controller';
 import { JwtAuthGuard } from './presentation/jwt-auth.guard';
 
-/** Rate limit of sign-up and login, per client IP and route (A1/A2, backend prompt). */
-export const AUTH_RATE_LIMIT = { ttl: 60_000, limit: 5 };
-
 /** Owns ops.user_sessions (D39); registers the global JWT guard. */
 @Module({
   imports: [
@@ -44,7 +41,16 @@ export const AUTH_RATE_LIMIT = { ttl: 60_000, limit: 5 };
         verifyOptions: { algorithms: ['HS256'] },
       }),
     }),
-    ThrottlerModule.forRoot([AUTH_RATE_LIMIT]),
+    // Rate limit of sign-up and login, per client IP and route, per minute (A1/A2; limit from the env, BK-1).
+    ThrottlerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService<ApiEnv, true>) => [
+        {
+          ttl: 60_000,
+          limit: config.get('AUTH_RATE_LIMIT_MAX', { infer: true }),
+        },
+      ],
+    }),
   ],
   controllers: [AuthController],
   providers: [

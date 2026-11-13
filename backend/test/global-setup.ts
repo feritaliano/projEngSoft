@@ -43,6 +43,8 @@ export default async function globalSetup(): Promise<void> {
     DATABASE_URL: databaseUrl,
     CORS_ORIGIN: 'http://localhost:4200',
     JWT_ACCESS_SECRET: 'e2e-only-secret-with-at-least-32-characters',
+    // Many sign-ups and logins per minute from the same IP; auth-rate-limit.e2e-spec.ts tests the default (A2, BK-1).
+    AUTH_RATE_LIMIT_MAX: '10000',
     // Silent by default; E2E_LOG_LEVEL=debug shows the app logs when a test fails.
     LOG_LEVEL: process.env.E2E_LOG_LEVEL ?? 'silent',
   });

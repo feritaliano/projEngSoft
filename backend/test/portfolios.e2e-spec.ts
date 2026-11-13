@@ -1,5 +1,4 @@
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
-import { getOptionsToken } from '@nestjs/throttler';
 import request from 'supertest';
 import { PrismaService } from '../src/shared/infrastructure/prisma/prisma.service';
 import {
@@ -30,13 +29,7 @@ describe('Portfolios (E2E, B1, RN02, D41)', () => {
   }
 
   beforeAll(async () => {
-    app = await createApiApp({
-      // Several sign-ups per test come from the same IP; the rate limit has its own suite (auth).
-      override: (builder) =>
-        builder
-          .overrideProvider(getOptionsToken())
-          .useValue([{ ttl: 60_000, limit: 10_000 }]),
-    });
+    app = await createApiApp();
     prisma = app.get(PrismaService);
   });
 
