@@ -17,7 +17,9 @@ jobs:
     runs-on: ubuntu-24.04
     services:
       postgres:
-        image: postgres:16
+        # Fixada por digest, igual ao docker-compose.yml: a tag postgres:16 passou a 16.16 em 13/11/2026,
+        # que grava pg_attver em attoptions e mudava o ddl.sql gerado. Atualizar os dois juntos.
+        image: postgres:16.15@sha256:f9a7b9ebf6f56201f949db745e47bc423c0f0f8294bafe991cc10bf74b029657
         env:
           POSTGRES_USER: carteira
           POSTGRES_PASSWORD: ci-only-password # banco descartável do CI; não é segredo
@@ -33,7 +35,6 @@ jobs:
       DATABASE_URL: postgresql://carteira:ci-only-password@localhost:5432/carteira_dev
       SHADOW_DATABASE_URL: postgresql://carteira:ci-only-password@localhost:5432/carteira_shadow
       PSQL: local # database/scripts/run-sql.mjs usa o psql do runner
-      PG_DUMP: local # database/scripts/export-ddl.mjs usa o pg_dump do runner
     steps:
       - uses: actions/checkout@v4
 
@@ -42,7 +43,7 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Install PostgreSQL 16 client (psql, pg_dump)
+      - name: Install PostgreSQL 16 client (psql)
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq postgresql-client-16
@@ -65,7 +66,17 @@ jobs:
       - name: Constraint tests (public, ops and D3)
         run: npm run db:test
 
+      - name: PostgreSQL versions and column options (diagnostic)
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          docker exec "$PG_CONTAINER" pg_dump --version
+          psql "$DATABASE_URL" -c "select version()"
+          psql "$DATABASE_URL" -c "select attrelid::regclass, attname, attoptions from pg_attribute where attoptions is not null and attrelid::regclass::text like 'public.%' limit 5"
+
       - name: ddl.sql matches the migrated database
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }} # pg_dump do contêiner, mesma versão do servidor
         run: |
           npm run db:ddl
           git diff --exit-code -- database/sql/ddl.sql
