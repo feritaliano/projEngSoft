@@ -25,7 +25,7 @@ carteira-b3/
 ├── .github/
 │   ├── pull_request_template.md     [ok]
 │   └── workflows/
-│       └── ci.yml                   [ok] job `database` (migrations, drift, testes de restrição, ddl.sql); K1 acrescenta `backend`, W1 `frontend`, R1 `e2e` (D40)
+│       └── ci.yml                   [ok] job `database` (migrations, drift, testes de restrição, ddl.sql); K1 acrescenta `backend`, W1 `frontend`, FE-1 `e2e` (D40)
 ├── agentes/                         [ok] prompts-fonte dos agentes
 │   ├── agente-banco-de-dados.md
 │   ├── agente-backend.md
@@ -126,9 +126,10 @@ carteira-b3/
 │   ├── playwright.config.ts         [W1] configuração do @playwright/test (D38)
 │   ├── ng-openapi-gen.json          [W1] configuração do gerador do cliente da API (npm run api:generate, D58)
 │   ├── .postcssrc.json              [W1] plugin do Tailwind 4 no build do Angular; os tokens ficam em src/styles.css (D58)
-│   ├── eslint.config.js             angular-eslint (ignora src/app/api/)
+│   ├── eslint.config.js             angular-eslint (ignora src/app/api/); [FE-1] proíbe conversão para number e conta com campo de valor em src/app (D5, D28, RN11), exceto *.chart.ts
 │   ├── scripts/
-│   │   └── check-tokens.mjs         [W1] parte do npm run lint: recusa valor arbitrário do Tailwind fora dos tokens
+│   │   ├── check-tokens.mjs         [W1] parte do npm run lint: recusa valor arbitrário do Tailwind fora dos tokens
+│   │   └── check-money-lint.mjs     [FE-1] parte do npm run lint: sonda da regra de dinheiro e recusa desligá-la por comentário
 │   ├── src/
 │   │   ├── environments/            URLs e configuração por ambiente
 │   │   ├── styles.css               tokens do design system em @theme (Tailwind 4), claro e escuro (D58)

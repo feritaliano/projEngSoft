@@ -82,7 +82,8 @@
               "html"
             ],
             "coverageThresholds": {
-              "lines": 80
+              "lines": 80,
+              "branches": 80
             }
           }
         },

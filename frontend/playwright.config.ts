@@ -5,6 +5,8 @@ export default defineConfig({
   testDir: './e2e',
   forbidOnly: !!process.env['CI'],
   retries: process.env['CI'] ? 2 : 0,
+  // Retries only record a trace (on-first-retry); a test that passes on retry still fails the CI job.
+  failOnFlakyTests: !!process.env['CI'],
   reporter: process.env['CI'] ? 'github' : 'list',
   use: {
     baseURL: 'http://localhost:4200',

@@ -4,7 +4,7 @@
 #   docker compose --profile app up -d --build   PostgreSQL + migrations + api + worker
 services:
   postgres:
-    # Versão fixada igual à do CI (job database): o ddl.sql gerado depende da versão do servidor.
+    # Versão fixada igual à do CI (jobs database e e2e): o ddl.sql gerado depende da versão do servidor.
     image: postgres:16.15@sha256:f9a7b9ebf6f56201f949db745e47bc423c0f0f8294bafe991cc10bf74b029657
     container_name: carteira-b3-db
     restart: unless-stopped
