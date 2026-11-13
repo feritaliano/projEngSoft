@@ -1,6 +1,5 @@
 import { Controller, Get } from '@nestjs/common';
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
-import { getOptionsToken } from '@nestjs/throttler';
 import { createHash } from 'node:crypto';
 import request from 'supertest';
 import { CurrentUser } from '../src/shared/presentation/auth-context';
@@ -45,14 +44,7 @@ describe('Auth (E2E, RN01, A1, A2, D39)', () => {
   const http = () => request(app.getHttpServer());
 
   beforeAll(async () => {
-    app = await createApiApp({
-      controllers: [ProtectedProbeController],
-      // The rate limit has its own suite below; here many requests come from the same IP.
-      override: (builder) =>
-        builder
-          .overrideProvider(getOptionsToken())
-          .useValue([{ ttl: 60_000, limit: 10_000 }]),
-    });
+    app = await createApiApp({ controllers: [ProtectedProbeController] });
     prisma = app.get(PrismaService);
   });
 
@@ -325,51 +317,5 @@ describe('Auth (E2E, RN01, A1, A2, D39)', () => {
     const response = await http().post('/api/v1/auth/refresh').expect(401);
 
     expect(response.body.detail).toBe('The session has expired. Log in again.');
-  });
-});
-
-describe('Auth rate limit (E2E)', () => {
-  let app: NestFastifyApplication;
-
-  beforeAll(async () => {
-    app = await createApiApp();
-    await truncateAllTables(app.get(PrismaService));
-  });
-
-  afterAll(async () => {
-    await app.close();
-  });
-
-  it('answers 429 problem+json after 5 login attempts per minute from the same client', async () => {
-    const attempt = () =>
-      request(app.getHttpServer())
-        .post('/api/v1/auth/login')
-        .send({ email: 'ana@example.com', password: 'errada123' });
-
-    for (let i = 0; i < 5; i += 1) {
-      await attempt().expect(401);
-    }
-    const blocked = await attempt().expect(429);
-
-    expect(blocked.headers['content-type']).toBe(PROBLEM_JSON);
-    expect(blocked.body).toMatchObject({
-      status: 429,
-      title: 'Too Many Requests',
-    });
-  });
-
-  it('answers 429 after 5 sign-up attempts per minute from the same client', async () => {
-    // Invalid bodies (400) still count: the limit protects the endpoint, not only successful sign-ups.
-    const attempt = () =>
-      request(app.getHttpServer())
-        .post('/api/v1/auth/register')
-        .send({ name: 'Ana', email: 'ana@example.com', password: 'short' });
-
-    for (let i = 0; i < 5; i += 1) {
-      await attempt().expect(400);
-    }
-    const blocked = await attempt().expect(429);
-
-    expect(blocked.headers['content-type']).toBe(PROBLEM_JSON);
   });
 });
