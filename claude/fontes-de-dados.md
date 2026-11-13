@@ -160,13 +160,14 @@ Cláusula de correção: falha encontrada vira prompt para o agente certo.
 
 ```
 Agente: backend
-Tarefa: K5 do plano (D59), 18/11–26/11, depois do K4 PR 3 e dos prompts BK-1 e BK-2. Gatilho G-K5 em 26/11.
-Leia: claude/fontes-de-dados.md, database/docs/fontes-poc.md (da prova de conceito), claude/arquitetura.md seção 6.3, database/docs/glossario.md (sectors, issuers, assets).
+Tarefa: K5 do plano (D59), 21/11–26/11 (replanejamento de 12/11), depois do K4 PR 3 e dos prompts BK-1, BK-2 e BK-3. Gatilho G-K5 em 26/11.
+Leia: claude/fontes-de-dados.md, database/docs/fontes-poc.md (prova de conceito; achados F5 e F9), database/sql/inserts.sql (seção 1, catálogo do seed do BD-1), claude/arquitetura.md seção 6.3, database/docs/glossario.md (sectors, issuers, assets).
 1. Módulo ingestion (worker), adapter do Cadastro de Instrumentos da B3 (InstrumentsConsolidatedFile). Comando npm no backend, ex.: npm run ingest:catalog -- --file data/raw/<arquivo> (aceitar arquivo local; download automático é opcional).
-2. Filtro: mercado à vista, ações (ON, PN, PNA, PNB...), units, FIIs, ETFs e BDRs. Sem opções, termo, futuro ou fracionário.
-3. Upsert por chave natural, numa transação por lote: issuers (nome; CNPJ e código CVM quando o arquivo ou o cadastro da CVM trouxer, nulo aceito) e assets (ISIN; ticker; type; share_class; bdr_program pelo SpcfctnCd; is_active = true). Setor só se a classificação setorial da B3 estiver disponível; nulo é aceito pelo schema.
+2. Arquivo: use só o Cadastro com "Status do Arquivo: Final" (o do mesmo dia pode vir "Parcial", F5; recuse o Parcial com mensagem clara). O arquivo vem em Latin-1 (F9): converta para UTF-8 antes de comparar nomes, senão os emissores do seed (gravados em UTF-8, ex.: "TELEFÔNICA BRASIL S.A") são duplicados.
+2b. Filtro: mercado à vista, ações (ON, PN, PNA, PNB...), units, FIIs, ETFs e BDRs. Sem opções, termo, futuro ou fracionário.
+3. Upsert por chave natural, numa transação por lote: issuers (CNPJ quando houver; senão o nome do CrpnNm, que é a mesma chave que o seed usa no NOT EXISTS; CNPJ e código CVM quando o cadastro da CVM trouxer, nulo aceito; não sobrescreva CNPJ, código CVM ou setor já gravados pelo seed) e assets (ISIN; ticker; type; share_class; bdr_program pelo SpcfctnCd; is_active = true). Setor só se a classificação setorial da B3 estiver disponível; nulo é aceito pelo schema.
 4. Fora do escopo do K5: cotações, desativar ativos que sumiram do arquivo, ops.ingestion_runs e agendamento (tudo S2).
-5. Testes: parse com trecho real reduzido do arquivo (fixture versionada pequena); idempotência (rodar 2× não muda nenhuma linha); linha inválida registrada e ignorada sem derrubar o lote; upsert sobre os ~50 ativos do seed sem duplicar.
+5. Testes: parse com trecho real reduzido do arquivo (fixture versionada pequena); idempotência (rodar 2× não muda nenhuma linha); linha inválida registrada e ignorada sem derrubar o lote; upsert sobre os ativos do seed sem duplicar, nas duas ordens (seed → K5 e K5 → seed); a ELET3 do seed (is_active = false, fora do Cadastro) continua como está.
 6. PR com: contagem de ativos por tipo carregados de um arquivo real; tempo de execução; a busca GET /api/v1/assets?search= achando um ativo que não está no seed; comando no backend/README.md.
 7. Regra de licença (D59): nenhum endpoint novo de exportação de dados da B3.
 Cláusula de correção: falha encontrada vira prompt para o agente certo.

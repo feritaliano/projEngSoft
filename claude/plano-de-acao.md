@@ -1,4 +1,4 @@
-# Plano de ação — Carteira B3 (replanejado em 24/10/2026; ajustado em 26/10/2026; conferido em 11/11/2026; ajustado em 12/11/2026)
+# Plano de ação — Carteira B3 (replanejado em 24/10/2026; ajustado em 26/10/2026; conferido em 11/11/2026; ajustado e replanejado em 12/11/2026)
 
 **Situação em 24/10/2026:** BD Parte 1 enviada em 19/10; banco criado e validado (P0, G1, D1). Nenhuma tarefa das outras frentes andou entre 06/10 e 23/10, e o usuário retomou o projeto geral em 24/10: todas as datas abaixo foram refeitas a partir de 25/10.
 
@@ -36,19 +36,21 @@
 
 **Ajuste de 12/11/2026 (D59, fontes de dados):** aprovadas as fontes do mercado inteiro (`claude/fontes-de-dados.md`). Efeitos: (1) nova tarefa **K5** do backend, carga única do catálogo completo da B3 (sem cotações) dentro do S1, de 18/11 a 26/11, com o gatilho **G-K5**; (2) prova de conceito das fontes pelo agente de banco até 16/11 (um arquivo real de cada fonte em `data/raw/fontes-poc/`), que alimenta o K5 e o seed; (3) o P1 tira de arquivos reais as linhas de `assets` (~50 ativos), `crypto_prices`, `index_values` (IBOV) e `income_distributions`. O S2 inteiro continua depois de 06/12: não cabe na folga zero do W4 e do R1, e as cotações não aparecem nas telas do S1 (D41, D48). Código do S1 entregue em 06/12; apresentação em 09/12. Demais datas inalteradas.
 
+**Replanejamento de 12/11/2026 (revisão do S1, `claude/verificacao-plano-figma.md` P1–P11; aprovado pelo usuário em 12/11):** (1) **atraso registrado:** o P1 venceu em 07/11 sem seed; o BD-1 (PR #24, 12/11) entregou o primeiro corte (10 das 36 tabelas: catálogo, índices, tipos de título, proventos e IBOV) e as ~26 restantes entram no segundo corte, 13/11–18/11, com o gatilho novo **G-P1**; P2, P3 e P4 foram refeitos em cadeia e o **envio da Parte 2 continua em 30/11** (prazo 07/12), sem esbarrar no R1; (2) as dependências do P1 ganharam data (preço de cripto: JSON do Mercado Bitcoin pelo navegador até 14/11; senão, candles da API pública da Foxbit) e `economic_indexes` (5) e `fixed_income_types` (8) ficam abaixo das ±10 tuplas com justificativa (D60d); (3) **W4 dividido** em W4a (Catálogo, Histórico, Detalhe: API toda na `main`) e W4b (formulário e prévia, depois do PR 3 do K4); W2 e W3 antecipados em 2 dias, já que o W1 terminou em 11/11; (4) as correções da revisão entram como tarefas com data: BK-1, BK-2, BK-3, BK-4, FE-1, FE-2 (`claude/prompts-correcao-s1.md`) e U7 parte A; o PR 3 do K4 com o BK-2 passa para 15–19/11 e o K5 para 21–26/11, e o backend termina em 26/11; (5) pendências sem tarefa ganharam ID, data e dono (B7, PL1–PL3); (6) datas, status de F2/F3, frase do catálogo e critério do K4 corrigidos. Escopo e ordem das etapas inalterados.
+
 **Frentes ativas:** todas.
 - 25–27/10: fundação (usuário).
-- 28/10 a meados de novembro: BD (P1–P2), UX/UI (U1–U5) e backend (K0–K3).
-- A partir de 12/11: frontend (W1–R1); backend termina em 25/11; BD envia a Parte 2 até 30/11.
+- 28/10 a 11/11: UX/UI (U1–U6, concluídos em 31/10), backend (K0–K4 PR 2) e BD (D2, D3).
+- 12/11 a 06/12: BD (PF, BD-1, P1–P4; Parte 2 enviada até 30/11), backend (BK-1, K4 PR 3 + BK-2, BK-3, K5; termina em 26/11), frontend (W1 concluído em 11/11; W2–R1) e UX/UI (U7 parte A, 13–17/11).
 
 **Prazos fixos:** BD Parte 1 em **19/10/2026** · BD Parte 2 em **07/12/2026** (Google Classroom).
-**Alvos:** BD Parte 1 enviada em 19/10 (feito) · handoff de UX em 16/11 · BD Parte 2 enviada até 30/11 · S1 (núcleo da carteira) pronto em 06/12.
+**Alvos:** BD Parte 1 enviada em 19/10 (feito) · handoff de UX (concluído em 31/10) · BD Parte 2 enviada até 30/11 · S1 (núcleo da carteira) pronto em 06/12 · apresentação de ES em 09/12.
 
 **Escopo de Engenharia de Software nestas datas:** só o **S1** (A1–A2, B1–B7, B13, C1; renda fixa e cripto sem preço, D55), aprovado em 31/10/2026 (D49). Depois de 06/12: S2 → S6 → S9 → S10 → S3 → S4 → S5 → S7 → S8 → S11.
 
 **Prompts dos agentes:** os quatro em `agentes/` foram reescritos em 05/10/2026 e trazem as tarefas e datas da própria frente; mudança neste plano atualiza também o prompt da frente afetada.
 
-**Checklist interativo:** artifact "Plano de Ação Carteira B3" (https://claude.ai/artifact/MEKLYSKz6kRe1ff3nvop6U), atualizado em 12/11/2026 com este plano (K3 e W1 marcados como concluídos; K5 e G-K5 da D59). O progresso (tarefas marcadas) vive no artifact; datas, dependências e critérios de pronto vivem neste documento. Toda mudança neste plano atualiza o artifact na mesma tarefa.
+**Checklist interativo:** artifact "Plano de Ação Carteira B3" (https://claude.ai/artifact/MEKLYSKz6kRe1ff3nvop6U), atualizado em 12/11/2026 com este plano (replanejamento de 12/11: PF e BD-1 concluídos, P1–P4 com datas novas, G-P1, W4a/W4b, tarefas da revisão). O progresso (tarefas marcadas) vive no artifact; datas, dependências e critérios de pronto vivem neste documento. Toda mudança neste plano atualiza o artifact na mesma tarefa.
 
 ## BD Parte 1 — descrição do problema e modelo ER
 | ID | Tarefa | Status | Resultado |
@@ -67,18 +69,28 @@
 | G1 | **Concluído (24/10).** Glossário PT↔EN de tabelas e colunas | 06/10–08/10 | B5 | `database/docs/glossario.md` cobre as 29 tabelas e 183 colunas |
 | D1 | **Concluído (24/10; conferido com `prisma migrate diff` sem diferenças).** `schema.prisma` + migrations (29 tabelas, CHECK, UNIQUE, enums) + `ddl.sql` gerado | 13/10–24/10 (validação na nuvem, G-D1) | G1; PostgreSQL + Prisma (F4 ou ambiente de nuvem) | Migrations sobem do zero; `ddl.sql` bate 1:1 com `mapeamento.md` |
 | D3 | **Concluído (31/10, D50), incluindo o brModelo (conceitual e lógico, imagens em `database/docs/`).** ER e schema das decisões D43 (carteira ideal, metas) e D44 (renda fixa, cripto), com os requisitos de dados das telas do D47 (prioridade A obrigatória; B se couber): brModelo, `modelo-er.md`, `mapeamento.md`, `glossario.md`, `schema.prisma` + migration, `ddl.sql` e testes de restrição | 31/10–04/11 | D1, D43, D44 | Migrations sobem do zero; `db:drift` sem diferenças; `ddl.sql` bate com o mapeamento novo; testes das novas restrições passando |
-| PF | Prova de conceito das fontes (D59): um arquivo real de cada fonte em `data/raw/fontes-poc/` (COTAHIST, Cadastro de Instrumentos, índices da B3, proventos da B3, Mercado Bitcoin, Tesouro), com URL, data, hash, contagens e mapeamento para o glossário em `database/docs/fontes-poc.md`; agente de banco | 12/11–16/11 | D3 | Contagem de tickers por tipo; campos mapeados; base do P1 e do K5 |
-| P1 | `inserts.sql` (≥ 10 tuplas por tabela, ≥ 290 no total, mais as tabelas da D3) + memória de cálculo | 25/10–07/11 | D1, P0, D3 (para as tabelas novas) (K0 opcional, para conferir posições) | Seed idempotente; posições nunca negativas; proventos batem com a posição na data-com; apurações batem com as operações |
-| P2 | `queries.sql`: 10 com junção, 3 LEFT/RIGHT JOIN, 5 com agregação + GROUP BY/HAVING/ORDER BY, cada uma com enunciado | 08/11–14/11 | P1 | 18 consultas respondendo perguntas reais do domínio |
-| P3 | Script de resultados + listagem completa de cada tabela | 15/11–17/11 | P2 | Arquivos em `database/results/` |
-| P4 | Relatório final: título, integrantes, SGBD (PostgreSQL, PostgreSQL Global Development Group), texto e ER corrigidos com o retorno da Parte 1, DDL + inserts (.sql), listagens, consultas com enunciado, SQL e resultado | 18/11–28/11 | P3, retorno da Parte 1 | Enviado até 30/11 (prazo 07/12) |
+| PF | **Concluído (12/11), PR #23.** Prova de conceito das fontes (D59): um arquivo real de cada fonte em `data/raw/fontes-poc/` (COTAHIST, Cadastro de Instrumentos, índices da B3, proventos da B3, Mercado Bitcoin, Tesouro), com URL, data, hash, contagens e mapeamento para o glossário em `database/docs/fontes-poc.md`; agente de banco | 12/11–16/11 | D3 | Contagem de tickers por tipo; campos mapeados; base do P1 e do K5 |
+| BD-1 | **Concluído (12/11), PR #24.** Primeiro corte do P1 (correção da revisão, A1/B7): catálogo do S1 (setores, emissores com CNPJ e código CVM, 72 ativos das 6 classes, 10 títulos, 12 criptos, 11 corretoras), `economic_indexes`, `fixed_income_types` e as linhas de mercado da PF (IBOV, proventos); `npm run db:seed`; seed rodado 2× no job `database` (Node 24) | 12/11 | PF | Feito: `seed-check.sql` confere as 6 classes, a massa do handoff e os casos de LEFT JOIN; contagens iguais nas duas execuções |
+| P1 | **Atrasado (venceu em 07/11; replanejado em 12/11).** Segundo corte de `inserts.sql`: as ~26 tabelas restantes (usuários, carteiras, operações, proventos recebidos, IR, eventos e documentos, relatórios de FII, cotações, indicadores, alertas, telas salvas, metas, carteira ideal, preços de título e de cripto), com ±10 tuplas por tabela, mais a memória de cálculo. Inclui o usuário de demonstração com a carteira "Longo prazo" da massa do handoff (D48) | 13/11–18/11 | BD-1, P0, D3; preço de cripto (decisão até 14/11, tabela abaixo) | Seed idempotente; posições nunca negativas; proventos batem com a posição na data-com; apurações batem com as operações; `seed-check.sql` ampliado; login do usuário de demonstração funciona na API |
+| P2 | `queries.sql`: 10 com junção, 3 LEFT/RIGHT JOIN, 5 com agregação + GROUP BY/HAVING/ORDER BY, cada uma com enunciado | 19/11–22/11 | P1 (ou o que entrou pelo G-P1) | 18 consultas respondendo perguntas reais do domínio |
+| B7 | Atualizar a descrição do problema (`database/docs/descricao-problema.md`) com carteira ideal, metas, renda fixa e cripto (D43, D44), para o relatório | 19/11–22/11 | D3 | Texto coerente com o ER da D3 |
+| P3 | Script de resultados + listagem completa de cada tabela | 23/11–24/11 | P2 | Arquivos em `database/results/` |
+| P4 | Relatório final: título, integrantes, SGBD (PostgreSQL, PostgreSQL Global Development Group), texto e ER corrigidos com o retorno da Parte 1, DDL + inserts (.sql), listagens, consultas com enunciado, SQL e resultado | 25/11–30/11 | P3, B7, retorno da Parte 1 (PL2) | Enviado até 30/11 (prazo 07/12) |
+
+**Dependências do P1 (fontes):**
+| Fonte | Situação | Decisão até | Se não sair |
+|---|---|---|---|
+| Proventos (`income_distributions`) | Resolvida (D59, PF) | — | — |
+| Ibovespa (`index_values`) | Resolvida (D59, PF) | — | — |
+| Preço de cripto (`crypto_prices`) | Mercado Bitcoin bloqueado para a rede de desenvolvimento (F1) | 14/11: usuário baixa o JSON de candles pelo navegador para `data/raw/fontes-poc/` | Candles diários da API pública da Foxbit (já é a fonte do catálogo de cripto, D60c), com URL e hash no `fontes-poc.md` (aprovado em 12/11) |
+| Tabelas de domínio fechado | `economic_indexes` 5 e `fixed_income_types` 8 aceitas (D60d); `tax_categories` (4 categorias reais) | no P1 | Mesmo critério da D60d, justificado no relatório |
 
 ## Fundação
 | ID | Tarefa | Datas | Depende de | Pronto quando |
 |---|---|---|---|---|
 | F1 | E-mails às professoras: ODS (BD) e reuso nas duas disciplinas | **Concluído (05/10)** | — | ODS confirmado; reuso registrado (D33) |
-| F2 | Comando `claude` no PATH e extensão do VS Code | 25/10–26/10 (usuário) | — | `claude --version` responde; `@database` aparece na lista |
-| F3 | Repositório GitHub: estrutura de `claude/estrutura-repositorio.md` (conteúdo do pacote do repositório) no commit inicial; depois `main` protegida (PR obrigatório; 0 aprovações enquanto houver uma pessoa, D38), template de PR, Conventional Commits, GitHub Projects; `gh auth login` para os comandos `/commit-push-pr` | 26/10–27/10 (usuário) | F2 | Commit inicial na `main` sem `.env`; PR de teste mesclado pela regra de proteção, com o job `database` do CI como verificação obrigatória (D40); `gh auth status` responde |
+| F2 | **Concluído.** Comando `claude` no PATH e extensão do VS Code | 25/10–26/10 (usuário) | — | `claude --version` responde; `@database` aparece na lista |
+| F3 | **Concluído; proteção da `main` com os checks `database`, `backend` e `frontend` exigidos confirmada em 12/11 (o `e2e` entra no PL3).** Repositório GitHub: estrutura de `claude/estrutura-repositorio.md` (conteúdo do pacote do repositório) no commit inicial; depois `main` protegida (PR obrigatório; 0 aprovações enquanto houver uma pessoa, D38), template de PR, Conventional Commits, GitHub Projects; `gh auth login` para os comandos `/commit-push-pr` | 26/10–27/10 (usuário) | F2 | Commit inicial na `main` sem `.env`; PR de teste mesclado pela regra de proteção, com o job `database` do CI como verificação obrigatória (D40); `gh auth status` responde |
 | F4 | **Concluído (26/10, validado na máquina do usuário).** `docker-compose.yml` com PostgreSQL 16 (bancos dev, test e shadow) e `.env.example` | 27/10 (usuário) | F3 | `docker compose up` sobe os bancos; `npm run db:migrate` e `npm run db:test` passam |
 
 ## Banco do sistema (fora da entrega de BD)
@@ -88,7 +100,7 @@ O que o sistema precisa no banco além das 36 tabelas do ER (29 até a D3). Não
 |---|---|---|---|---|
 | D2 | Schema técnico `ops` com `ops.user_sessions` (refresh tokens com hash, rotação por família, revogação), via `multiSchema` do Prisma; agente database | **Concluído (26/10)** | D1, F4 | Migration nova cria só `ops`; `ddl.sql` (só `public`) não muda; `db:drift` sem diferenças; testes de restrição de `ops` passando |
 
-O catálogo de referência do S1 vem de duas fontes (D59): o seed do P1 (setores, corretoras e ~50 ativos reais tirados do Cadastro de Instrumentos da B3, para a entrega de BD) e a carga do catálogo completo pelo K5 (todos os ativos de ação, unit, FII, ETF e BDR). O P1 passou da data (07/11) e o K3 terminou em 09/11 sem seed; os testes de integração do backend criam os próprios dados.
+O catálogo de referência do S1 vem de duas fontes (D59): o seed do BD-1 (PR #24, 12/11: setores, emissores, corretoras e 72 ativos reais das 6 classes, tirados do Cadastro de Instrumentos da B3, do Tesouro e da Foxbit) e a carga do catálogo completo pelo K5 (todos os ativos de ação, unit, FII, ETF e BDR). Os testes de integração do backend criam os próprios dados; o BK-3 confere a massa do handoff sobre o seed.
 
 ## UX/UI
 | ID | Tarefa | Datas | Depende de | Pronto quando |
@@ -99,6 +111,8 @@ O catálogo de referência do S1 vem de duas fontes (D59): o seed do P1 (setores
 | U3 | **Concluído (31/10), aprovado pelo usuário.** Alta fidelidade com os estados de `claude/handoff-ux.md`, um frame por tela, componente e estado | 06/11–12/11 | U2 | Estados de cada componente especificados |
 | U4 | **Concluído (31/10).** Textos de ajuda: "como foi calculado" para PM, custo, lucro, totais da carteira e resumo da operação (D42), em `claude/microcopy.md` | 13/11–14/11 | U3 | Tabela salva no projeto |
 | U6 | **Concluído (30/10), D45.** Ajustes de UX no S1 (guias, filtro por tipo, agrupamento por classe, avatar) e página "Produto completo (roadmap)" no Figma (hoje faixas da página única, D46), fora do handoff do S1 | 30/10 | U3 | Frames e protótipo navegável; links no `claude/handoff-ux.md` |
+| U7a | U7 parte A (`claude/verificacao-plano-figma.md`, seção 2): estados de erro e carregando que faltam, Resumo "calculando" e "prévia indisponível", variantes da RN10 e do `DerivedValueExplainer` (9 códigos da microcopy), links no `claude/handoff-ux.md` | 13/11–17/11 | U5 | Frames e links no handoff antes do W3 e do W4b |
+| U7b | U7 parte B: telas das funções do produto completo sem frame (16 de 47 itens), uma etapa por vez na ordem da D49 | depois de 06/12 | U7a | Cada etapa com tela antes de começar |
 | U5 | **Concluído (31/10).** Revisão por Nielsen e WCAG AA (plugin Design: crítica de design e revisão de acessibilidade); handoff para o frontend em `claude/handoff-ux.md` | 15/11–16/11 | U4 | Sem pendência de contraste ou de foco; `claude/handoff-ux.md` com o link do frame de cada tela |
 
 ## Backend
@@ -108,42 +122,56 @@ O catálogo de referência do S1 vem de duas fontes (D59): o seed do P1 (setores
 | K1 | **Concluído (01/11), PRs #8 e #9 (Docker); exigir o check `backend` na proteção da `main`.** Esqueleto NestJS com Fastify (api e worker): config validada com zod no boot dos dois processos, prefixo `/api/v1`, filtro RFC 7807, helmet, CORS restrito, logs com `nestjs-pino`, `GET /api/v1/health` (terminus), `openapi.json` exportado e conferido no CI, lint de camadas, Jest (unitário em paralelo; integração e E2E com Testcontainers em série, migrations pelo Prisma da raiz), job `backend` no `ci.yml` (D40) | 28/10–03/11 | F3, F4 | Jobs `database` e `backend` verdes em todo PR e exigidos na proteção da `main` |
 | K2 | **Concluído (01/11), PR #11; conferido em 09/11.** Módulos auth e users (RN01), guard JWT, rate limit | 04/11–08/11 | D1, D2, K1 | E2E de cadastro e login passando |
 | K3 | **Concluído (09/11), PRs #12 (contrato da auditoria) e #13 (catálogo e carteiras, com `operationCount` e `assetCount`).** reference-data (ativos, emissores, corretoras) e portfolios (RN02); `GET /portfolios` com `operationCount` (D41); correções de contrato da auditoria de 09/11 (esquemas `bearer` e `refresh_token` no OpenAPI, 400 com `errors[].field`, `ProblemDetails` nas respostas de erro), antes do W2 | 09/11–13/11 | K2 | Carteira de outro usuário retorna 404; `operationCount` coberto por teste; `openapi.json` sem erro estrutural; 400 de cadastro e login com o campo de cada erro |
-| K4 | **Em andamento: PR 1 mesclado em 11/11 (PR #14); PR 2 (posições e totais) mesclado em 11/11 (PR #20); falta o PR 3 (prévia).** operations com recálculo transacional (RN04–RN12); posições abertas e encerradas (D41) e totais em `GET /portfolios/:id/summary` (B7); prévia da operação sem gravar (D42); filtro `assetType` no histórico (D45); OpenAPI versionado | 16/11–25/11 | K3, K0 | E2E compra → venda → posição; venda total aparece como posição encerrada com o lucro realizado; violação da RN10 identifica a operação |
-| K5 | Carga do catálogo completo (D59): comando do worker no módulo `ingestion` que lê o Cadastro de Instrumentos da B3 (arquivo do dia em `data/raw/`) e grava, por upsert na chave natural (ISIN; ticker), os emissores e os ativos de ação, unit, FII, ETF e BDR do mercado à vista; programa do BDR pelo `SpcfctnCd`; setor pela classificação setorial da B3 quando houver (nulo aceito); sem cotações e sem desativar ativos (isso é do S2) | 18/11–26/11 | K3, PF | Teste de parse com trecho real do arquivo; rodar 2× não muda nada; contagem por tipo no PR; a busca do C1 acha um ativo que não está no seed; comando no README |
+| BK-1 | Limite de login por variável (`AUTH_RATE_LIMIT_MAX`), `cancel-in-progress` só em PR e `npm audit` no job `backend` (correção da revisão, A2/B7) | 13/11–14/11 | K2 | Teste de env cobre padrão, limite e recusa em produção; nenhum E2E sobrescreve o throttler |
+| K4 | **Em andamento: PR 1 mesclado em 11/11 (PR #14); PR 2 (posições e totais) mesclado em 11/11 (PR #20); falta o PR 3 (prévia), feito junto com o BK-2.** operations com recálculo transacional (RN04–RN12); posições abertas e encerradas (D41) e totais em `GET /portfolios/:id/summary` (B7); prévia da operação sem gravar (D42); filtro `assetType` no histórico (D45); OpenAPI versionado | PR 3 + BK-2: 15/11–19/11 (limite do G-K4: 25/11) | K3, K0 | E2E compra → venda → posição; venda total aparece como posição encerrada com o lucro realizado; violação da RN10 identifica a operação; prévia sem gravar com o mesmo cálculo do lançamento (D42); as 6 classes na posição e nos totais (D55); códigos da D56 em todo 400/422 |
+| BK-2 | Transação do `PATCH` sem consulta fora do `tx` e isolamento entre usuários com banco real (correção da revisão, M1/M2), no PR 3 do K4 ou logo depois | 15/11–19/11 | K4 PR 2 | E2E de 40 `PATCH` simultâneos sem 500; E2E de isolamento com dois usuários falha ao tirar o `portfolioId` de cada consulta |
+| BK-3 | Teste do seed e README do backend (correção da revisão, A1/M6): massa de 9 operações do handoff pela API sobre o catálogo do seed; se o segundo corte do P1 já estiver na `main`, confere também a carteira de demonstração semeada | 20/11 | BD-1 (P1 opcional) | Teste falha se um ativo ou corretora da massa sair do seed; README sem endpoint faltando |
+| K5 | Carga do catálogo completo (D59): comando do worker no módulo `ingestion` que lê o Cadastro de Instrumentos da B3 (arquivo do dia em `data/raw/`, em Latin-1, F9) e grava, por upsert na chave natural (ISIN; ticker), os emissores e os ativos de ação, unit, FII, ETF e BDR do mercado à vista; programa do BDR pelo `SpcfctnCd`; setor pela classificação setorial da B3 quando houver (nulo aceito); sem cotações e sem desativar ativos (isso é do S2) | 21/11–26/11 | K3, PF, BD-1, K4 PR 3, BK-2 | Teste de parse com trecho real do arquivo; rodar 2× não muda nada; seed e K5 em qualquer ordem sem duplicar; contagem por tipo no PR; a busca do C1 acha um ativo que não está no seed; comando no README |
+| BK-4 | Fronteira entre módulos e dívidas menores (correção da revisão, M3, M7, B2, B5, B6, B8), em PRs pequenos | depois de 06/12, antes do S2 | K4 | Lint falha num import de `infrastructure` de outro módulo; sem ciclo entre módulos |
 
 ## Frontend
 | ID | Tarefa | Datas | Depende de | Pronto quando |
 |---|---|---|---|---|
-| W1 | **Concluído (11/11), PR #19 (D58); conferido em 12/11; check `frontend` exigido na proteção da `main`.** Esqueleto Angular, tokens em `@theme` no `styles.css` (Tailwind 4, conferidos com as variáveis do Figma), interceptors, shell (frame L) com os estados globais (sessão expirada, 404, falha de conexão), specs com Vitest (limite de 80%), `@playwright/test` configurado, job `frontend` no `ci.yml` (D40) | 12/11–14/11 | U1, F3 | Job `frontend` (lint, specs, build) verde e exigido na proteção da `main` |
-| W2 | Login e cadastro (frames 1 e 2) | 15/11–18/11 | W1, K2, U3 | Erros do backend exibidos no campo certo |
-| W3 | Lista, criação e exclusão de carteiras, com estado vazio e `ConfirmDialog` (frames 3 e C3) | 19/11–23/11 | W2, K3 | Os 4 estados de dados e a confirmação de exclusão cobertos por spec |
-| W4 | Detalhe da carteira com guias Resumo e Histórico, posições agrupadas por classe com `AssetAvatar` e posições encerradas (D45), formulário de operação (criar e editar) com Resumo da operação (D42), histórico com filtro por tipo, catálogo com "Lançar operação", `DerivedValueExplainer` e `BusinessRuleError` (frames 4–7, C1–C3) | 26/11–02/12 | W3, K4, U5 | Fluxo completo usando a API real |
-| R1 | E2E ponta a ponta com `@playwright/test` (`frontend/e2e/*.spec.ts`, job `e2e` no CI contra a API e um PostgreSQL de serviço; na máquina, contra `carteira_test`), verificação de acessibilidade com `@axe-core/playwright` nas telas do S1 (temas claro e escuro, sem violação séria ou crítica) e fluxo principal só com teclado (U5), README de execução e roteiro de demonstração: S1 pronto | 03/12–06/12 | W4 | E2E do S1 passando no CI; alguém de fora sobe e usa o sistema seguindo só o README |
+| W1 | **Concluído (11/11), PR #19 (D58); conferido em 12/11; check `frontend` exigido na proteção da `main`.** Esqueleto Angular, tokens em `@theme` no `styles.css` (Tailwind 4, conferidos com as variáveis do Figma), interceptors, shell (frame L) com os estados globais (sessão expirada, 404, falha de conexão), specs com Vitest (limite de 80%), `@playwright/test` configurado, job `frontend` no `ci.yml` (D40) | 11/11 | U1, F3 | Job `frontend` (lint, specs, build) verde e exigido na proteção da `main` |
+| W2 | Login e cadastro (frames 1 e 2), com o FE-1 no primeiro PR | 13/11–16/11 | W1, K2, U3, BK-1 (para o FE-1) | Erros do backend exibidos no campo certo; E2E do cadastro e do login no job `e2e` |
+| FE-1 | Job `e2e` no CI desde o W2, regra de lint contra conta com dinheiro (D5, D28), limite de ramos (correção da revisão, M4/M5/B6) | 13/11–16/11 | W1, BK-1 | Job `e2e` verde no PR do W2; lint falha no arquivo de sonda |
+| W3 | Lista, criação e exclusão de carteiras, com estado vazio e `ConfirmDialog` (frames 3 e C3) | 17/11–20/11 | W2, K3 | Os 4 estados de dados e a confirmação de exclusão cobertos por spec e E2E |
+| W4a | Detalhe da carteira com guias Resumo e Histórico, posições agrupadas por classe com `AssetAvatar` e posições encerradas (D45), histórico com filtro por tipo, catálogo (frames 4, 6 e 7; 18 frames de estado). A ação "Lançar operação" do catálogo entra no W4b | 21/11–26/11 | W3, K3, K4 PR 2, U5 | Detalhe, Histórico e Catálogo usando a API real, com E2E |
+| W4b | Formulário de operação (criar e editar) com Resumo da operação (D42), "Lançar operação" do catálogo, `DerivedValueExplainer` e `BusinessRuleError` (frames 5, C1, C2; 12 frames de estado) | 27/11–02/12 | W4a, K4 PR 3, U7a | Fluxo completo usando a API real, com E2E |
+| FE-2 | "Como rodar" no README da raiz, testado num clone limpo (correção da revisão, M6/A1) | 27/11 | BD-1, BK-3, K5 ou G-K5 | Seguindo só o README, alguém cadastra, cria carteira e lança uma compra |
+| R1 | E2E ponta a ponta com `@playwright/test` (`frontend/e2e/*.spec.ts`, job `e2e` no CI contra a API e um PostgreSQL de serviço; na máquina, contra `carteira_test`), verificação de acessibilidade com `@axe-core/playwright` nas telas do S1 (temas claro e escuro, sem violação séria ou crítica) e fluxo principal só com teclado (U5), README de execução e roteiro de demonstração: S1 pronto | 03/12–06/12 | W4b | E2E do S1 passando no CI; alguém de fora sobe e usa o sistema seguindo só o README |
 
 ## Gatilhos de corte
 | # | Data | Condição | Ação |
 |---|---|---|---|
 | G-P0 | 10/10 | Alguma regra de IR sem confirmação na norma | Registrar a regra com a citação disponível e marcar como "a confirmar" na memória de cálculo; o seed de IR usa só as regras confirmadas |
 | G-D1 | 20/10 (**aplicado em 24/10**) | Sem PostgreSQL local (F4 não pronto) | O agente de banco valida schema, migrations e seed num PostgreSQL no ambiente de nuvem do chat e entrega os arquivos para versionar; o P1 não atrasa |
-| G-K4 | 25/11 | K4 sem o E2E compra → venda → posição passando | Primeiro corte: sai a prévia (D42) e o formulário fica sem o Resumo da operação. Se não bastar, o W4 entra só com lançamento e posição; edição e exclusão retroativa ficam no backend (RN10 testada), fora da tela |
+| G-K4 | 25/11 | K4 sem o E2E compra → venda → posição passando | Primeiro corte: sai a prévia (D42) e o formulário fica sem o Resumo da operação. Se não bastar, o W4b entra só com lançamento e posição; edição e exclusão retroativa ficam no backend (RN10 testada), fora da tela |
 | G-U3 | 12/11 | Alta fidelidade (U3) não pronta | O W2 começa com os wireframes do U2 e os tokens do U1, com os links dos frames de wireframe já em `claude/handoff-ux.md`; o U3 vira ajuste visual depois |
-| G-W4 | 02/12 | W4 não pronto | Saem do frontend o filtro do histórico, o "como foi calculado" do lucro e a ação "Lançar operação" do catálogo (o catálogo fica só como consulta); o R1 começa em 03/12 de qualquer forma |
+| G-W4 | 02/12 | W4b não pronto | Saem do frontend o filtro do histórico, o "como foi calculado" do lucro e a ação "Lançar operação" do catálogo (o catálogo fica só como consulta); o R1 começa em 03/12 de qualquer forma |
 | G-K5 | 26/11 | K5 sem os testes de parse e de idempotência passando | O catálogo do S1 fica com os ~50 ativos reais do seed; o K5 volta para o S2. Nada do W4 ou do R1 é cortado por causa do K5 |
 | G-D3 | 04/11 | D3 não concluída | Primeiro saem as linhas B do D47 (o rótulo correspondente sai da tela). Se não bastar, renda fixa e cripto (D44) saem do ER da Parte 2 e ficam registradas só como escopo do produto; carteira ideal e metas (D43) continuam. O P1 não passa de 07/11 por causa da D3 |
+| G-P1 | 18/11 | Segundo corte do P1 incompleto | O seed fica com as tabelas prontas e o P2 começa em 19/11 mesmo assim, só com consultas sobre tabelas semeadas; as que faltarem vão ao relatório como pendência justificada. O P4 não passa de 30/11 por causa do P1 |
 | G-P4 | 30/11 | Sempre | O relatório de BD tem prioridade sobre qualquer outra frente |
 | G-UX | Sempre | Uma tarefa de BD passou da data de término | O UX/UI pausa até a tarefa de BD voltar ao prazo |
 
 ## Planejamento (pendente)
 - ~~Aprovar a entrega do semestre de ES.~~ Aprovada em 31/10/2026 (D49): S1 até 06/12; depois S2 → S6 → S9 → S10 → S3 → S4 → S5 → S7 → S8 → S11.
-- Obter o calendário de entregas incrementais de ES e encaixar K2, K4 e R1 como marcos.
+
+| ID | Pendência | Até | Dono |
+|---|---|---|---|
+| PL1 | Pedir à professora de ES o calendário de entregas incrementais e encaixar K2, K4 e R1 como marcos | 19/11 | usuário |
+| PL2 | Pedir à professora de BD o retorno da Parte 1; se não chegar até 26/11, o P4 segue com o ER atual e uma nota no relatório | pedir até 19/11 | usuário |
+| PL3 | Exigir o check `e2e` na proteção da `main` | quando o job do FE-1 ficar verde | usuário |
+| PL4 | Responder às decisões B1, B3, B4, B9 e M8 de `claude/prompts-correcao-s1.md` | antes de 06/12 | usuário |
 
 ## Riscos
-- **Quatro frentes em paralelo.** De 28/10 a meados de novembro correm BD, UX/UI e backend; de 10/11 em diante entra o frontend: o dobro do limite do D15. Prioridade: BD, backend, frontend, UX/UI; os gatilhos G-UX, G-U3, G-K4 e G-W4 cortam escopo em vez de mover datas.
+- **Quatro frentes em paralelo.** De 28/10 a meados de novembro correm BD, UX/UI e backend; de 11/11 em diante entra o frontend: o dobro do limite do D15. Prioridade: BD, backend, frontend, UX/UI; os gatilhos G-UX, G-U3, G-K4 e G-W4 cortam escopo em vez de mover datas.
 - **Duas semanas perdidas em outubro.** O replanejamento de 24/10 absorveu o atraso comprimindo UX/UI (U1–U5 em três semanas) e sobrepondo backend e UX.
-- **Folga final zero.** O R1 termina em 06/12.
+- **Folga final zero.** O R1 termina em 06/12. O BD tem 7 dias de reserva (envio em 30/11, prazo 07/12).
 - **Fundação depende do usuário.** F2–F4 em 25–27/10; atraso no F3 atrasa K0, K1 e W1; o banco não depende mais do Docker (G-D1 aplicado).
 - **Revisão sem segunda pessoa.** O `/review-pr` substitui o revisor humano (D38); ele não roda o sistema, então "rodar localmente o que o PR afirma" continua sendo tarefa do usuário antes do merge.
-- **Seed com tabelas de poucos registros reais.** No BD-1, `economic_indexes` tem 5 linhas (os 5 valores do enum `index_code`) e `fixed_income_types` tem 8 (os 8 tipos do CSV do Tesouro), abaixo das ±10 tuplas do enunciado; o relatório justifica as duas pelo domínio fechado. **Aceito pelo usuário em 12/11/2026 (D60d).** `tax_categories` (4 categorias reais, próximo corte do P1) continua pendente.
+- **Seed com tabelas de poucos registros reais.** No BD-1, `economic_indexes` tem 5 linhas (os 5 valores do enum `index_code`) e `fixed_income_types` tem 8 (os 8 tipos do CSV do Tesouro), abaixo das ±10 tuplas do enunciado; o relatório justifica as duas pelo domínio fechado. **Aceito pelo usuário em 12/11/2026 (D60d).** `tax_categories` (4 categorias reais, segundo corte do P1) segue o mesmo critério.
 - Mudança no ER depois do congelamento atrasa schema, seed e telas (D14). Ajustes do retorno da Parte 1 entram como decisão registrada e são aplicados antes do P1 se chegarem a tempo.
 - Seed de IR sem regra validada gera apurações inconsistentes: por isso o P0 vem antes do P1.
 - Volume do seed: 36 tabelas × 10 tuplas (29 do ER inicial + 7 da D3) coerentes entre si; por isso o P1 tem a janela mais longa de BD.
