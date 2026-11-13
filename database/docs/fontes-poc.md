@@ -145,6 +145,7 @@ Validado em `carteira_dev` numa transação desfeita (`ROLLBACK`) e com pais tem
 | F3 | "RENDIMENTO" em ação (PETR3/PETR4: 0,01649003 e 0,02038398 em 2026, correção de proventos declarados) não tem valor em `income_type` | **Decidido (D60):** fica fora do seed e de `income_type` |
 | F4 | `stockDividends` traz "CIS RED CAP" (cisão com redução de capital), sem valor em `corporate_event_type` | registrar; fora do S1 (D29) |
 | F5 | Cadastro de Instrumentos baixado às 21:42 do mesmo dia veio "Parcial"; o de 30/10 em `data/raw/b3-instrumentos/` é "Final" | backend (K5) |
+| F9 | O `InstrumentsConsolidatedFile` vem em Latin-1 (ISO-8859-1). O K5 tem de converter para UTF-8 antes de procurar o emissor pelo nome (`CrpnNm`); lido como UTF-8, nome com acento (ex.: "KINEA RENDA IMOBILIÁRIA…", "ISHARES IBOVESPA FUNDO DE ÍNDICE") não casa com o do seed e o emissor é duplicado | backend (K5) |
 | F6 | Rodapé da página do IBOV: as duas linhas se chamam "MÍNIMO", e a segunda traz os máximos | backend (S2) |
 | F7 | FUNDS no Cadastro mistura FII com FIAGRO, FIDC, FIP e FI-Infra, e o `CODBDI` 14 mistura ETF com esses fundos | backend (K5) |
 | F8 | D59 (proposta) atribui rendimentos de FII ao informe mensal da CVM; o dado está no `listedCompaniesProxy` | usuário (aprovação da D59) |

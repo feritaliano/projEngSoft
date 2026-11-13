@@ -143,7 +143,7 @@ O catálogo de referência do S1 vem de duas fontes (D59): o seed do P1 (setores
 - **Folga final zero.** O R1 termina em 06/12.
 - **Fundação depende do usuário.** F2–F4 em 25–27/10; atraso no F3 atrasa K0, K1 e W1; o banco não depende mais do Docker (G-D1 aplicado).
 - **Revisão sem segunda pessoa.** O `/review-pr` substitui o revisor humano (D38); ele não roda o sistema, então "rodar localmente o que o PR afirma" continua sendo tarefa do usuário antes do merge.
-- **Seed com tabelas de poucos registros reais.** `tax_categories` e `economic_indexes` têm 4 registros reais cada, abaixo das ±10 tuplas do enunciado; decisão do usuário pendente antes do fim do P1.
+- **Seed com tabelas de poucos registros reais.** No BD-1, `economic_indexes` tem 5 linhas (os 5 valores do enum `index_code`) e `fixed_income_types` tem 8 (os 8 tipos do CSV do Tesouro), abaixo das ±10 tuplas do enunciado; o relatório justifica as duas pelo domínio fechado. **Aceito pelo usuário em 12/11/2026 (D60d).** `tax_categories` (4 categorias reais, próximo corte do P1) continua pendente.
 - Mudança no ER depois do congelamento atrasa schema, seed e telas (D14). Ajustes do retorno da Parte 1 entram como decisão registrada e são aplicados antes do P1 se chegarem a tempo.
 - Seed de IR sem regra validada gera apurações inconsistentes: por isso o P0 vem antes do P1.
 - Volume do seed: 36 tabelas × 10 tuplas (29 do ER inicial + 7 da D3) coerentes entre si; por isso o P1 tem a janela mais longa de BD.

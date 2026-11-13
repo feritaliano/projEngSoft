@@ -154,7 +154,7 @@ Situação em 12/11/2026 (D59): o P1 passou da data (07/11) e entra com o seed m
 
 ## Regras da revisão de 12/11/2026
 - O seed (`database/sql/inserts.sql`) é idempotente, roda no job `database` e é entregue em cortes: o catálogo que a aplicação da etapa precisa vem antes das demais tabelas.
-- Mudança no seed avisa o backend, que mantém o teste que carrega o seed e confere as posições.
+- Mudança no seed avisa o backend, que mantém o teste que carrega o seed e confere as posições. O BD-1 entrega só o catálogo e a parte de mercado da PF; usuário, carteira e operações entram num próximo corte do P1. Até lá, o BK-3 cria as próprias operações sobre os ativos do seed (PETR4, WEGE3, MXRF11, ITSA4, BOVA11, BBDC4, HGLG11) e as corretoras XP Investimentos, NuInvest e Rico.
 - Commits por passo, em Conventional Commits; um PR por tarefa do plano.
 
 ## Regras de comunicação
