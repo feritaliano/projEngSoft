@@ -1,52 +1,95 @@
 // Guards the money lint itself (D5, D28, RN11): lints probe snippets as if they were files in src/app and checks each
-// violation is reported and each allowed form is not, so a config change cannot silently disable the rule. It also
-// fails when the rule is switched off by an inline comment: the only exception is a *.chart.ts file (eslint.config.js).
-import { readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+// forbidden form is an error and each allowed form is not, so a config change cannot silently weaken the rule. Then
+// lints src/app with inline config off, so a comment that switches the rule off (in any form) fails too; the only
+// exception is a *.chart.ts file (eslint.config.js).
 import { ESLint } from 'eslint';
 
 const RULE = 'no-restricted-syntax';
+// Written here, not imported from eslint.config.js, so the probe does not repeat the implementation.
+const FIELDS = [
+  'value',
+  'quantity',
+  'step',
+  'fees',
+  'price',
+  'cost',
+  'amount',
+  'profit',
+  'percent',
+];
+const SUFFIXED = [
+  'unitPrice',
+  'availableQuantity',
+  'totalCost',
+  'grossAmount',
+  'netProfit',
+  'brokerFees',
+  'marketValue',
+  'yieldPercent',
+];
+const OPERATORS = ['+', '-', '*', '/', '%', '**'];
+
 const FORBIDDEN = [
-  'export const a = (p: { value: string }) => Number(p.value);',
+  'export const a = (s: string) => Number(s);',
+  'export const a = (s: string) => new Number(s);',
   'export const a = (s: string) => parseFloat(s);',
   'export const a = (s: string) => parseInt(s, 10);',
   'export const a = (s: string) => Number.parseFloat(s);',
-  'export const a = (s: string) => new Number(s);',
+  'export const a = (s: string) => Number.parseInt(s, 10);',
+  'export const a = (s: string) => globalThis.Number(s);',
+  'export const a = (s: string) => window.parseFloat(s);',
   'export const a = (s: string) => +s;',
-  'export const a = (p: { value: string }) => p.value * 2;',
-  'export const a = (p: { unitPrice: string; fees: string }) => p.unitPrice + p.fees;',
-  'export const a = (p?: { quantity: string }) => p?.quantity + "1";',
+  ...[...FIELDS, ...SUFFIXED].map((f) => `export const a = (p: { ${f}: string }) => p.${f} * 2;`),
+  ...OPERATORS.map((op) => `export const a = (p: { value: string }) => 2 ${op} p.value;`),
+  ...OPERATORS.map((op) => `export const a = (p: { value: number }) => { p.value ${op}= 1; };`),
+  'export const a = (p: { quantity: number }) => { p.quantity++; };',
   'export const a = (p: { totalCost: string }) => -p.totalCost;',
-  'export const a = (p: { availableQuantity: number }) => { p.availableQuantity -= 1; };',
+  'export const a = (p?: { quantity: string }) => p?.quantity * 2;',
+  'export const a = (p: { value: string }) => (p.value as unknown as number) * 2;',
+  'export const a = (p: { value?: number }) => p.value! * 2;',
 ];
 const ALLOWED = [
   'export const a = (p: { total: number; pageSize: number }) => Math.ceil(p.total / p.pageSize);',
+  'export const a = (p: { operationCount: number }) => p.operationCount + 1;',
   'export const a = (i: number) => i + 1;',
   'export const a = (p: { name: string }) => "Carteira " + p.name;',
+  'export const a = (p: { value: string }) => `R$ ${p.value}`;',
+  "export const a = (p: { quantity: string }) => p.quantity === '0';",
 ];
 
 const eslint = new ESLint();
-const lint = async (code, file) => (await eslint.lintText(code, { filePath: file }))[0].messages;
 const failures = [];
 
-for (const code of FORBIDDEN) {
-  const messages = await lint(code, 'src/app/features/__money_probe__.ts');
-  if (!messages.some((m) => m.ruleId === RULE)) failures.push(`not reported: ${code}`);
+async function ruleErrors(code, filePath) {
+  if (await eslint.isPathIgnored(filePath)) {
+    failures.push(`${filePath} is ignored by the config; the probe would test nothing`);
+    return 0;
+  }
+  const [{ messages }] = await eslint.lintText(code, { filePath });
+  const broken = messages.find((m) => m.fatal || m.ruleId === null);
+  if (broken) failures.push(`${filePath}: probe not linted (${broken.message}): ${code}`);
+  return messages.filter((m) => m.ruleId === RULE && m.severity === 2).length;
+}
+
+for (const dir of ['features', 'shared', 'core']) {
+  const file = `src/app/${dir}/__money_probe__.ts`;
+  for (const code of FORBIDDEN) {
+    if (!(await ruleErrors(code, file))) failures.push(`not an error in ${dir}/: ${code}`);
+  }
 }
 for (const code of ALLOWED) {
-  const messages = await lint(code, 'src/app/features/__money_probe__.ts');
-  if (messages.some((m) => m.ruleId === RULE)) failures.push(`reported but allowed: ${code}`);
+  if (await ruleErrors(code, 'src/app/features/__money_probe__.ts'))
+    failures.push(`error but allowed: ${code}`);
 }
-const chart = await lint(FORBIDDEN[0], 'src/app/shared/__money_probe__.chart.ts');
-if (chart.some((m) => m.ruleId === RULE))
-  failures.push('reported in a *.chart.ts file (the chart exception)');
+if (await ruleErrors(FORBIDDEN[0], 'src/app/shared/__money_probe__.chart.ts')) {
+  failures.push('error in a *.chart.ts file (the chart exception)');
+}
 
-const root = 'src/app';
-for (const file of readdirSync(root, { recursive: true })) {
-  if (!/\.(ts|html)$/.test(file) || file.startsWith('api')) continue;
-  if (new RegExp(`eslint-disable.*${RULE}`).test(readFileSync(join(root, file), 'utf8'))) {
+const strict = new ESLint({ allowInlineConfig: false });
+for (const { filePath, messages } of await strict.lintFiles(['src/app'])) {
+  for (const m of messages.filter((m) => m.ruleId === RULE)) {
     failures.push(
-      `${join(root, file)}: ${RULE} disabled by comment; use a *.chart.ts file for chart data`,
+      `${filePath}:${m.line}: ${RULE} switched off by a comment; chart data goes in a *.chart.ts file`,
     );
   }
 }
