@@ -24,6 +24,7 @@
 | R15 | DARF código **6015** ("Ganhos líquidos em operações em bolsa") para todas as categorias: um DARF por mês | Agenda Tributária da Receita (27/02/2026); MIR | Confirmada por inferência forte |
 | R16 | Vencimento: último dia útil do mês seguinte ao da apuração | Página "Cálculo e Pagamento do Imposto" da Receita | Confirmada (artigo de lei **[a confirmar]**) |
 | R17 | DARF abaixo de R$ 10,00 não é pago: o valor soma ao imposto do mesmo código dos meses seguintes até atingir R$ 10,00 e é pago no prazo do último período | Lei 9.430/1996, art. 68, caput e § 1º | Confirmada |
+| R18 | IRRF sobre JCP pago a pessoa física: **17,5%** desde 01/01/2026 (era 15%); dividendos sem retenção; rendimento de FII isento para pessoa física nas condições do art. 3º, III, da Lei 11.033/2004 | Lei 9.249/1995, art. 9º, § 2º, na redação da LC 224/2025 (efeitos desde 01/01/2026, art. 14, III); Nota Cetad/Coest nº 009/2026 da Receita | Confirmada em 13/11/2026; JCP declarado em 2025 e pago em 2026 **[a confirmar]** |
 
 **Situação legislativa (verificada em 24/10/2026):**
 - A MP 1.303/2025 (alíquota única de 17,5%, apuração trimestral) **perdeu a vigência em 08/10/2025** sem conversão em lei (Ato Declaratório do Presidente da Mesa do Congresso nº 67/2025). Não produziu efeito.
@@ -102,7 +103,61 @@ O seed (P1) não terá exemplos que dependam desses pontos.
 - Receita Federal — manual ReVar: https://www.gov.br/receitafederal/pt-br/assuntos/meu-imposto-de-renda/pagamento/renda-variavel/manual
 - Receita Federal — MIR, Rendimentos do Capital: https://www.gov.br/receitafederal/pt-br/assuntos/meu-imposto-de-renda/preenchimento/manual-mir/rendimentos/rendimentos-do-capital
 - Receita Federal — Agenda Tributária (27/02/2026, código 6015): https://www.gov.br/receitafederal/pt-br/assuntos/agenda-tributaria/2026/fevereiro/dia-27-02-2026
+- Receita Federal — Nota Cetad/Coest nº 009/2026 (LC 224/2025; IRRF de 17,5% sobre JCP, R18): https://www.gov.br/receitafederal/pt-br/centrais-de-conteudo/publicacoes/estudos/notas-cetad/notas-tecnicas/2026/nota-cetad-coest-no-009-2026
 
 ## 7. Exemplos do seed
 
-A preencher no P1: para cada usuário e mês do seed, as operações, o preço médio fiscal, o resultado por categoria, a isenção, a compensação, o imposto e o DARF, conferidos com os valores gravados em `tax_assessments` e `darfs`.
+Preenchido no P1-2 (13/11/2026). Operações em `database/sql/inserts.sql`, seção 4; os valores abaixo são os gravados em `tax_assessments`, `darfs` e `received_income`, e o `database/tests/seed-check.sql` os recalcula a partir das operações (falha se divergirem). O seed não tem day trade nem exemplo que dependa dos pontos da seção 5; vendas de renda fixa e cripto não têm apuração (IR fora da D3, D44).
+
+**Convenções do cálculo.** Preço médio fiscal por usuário e ativo, somando carteiras e corretoras, sem arredondar entre os passos; resultado da venda = qtd × preço − custos − qtd × PM; `total_sales` = soma de qtd × preço; `net_result` arredondado em centavos (meio para cima) só no fim do mês. Imposto = (ganho tributável − compensado) × alíquota, em centavos; IRRF de 0,005% sobre as vendas (R13), dispensado quando ≤ R$ 1,00, deduzido do imposto do mês. Nas categorias `FII` e `COMMON_OTHER` o seed só tem meses com vendas ≤ R$ 20.000,00, em que o IRRF seria ≤ R$ 1,00 e dispensado (o ponto "IRRF sobre FII, ETF e BDR" da seção 5 não afeta os números). DARF pago no último dia útil do mês seguinte (R16).
+
+### 7.1 Apurações
+
+| Usuário | Mês | Categoria | Vendas (R$) | Resultado (R$) | Isento (R4) | Compensado (R$) | Imposto (R$) | IRRF (R$) | Devido (R$) | DARF |
+|---|---|---|---|---|---|---|---|---|---|---|
+| demo | 02/2026 | COMMON_STOCK | 1.862,00 | 412,80 | sim | 0,00 | 0,00 | 0,00 | 0,00 | — |
+| demo | 05/2026 | FII | 494,00 | −12,40 | não | 0,00 | 0,00 | 0,00 | 0,00 | — |
+| demo | 06/2026 | COMMON_STOCK | 1.900,00 | 293,47 | sim | 0,00 | 0,00 | 0,00 | 0,00 | — |
+| Bruno | 03/2026 | COMMON_STOCK | 28.960,00 | 4.539,00 | não | 0,00 | 680,85 | 1,45 | 679,40 | 03/2026, pago 30/04 |
+| Bruno | 07/2026 | COMMON_STOCK | 16.200,00 | −2.415,40 | sim | 0,00 | 0,00 | 0,00 | 0,00 | — |
+| Bruno | 09/2026 | COMMON_STOCK | 27.360,00 | 2.696,50 | não | 2.415,40 | 42,17 | 1,37 | 40,80 | 09/2026, pago 30/10 |
+| Carla | 02/2026 | FII | 2.955,00 | 42,00 | não | 0,00 | 8,40 | 0,00 | 8,40 | 04/2026 (R17) |
+| Carla | 04/2026 | FII | 2.940,00 | 27,00 | não | 0,00 | 5,40 | 0,00 | 5,40 | 04/2026, pago 29/05 |
+| Diego | 02/2026 | COMMON_OTHER | 7.900,00 | 295,10 | não | 0,00 | 44,27 | 0,00 | 44,27 | 02/2026, pago 31/03 |
+| Diego | 05/2026 | COMMON_OTHER | 16.500,00 | −2.109,00 | não | 0,00 | 0,00 | 0,00 | 0,00 | — |
+| Diego | 08/2026 | COMMON_OTHER | 16.000,00 | 3.989,00 | não | 2.109,00 | 282,00 | 0,00 | 282,00 | 08/2026, pago 30/09 |
+| Felipe | 06/2026 | COMMON_STOCK | 25.210,00 | 1.984,60 | não | 0,00 | 297,69 | 1,26 | 296,43 | 06/2026, pago 31/07 |
+| Henrique | 07/2026 | COMMON_OTHER | 14.000,00 | 1.183,00 | não | 0,00 | 177,45 | 0,00 | 177,45 | 07/2026, pago 31/08 |
+| Isabela | 02/2026 | COMMON_STOCK | 13.600,00 | 1.191,00 | sim | 0,00 | 0,00 | 0,00 | 0,00 | — |
+| Isabela | 04/2026 | COMMON_STOCK | 10.200,00 | −2.410,00 | sim | 0,00 | 0,00 | 0,00 | 0,00 | — |
+| Isabela | 09/2026 | COMMON_STOCK | 35.700,00 | 3.278,00 | não | 2.410,00 | 130,20 | 1,79 | 128,41 | 09/2026, pago 30/10 |
+| João | 06/2026 | COMMON_OTHER | 7.600,00 | 595,00 | não | 0,00 | 89,25 | 0,00 | 89,25 | 06/2026, pago 31/07 |
+| João | 10/2026 | COMMON_OTHER | 7.800,00 | 795,00 | não | 0,00 | 119,25 | 0,00 | 119,25 | 10/2026, não pago (vence 30/11) |
+| João | 10/2026 | COMMON_STOCK | 9.900,00 | 1.287,00 | sim | 0,00 | 0,00 | 0,00 | 0,00 | — |
+
+### 7.2 Memória de três casos
+
+- **Bruno, 09/2026 (compensação, R7 e R11).** PETR4: recompra de 400 a R$ 33,10 + R$ 6,00 → PM 33,115; venda de 400 a R$ 38,40 com R$ 7,00 → 15.360,00 − 7,00 − 13.246,00 = 2.107,00. VALE3: recompra de 200 a R$ 57,00 + R$ 5,00 → PM 57,025; venda de 200 a R$ 60,00 com R$ 5,50 → 12.000,00 − 5,50 − 11.405,00 = 589,50. Vendas do mês 27.360,00 > 20.000,00 (tributável); resultado 2.696,50; o prejuízo de 07/2026 (−2.415,40, de um mês isento, compensável por R11) é abatido por inteiro; base 281,10 × 15% = 42,165 → 42,17; IRRF 27.360,00 × 0,005% = 1,368 → 1,37; devido 40,80.
+- **Carla, 02 e 04/2026 (R17).** MXRF11: 1.000 a R$ 9,70 + R$ 5,00 → PM 9,705. Fev.: 300 × 9,85 − 1,50 − 300 × 9,705 = 42,00 → 20% = 8,40 (abaixo de R$ 10,00, sem DARF). Abr.: 300 × 9,80 − 1,50 − 2.911,50 = 27,00 → 5,40. Acumulado 13,80 ≥ 10,00: o DARF de 04/2026 quita as duas apurações.
+- **demo, Longo prazo.** Mesmos números do handoff: WEGE3 + 412,80 (02/2026, vendas 1.862,00, isento), MXRF11 −12,40 (05/2026, prejuízo de FII sem ganho de FII depois), PETR4 + 293,4666… → 293,47 (06/2026, isento).
+
+### 7.3 Carteira "Longo prazo" (massa das telas 3 e 4, D48)
+
+As 9 operações do handoff mais Tesouro IPCA+ 2035 (0,52 a R$ 3.846,15384615) e BTC (0,0125 a R$ 328.000,00). Custo das posições abertas: PETR4 3.203,2667 + MXRF11 1.518,00 + ITSA4 2.961,00 + BOVA11 2.369,00 + título 1.999,999999998 + BTC 4.100,00 = 16.151,2667 → **16.151,27**; lucro realizado 693,8667 → **693,87**; 6 ativos e 11 operações (Lista do Figma). Conferido pela API (`GET /portfolios/:id/summary`, 13/11/2026). O Figma dá o PM do título (R$ 3.846,15, arredondado) e o total implica R$ 2.000,00 investidos, daí o preço 2000 ÷ 0,52; com R$ 3.846,15 exatos, a soma exata daria 16.151,26 (achado F13 do `fontes-poc.md`).
+
+### 7.4 Proventos recebidos
+
+Base = posição da carteira na corretora no fim da data-com (`record_date`); bruto = base × valor por cota, em centavos; IRRF = 17,5% do bruto no JCP (R18), zero em dividendo e rendimento de FII; recebido na data de pagamento. Só proventos pagos até 13/11/2026. 29 linhas:
+
+| Carteira (corretora) | Provento | Data-com | Base | Bruto (R$) | IRRF (R$) | Linhas |
+|---|---|---|---|---|---|---|
+| demo, Longo prazo (XP) | PETR4 JCP | 22/04/2026 (2 parcelas) | 150 | 46,97 cada | 8,22 cada | 2 |
+| demo, Longo prazo (XP) | PETR4 JCP | 01/06/2026 (2 parcelas) | 150 | 52,57 cada | 9,20 cada | 2 |
+| Bruno, Ações BR (BTG) | PETR4 JCP | 01/06/2026 (2 parcelas) | 400 | 140,19 cada | 24,53 cada | 2 |
+| demo, Dividendos (XP e Itaú) | BBDC4 JCP | 06/04/2026 | 100 + 100 | 29,73 cada | 5,20 cada | 2 |
+| demo, Dividendos (XP e Itaú) | BBDC4 JCP | 03/07/2026 | 100 + 100 | 34,69 cada | 6,07 cada | 2 |
+| João, Bolsa e BDR (Santander) | BBDC4 JCP | 03/07/2026 | 500 | 173,45 | 30,35 | 1 |
+| demo, Dividendos (NuInvest) | HGLG11 rendimento | 30/01 a 30/09/2026 | 20 | 22,00 (jan.–jun.), 23,40 (jul.–set.) | 0,00 | 9 |
+| Carla, Renda FII (NuInvest) | HGLG11 rendimento | 30/01 a 30/09/2026 | 50 | 55,00 (jan.–jun.), 58,50 (jul.–set.) | 0,00 | 9 |
+
+Sem recebimento (casos de LEFT JOIN do P2): proventos de PETR4 e BBDC4 de dez./2025 (ninguém do seed tinha posição; também evitam o caso [a confirmar] da R18), JCP mensal do BBDC4 de 02/01 e 03/11/2026, PETR4 de 21/08/2026 (pagamento em 23/11 e 21/12), BBDC4 de 13/10/2026 (pagamento em 2027) e HGLG11 de 30/10/2026 (pagamento em 16/11).

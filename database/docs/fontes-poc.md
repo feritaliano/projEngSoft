@@ -70,12 +70,15 @@ Linha = dia, coluna = mês, ano no título (`IBOV - 2026`). `economic_indexes`: 
 | `approvedOn`, `relatedTo`, `remarks` | não gravados |
 | `stockDividends[].label` | `corporate_events.type`: DESDOBRAMENTO → SPLIT; GRUPAMENTO → REVERSE_SPLIT; BONIFICACAO → BONUS; CIS RED CAP sem valor no domínio (F4) |
 | `stockDividends[].lastDatePrior` | `corporate_events.ex_date` = **pregão seguinte** à última data com |
-| `stockDividends[].factor` | `ratio_from`/`ratio_to` (ex.: desdobramento 100 → 1:100; grupamento 0,01 → 100:1; bonificação 10% → 100:110) |
+| `stockDividends[].factor` | `ratio_from`/`ratio_to`. Desdobramento e bonificação: % de ações novas (desdobramento 100 → 1:2; 900 → 1:10; bonificação 10 → 100:110). Grupamento: ações novas por ação antiga (0,01 → 100:1). Corrigido no P1-2 (F10) |
+| (fora do `listedCompaniesProxy`) | `bonus_unit_cost`: custo atribuído da bonificação, do documento da companhia (aviso aos acionistas, fato relevante ou edital) (F15) |
 | `codeCVM` | `issuers.cvm_code` |
 | `subscriptions[]` | fora do ER |
 
-### 2.5 Mercado Bitcoin v4 → `crypto_prices` (PrecoCripto). **Não conferido** (F1)
-Pelo formato documentado da API (candles com vetores `t`, `o`, `h`, `l`, `c`, `v`): `t` (epoch, UTC) → `price_date`; `c` (fechamento do dia) → `reference_price`; `symbol` BTC-BRL → `crypto_assets`/`assets.ticker` BTC.
+### 2.5 Candles diários → `crypto_prices` (PrecoCripto)
+**Foxbit, API pública v3 (usada no seed, decisão de 13/11/2026):** `GET /rest/v3/markets/{par}/candlesticks?interval=1d&start_time=…&end_time=…&limit=500`. Cada candle é um vetor: `[0]` abertura do período (epoch ms, UTC) → `price_date`; `[4]` fechamento → `reference_price`; `[1]`–`[3]` abertura, máxima e mínima e `[5]`–`[10]` (fim do período, volumes, negócios) não gravados. Par `btcbrl` → `assets.ticker` BTC; `ethbrl` → ETH.
+
+Mercado Bitcoin v4 (fonte da D59), **não conferido** (F1): pelo formato documentado (vetores `t`, `o`, `h`, `l`, `c`, `v`), `t` → `price_date` e `c` → `reference_price`.
 
 ### 2.6 Tesouro Transparente → `fixed_income_prices` (PrecoTaxaTitulo) e `fixed_income_bonds`
 
@@ -98,6 +101,40 @@ Pelo formato documentado da API (candles com vetores `t`, `o`, `h`, `l`, `c`, `v
 | `Cotas_Emitidas` (complemento) | `shares_outstanding` |
 | `Total_Numero_Cotistas` (complemento) | `shareholders_count` |
 | `Percentual_Dividend_Yield_Mes` (complemento; já em fração, ex.: 0.007052) | `dividend_yield_month` |
+
+### 2.8 Informe trimestral de FII (CVM) → `fii_quarterly_reports` e `fii_report_properties`
+
+| Campo (arquivo) | Coluna |
+|---|---|
+| `CNPJ_Fundo_Classe` → `issuers.cnpj` (geral) | `fii_quarterly_reports.issuer_id` |
+| `Data_Referencia`, `Versao` (geral) | `reference_date`, `version` |
+| posição da linha no arquivo imovel, dentro do informe | `fii_report_properties.item_number` |
+| `Nome_Imovel`, `Endereco` | `name`, `address` |
+| `Classe` (Imóveis para renda acabados / renda em construção / venda acabados / venda em construção) | `property_class` (RENT_FINISHED, RENT_UNDER_CONSTRUCTION, SALE_FINISHED, SALE_UNDER_CONSTRUCTION) |
+| `Area` | `area` |
+| `Percentual_Vacancia` (só renda acabados), `Percentual_Inadimplencia`, `Percentual_Receitas_FII`, `Percentual_Locado` (só renda em construção) | `vacancy_rate`, `delinquency_rate`, `revenue_share`, `leased_rate` (já em fração; "-" ou vazio → NULL) |
+
+### 2.9 IPE (CVM) → `corporate_filings` (Comunicado)
+
+| Campo | Coluna |
+|---|---|
+| `CNPJ_Companhia` → `issuers.cnpj` | `issuer_id` |
+| `Categoria`, `Assunto` | `category`, `subject` (≤ 500 caracteres; há assuntos com 4.652) |
+| `Data_Referencia` | `reference_date` |
+| `Data_Entrega` (só a data) | `delivered_at`, à 00:00 de Brasília |
+| `Link_Download`, `Protocolo_Entrega` | `document_url`, `cvm_protocol` |
+| `Tipo`, `Especie`, `Tipo_Apresentacao`, `Versao` | não gravados |
+
+### 2.10 DFP e ITR (CVM) → `financial_statements` e `statement_lines`
+
+| Campo (arquivo) | Coluna |
+|---|---|
+| `CNPJ_CIA` → `issuers.cnpj` (índice `{dfp,itr}_cia_aberta_AAAA.csv`) | `issuer_id`; `filing_type` = DFP ou ITR pelo arquivo |
+| `DT_INI_EXERC` (DRE), `DT_REFER`, `VERSAO` (maior), `DT_RECEB` | `fiscal_year_start`, `period_end`, `version`, `filed_at` (00:00 de Brasília) |
+| `QT_ACAO_ORDIN_CAP_INTEGR`, `QT_ACAO_PREF_CAP_INTEGR`, `QT_ACAO_ORDIN_TESOURO`, `QT_ACAO_PREF_TESOURO` (composicao_capital, mesma versão) | `common_shares`, `preferred_shares`, `treasury_common`, `treasury_preferred` (F12) |
+| arquivo `_con_` / `_ind_` | `statement_lines.scope` = CONSOLIDATED / INDIVIDUAL |
+| `CD_CONTA`, `DS_CONTA` | `account_code`, `account_description` |
+| `VL_CONTA` × 1.000 quando `ESCALA_MOEDA` = MIL; só `ORDEM_EXERC` = ÚLTIMO | `value` (em reais) |
 
 ## 3. Respostas
 
@@ -128,19 +165,38 @@ Linha B da D47 (segmento do FII): o arquivo geral tem `Mandato` e `Segmento_Atua
 
 ## 4. Linhas do seed (`database/sql/inserts.sql`, seção 2)
 
+PF (12/11/2026):
+
 | Tabela | Linhas | Origem |
 |---|---|---|
 | `index_values` (IBOV) | 13 pregões, de 26/10 a 12/11/2026 | arquivo 3 |
 | `income_distributions` | 26: PETR4 (10: 2 dividendos, 8 JCP), BBDC4 (6 JCP), HGLG11 (10 rendimentos); 6 com pagamento depois de 12/11/2026 | arquivos 4a–4c |
-| `crypto_prices` | 0 (F1) | — |
+| `crypto_prices` | 0 na PF (F1); 25 no P1-2 (abaixo) | — |
 
 Validado em `carteira_dev` numa transação desfeita (`ROLLBACK`) e com pais temporários. Contagens 13 e 26; a segunda execução não muda nada; pai ausente falha com `not_null_violation`. Dependências da seção 1 (BD-1): `economic_indexes` IBOV e os ativos PETR4 (`BRPETRACNPR6`), BBDC4 (`BRBBDCACNPR8`) e HGLG11 (`BRHGLGCTF004`).
+
+Segundo corte do P1 (P1-2, 13/11/2026), seções 2.3 a 2.11 (arquivos na seção 6):
+
+| Tabela | Linhas | Origem |
+|---|---|---|
+| `crypto_prices` | 25: BTC e ETH de 03/11 a 12/11/2026 e os dias das operações de cripto do seed | candles da Foxbit |
+| `quotes` | 97: os 49 ativos negociados de 1.6 nos pregões de 30/10 e 12/11/2026 (ACWX39 sem negócio em 12/11, só em 30/10); ELET3, renda fixa e cripto sem cotação | COTAHIST |
+| `fixed_income_prices` | 50: os 10 títulos de 1.7 em 5 datas-base (03/02, 10/03, 05/11, 10/11 e 11/11/2026) | arquivo 6 |
+| `fii_monthly_reports` | 15: os 8 FIIs em 08 e 09/2026, menos XPML11 09/2026 (F11) | arquivo extra (complemento) |
+| `fii_quarterly_reports` | 17: os 8 FIIs em 31/03 e 30/06/2026 e o FII Opportunity em 30/06/2026 | informe trimestral |
+| `fii_report_properties` | 14: HGLG11 (6), KNRI11 (2), MXRF11 (2, venda acabados) e Opportunity (um de cada classe); KNCR11 sem imóveis | informe trimestral |
+| `corporate_filings` | 14: o Fato Relevante e o Aviso aos Acionistas mais recentes de 2026 de PETR, VALE, ITUB, ITSA, BBDC, WEGE (só aviso), BBAS (só fato) e B3SA | IPE |
+| `financial_statements` | 11: DFP 2025 de PETR, BBDC, WEGE, KLBN, BBAS, B3SA, SUZB e RENT; ITR 2T26 de PETR, WEGE e BBDC (F12) | DFP, ITR |
+| `statement_lines` | 44: 4 por demonstração (ativo total individual e consolidado; receita e lucro consolidados) | DFP, ITR |
+| `corporate_events` | 11: 5 desdobramentos, 2 grupamentos, 4 bonificações (F10, F15) | arquivos 4a–4c e `b3-empresas/supplement_*.json` |
+
+Conferido num banco migrado do zero: seed 2× com as mesmas contagens, `seed-check.sql` e `db:test` passando.
 
 ## 5. Achados e prompts de correção
 
 | ID | Achado | Para quem |
 |---|---|---|
-| F1 | API v4 do Mercado Bitcoin bloqueada pelo Cloudflare para esta rede (403 em `candles`, `tickers` e `symbols`, também com UA de cliente; a v3 em `www.mercadobitcoin.net/api` respondeu 521). Não houve tentativa de contornar o bloqueio. `crypto_prices` sem seed | usuário → agente de banco |
+| F1 | API v4 do Mercado Bitcoin bloqueada pelo Cloudflare para esta rede (403 em `candles`, `tickers` e `symbols`, também com UA de cliente; a v3 em `www.mercadobitcoin.net/api` respondeu 521). Não houve tentativa de contornar o bloqueio. O usuário confirmou o bloqueio também no navegador (13/11/2026) | **Decidido (13/11/2026):** `crypto_prices` vem dos candles diários da API pública da Foxbit (seções 2.5 e 6), mesma fonte do catálogo de cripto (D60c) |
 | F2 | `amount_per_share` é `NUMERIC(20,8)` e a B3 publica `rate` com 11 casas; 5 linhas do BBDC4 têm 9 casas significativas e foram arredondadas na 8ª. Erro ≤ 5 × 10⁻⁹ por cota (R$ 0,005 por milhão de cotas). `received_income` não é afetado (valor informado pela corretora, D11) | **Decidido (D60):** aceito; continua `NUMERIC(20,8)`, sem migration |
 | F3 | "RENDIMENTO" em ação (PETR3/PETR4: 0,01649003 e 0,02038398 em 2026, correção de proventos declarados) não tem valor em `income_type` | **Decidido (D60):** fica fora do seed e de `income_type` |
 | F4 | `stockDividends` traz "CIS RED CAP" (cisão com redução de capital), sem valor em `corporate_event_type` | registrar; fora do S1 (D29) |
@@ -149,6 +205,13 @@ Validado em `carteira_dev` numa transação desfeita (`ROLLBACK`) e com pais tem
 | F6 | Rodapé da página do IBOV: as duas linhas se chamam "MÍNIMO", e a segunda traz os máximos | backend (S2) |
 | F7 | FUNDS no Cadastro mistura FII com FIAGRO, FIDC, FIP e FI-Infra, e o `CODBDI` 14 mistura ETF com esses fundos | backend (K5) |
 | F8 | D59 (proposta) atribui rendimentos de FII ao informe mensal da CVM; o dado está no `listedCompaniesProxy` | usuário (aprovação da D59) |
+| F10 | O exemplo da seção 2.4 lia o `factor` do desdobramento como proporção (100 → 1:100). É % de ações novas, como na bonificação: PETR 2008 (100) = 1:2, KLBN 2014 (400) = 1:5, HGLG 2018 (900) = 1:10. O grupamento é a fração (0,01 → 100:1). Seção 2.4 corrigida | backend (S2, ingestão de eventos) |
+| F11 | O informe mensal de FII traz `Percentual_Dividend_Yield_Mes` negativo (XPML11 09/2026: −0,001103) e `fii_monthly_reports` tem CHECK `dividend_yield_month >= 0`. A linha ficou fora do seed | usuário: manter o CHECK e descartar a linha na ingestão, ou aceitar negativo (migration) |
+| F12 | A composição do capital da DFP/ITR não traz a escala: Vale, Itaú, Itaúsa e Ambev informam a quantidade de ações em milhares (Vale: 4.539.007), as demais em unidades. Ficaram fora do seed | backend (S3: ler a escala no formulário ou conferir com o Cadastro da B3) |
+| F13 | O Figma mostra o Tesouro IPCA+ 2035 com PM de R$ 3.846,15; o PU de mercado na época era ~R$ 2.400 (2.5). E o custo total de R$ 16.151,27 da massa das telas 3 e 4 só fecha com a soma exata (como a API faz) se o título custou R$ 2.000,00: o seed usa preço unitário 2000 ÷ 0,52 = 3846,15384615 | UX (dado ilustrativo, sem ação no S1) |
+| F14 | A LC 224/2025 elevou o IRRF sobre JCP de 15% para 17,5% desde 01/01/2026 (Lei 9.249/1995, art. 9º, § 2º). `received_income.withheld_tax` do seed usa 17,5% (todos os JCP recebidos foram aprovados em 2026); JCP declarado em 2025 e pago em 2026 (PETR4 e BBDC4 de dez./2025) e JCP mensal do BBDC4 aprovado em 2025 ficaram sem recebimento no seed | backend (S6) e `memoria-calculo.md` (R18) |
+| F15 | O `listedCompaniesProxy` não traz o custo atribuído da bonificação (`bonus_unit_cost`, obrigatório). O seed usa o valor do documento da companhia (BBDC 2022, ITSA 2025, ITUB 2025); a bonificação da KLBN 2025 ficou fora (custo da unit só em fonte secundária) | backend (S2: registro manual do custo, D29) |
+| F16 | O informe mensal de FII traz `Cotas_Emitidas` fracionário (VISC11: 28828640.0000073); `shares_outstanding` é inteiro. O seed grava o inteiro mais próximo, com o original em comentário | backend (S8) |
 
 ```
 F1 — Agente: banco de dados. Tarefa PF (pendência).
@@ -201,3 +264,19 @@ Baixadas em 12/11/2026 para `data/raw/` (fora do Git). Horários em BRT.
 Também usados, já baixados antes: Cadastro de Instrumentos de 30/10/2026 (`data/raw/b3-instrumentos/`, "Final"; ticker, ISIN, categoria, especificação e nome do emissor), informe mensal de FII da CVM de 2026 (arquivo extra da seção 1; CNPJ dos FIIs), registro de fundos da CVM (`data/raw/cvm-fundos/registro_fundo_classe/registro_fundo.csv`; CNPJ dos ETFs) e o CSV do Tesouro (arquivo 6; tipos e títulos).
 
 A planilha antiga `ClassifSetorial.zip` (`https://bvmf.bmfbovespa.com.br/InstDados/InformacoesEmpresas/ClassifSetorial.zip`) ainda está publicada, mas é de 15/09/2022 e não foi usada.
+
+### 6.1 Fontes do segundo corte (P1-2, seções 2.3 a 2.10 do `inserts.sql`)
+
+Baixadas em 13/11/2026 para `data/raw/` (fora do Git), cada uma na própria pasta. Horários em BRT.
+
+| Arquivo | URL exata | Download | SHA-256 | Registros | Alimenta |
+|---|---|---|---|---|---|
+| `foxbit-candles/btcbrl_1d.json` | `https://api.foxbit.com.br/rest/v3/markets/btcbrl/candlesticks?interval=1d&start_time=2026-01-01T00:00:00.000Z&end_time=2026-11-13T00:00:00.000Z&limit=500` | 13/11/2026 08:52 | `00e705271826ab4a914a71c536e6125fcd2d86cfdf9d4e0c66710d033d69ba4b` | 317 candles diários (01/01 a 13/11/2026, UTC) | `crypto_prices` do BTC (decisão de 13/11, F1) |
+| `foxbit-candles/ethbrl_1d.json` | mesma URL com `ethbrl` | 13/11/2026 08:52 | `100db70af2b08ef9fc39479fa39a7612992a977a194f4ba763e2d64fdc16271a` | 317 candles diários | `crypto_prices` do ETH |
+| `b3-cotahist/COTAHIST_D30102026.ZIP` | `https://bvmf.bmfbovespa.com.br/InstDados/SerHist/COTAHIST_D30102026.ZIP` | 31/10/2026 09:56 (já no repositório local) | ZIP `8f88503d4106f3010b2ba37ba9e26cd322e7564197ac8d78caa487301c9842f6`; TXT `a115a3eb5e8f215df33c7d397ffe6d566dcf3eadc0c6e63a4ab103ccb62b9323` | pregão de 30/10/2026 | `quotes` de 30/10 (com o arquivo 1 para 12/11) |
+| `cvm-fii-trim/inf_trimestral_fii_2026.zip` | `https://dados.cvm.gov.br/dados/FII/DOC/INF_TRIMESTRAL/DADOS/inf_trimestral_fii_2026.zip` | 13/11/2026 08:52 | `deb46b0607fef5ae1a3da22cc925552a1e9cefbcafb684d8dcb76cf91e6e53f5` | 16 CSV; geral com 2.760 informes, imovel com 11.410 itens | `fii_quarterly_reports`, `fii_report_properties` |
+| `cvm-ipe/ipe_cia_aberta_2026.zip` | `https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/IPE/DADOS/ipe_cia_aberta_2026.zip` | 13/11/2026 08:52 | `498337a805a0efb1f5856a79fa74c9507141b0b932ddf81f19a627dc46e5279e` | 39.173 documentos | `corporate_filings` |
+| `cvm-dfp/dfp_cia_aberta_2025.zip` | `https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/dfp_cia_aberta_2025.zip` | 13/11/2026 08:52 | `a0aaf1ed8be9f7a644d1ec7eb6c17f2d0860f40416c0e3151c2c690329eeb343` | 761 entregas (índice); BPA, BPP, DRE e composição do capital | `financial_statements`, `statement_lines` (DFP 2025) |
+| `cvm-itr/itr_cia_aberta_2026.zip` | `https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS/itr_cia_aberta_2026.zip` | 13/11/2026 08:58 | `115227a5d0872e23a532c0f17c17683f7218ac225013eea2901844a92b3fe4a9` | 1.498 entregas (índice), de 31/03 a 30/09/2026 | `financial_statements`, `statement_lines` (ITR 2T26) |
+
+Também usados, já baixados antes: informe mensal de FII de 2026 (arquivo extra da seção 1; `fii_monthly_reports`), CSV do Tesouro (arquivo 6; `fixed_income_prices`), `listedCompaniesProxy` (arquivos 4a–4c) e `b3-empresas/supplement_{BBAS,ITSA,ITUB,KLBN}.json` (`corporate_events`), Cadastro de Instrumentos de 30/10/2026 (nome do emissor do FII Opportunity, `FTCE11`). Custo atribuído das bonificações (F15): edital da AGE do Bradesco de 10/03/2022 (R$ 4,128165265), aviso aos acionistas da Itaúsa de 15/12/2025 (R$ 11,370033972) e fato relevante do Itaú Unibanco de 18/12/2025 (R$ 40,00).
