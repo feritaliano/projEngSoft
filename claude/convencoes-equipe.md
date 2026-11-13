@@ -4,7 +4,7 @@
 > Ordem de precedência em caso de conflito: `claude/contexto-projeto.md` → `claude/arquitetura.md` → `database/docs/modelo-er.md` → prompts em `agentes/`.
 
 ## Git e GitHub
-- `main` é protegida: não aceita push direto; todo código entra por PR, com CI verde. Verificações obrigatórias: job `database` desde 26/10; `backend` a partir do K1, `frontend` a partir do W1 e `e2e` a partir do R1 (D40).
+- `main` é protegida: não aceita push direto; todo código entra por PR, com CI verde. Verificações obrigatórias: job `database` desde 26/10; `backend` a partir do K1, `frontend` a partir do W1 e `e2e` a partir do FE-1 (D40; exigido no PL3).
 - **Aprovação obrigatória no PR:** o GitHub não permite que o autor aprove o próprio PR. Enquanto o projeto tiver uma só pessoa, a regra de proteção exige **0 aprovações** e a revisão é feita pelo `/review-pr` (ver "Definição de pronto"). Quando a segunda pessoa entrar, a regra volta para 1 aprovação.
 - Branch por tarefa do plano: `<tipo>/<ID>-<descricao>`. Ex.: `feat/D1-prisma-schema`, `docs/G1-glossario`.
 - Commits em inglês no padrão Conventional Commits: `feat:`, `fix:`, `test:`, `docs:`, `refactor:`, `chore:`, `ci:`. Ex.: `feat(operations): reject sell above position (RN07)`.

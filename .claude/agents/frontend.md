@@ -45,7 +45,7 @@ A aplicação é entregue por etapas (seção 5 do contexto). **Neste semestre, 
 |---|---|---|---|---|
 | W1 | **Feito em 11/11 (D58).** Esqueleto Angular, tokens do design system em `@theme` no `src/styles.css` (Tailwind 4, conferidos com as variáveis do Figma), interceptors, shell (frame L) com os estados globais (sessão expirada, 404, falha de conexão), specs com Vitest (limite de 80% de linhas), `@playwright/test` configurado, job `frontend` no `.github/workflows/ci.yml` (D40) | 12/11–14/11 | U1, F3 | Job `frontend` (lint, specs, build) verde em todo PR |
 | W2 | Login e cadastro (frames 1 e 2), com o FE-1 no primeiro PR | 13/11–16/11 | W1, K2, U3, BK-1 (para o FE-1) | Erros do backend exibidos no campo certo; E2E do cadastro e do login no job `e2e` |
-| FE-1 | Job `e2e` desde o W2, lint contra conta com dinheiro, limite de ramos (prompt FE-1) | 13/11–16/11 | W1, BK-1 | Job `e2e` verde no PR do W2; lint falha no arquivo de sonda |
+| FE-1 | **Feito em 13/11 (PR #30), antes do W2.** Job `e2e` no CI (API real, PostgreSQL com migrations e seed, Playwright, axe claro e escuro), lint contra conta com dinheiro com sonda, limite de ramos (prompt FE-1); o E2E de cadastro e login entra com o W2 | 13/11–16/11 | W1, BK-1 | Job `e2e` verde; lint falha no arquivo de sonda |
 | W3 | Lista, criação e exclusão de carteiras, com estado vazio e `ConfirmDialog` (frames 3 e C3) | 17/11–20/11 | W2, K3 | Os 4 estados de dados e a confirmação de exclusão cobertos por spec e E2E |
 | W4a | Detalhe da carteira com guias Resumo e Histórico, posições agrupadas por classe com `AssetAvatar` e posições encerradas (D45), histórico com filtro por tipo, catálogo (frames 4, 6 e 7). "Lançar operação" do catálogo entra no W4b | 21/11–26/11 | W3, K3, K4 PR 2, U5 | Detalhe, Histórico e Catálogo usando a API real, com E2E |
 | W4b | Formulário de operação (criar e editar) com Resumo da operação vindo da prévia (D42), "Lançar operação" do catálogo, `DerivedValueExplainer` e `BusinessRuleError` (frames 5, C1, C2) | 27/11–02/12 | W4a, K4 PR 3, U7a | Fluxo completo usando a API real, com E2E |
@@ -124,7 +124,7 @@ src/app/
 - Testar comportamento, não implementação: renderização por estado, validações de formulário, eventos emitidos, tratamento de erro HTTP (com `HttpTestingController`), exibição do `DerivedValueExplainer`.
 - Nome de cada teste cita a RN coberta quando houver (ex.: `shows the invalid operation on RN10 rejection`).
 - E2E ponta a ponta do fluxo do S1 no R1 com `@playwright/test`, em `frontend/e2e/*.spec.ts`: cadastro → login → carteira → compra → venda → posição, mais a rejeição da RN10. Roda no CI (job `e2e`) contra a API e um PostgreSQL de serviço; na máquina, contra a API apontando para o banco `carteira_test` do docker-compose (`DATABASE_URL_TEST`), nunca o `carteira_dev` (D40); seletores por papel e rótulo acessível (`getByRole`, `getByLabel`), não por classe CSS.
-- Cobertura mínima de 80% de linhas, configurada como limite no Vitest (o build do CI falha abaixo disso).
+- Cobertura mínima de 80% de linhas e de ramos, configurada como limite no Vitest (o build do CI falha abaixo disso).
 
 ## Regras da revisão de 12/11/2026
 - Nenhuma conta nem conversão para `number` sobre dinheiro, quantidade ou percentual; a regra de lint do FE-1 (`no-restricted-syntax` em `src/app`, conferida por `scripts/check-money-lint.mjs` no `npm run lint`) não é desligada por comentário. Dado de gráfico, a única exceção, fica em arquivo `*.chart.ts`.

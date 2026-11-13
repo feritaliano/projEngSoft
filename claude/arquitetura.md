@@ -340,7 +340,7 @@ Todos os testes são escritos em TypeScript, em arquivos `.spec.ts` (D33). Cada 
 
 **Migrations no Testcontainers:** o global setup do Jest sobe o contêiner, define `DATABASE_URL` com a URL dele e roda `npx prisma migrate deploy` **a partir da raiz do repositório** (onde estão o Prisma CLI e o `prisma.config.ts`); o Prisma Client gerado em `backend/src/generated/prisma` conecta na mesma URL. Teste nunca usa `migrate dev`, `db push` nem o banco `carteira_dev`.
 
-**CI (`.github/workflows/ci.yml`):** job `database` desde 26/10/2026 (migrations do zero, `db:drift`, `db:test`, `ddl.sql` igual ao regerado); `backend` no K1 (lint com fronteira de camadas, unitário com cobertura, integração e E2E, build, `openapi.json` igual ao regerado, D52); `frontend` no W1 (lint, specs com cobertura, build); `e2e` no R1 (Playwright contra a API e um PostgreSQL de serviço). Cada job vira verificação obrigatória da proteção da `main` assim que existir.
+**CI (`.github/workflows/ci.yml`):** job `database` desde 26/10/2026 (migrations do zero, `db:drift`, `db:test`, `ddl.sql` igual ao regerado); `backend` no K1 (lint com fronteira de camadas, unitário com cobertura, integração e E2E, build, `openapi.json` igual ao regerado, D52); `frontend` no W1 (lint, specs com cobertura, build); `e2e` desde o FE-1, 13/11 (Playwright e axe contra a API e um PostgreSQL de serviço com migrations e seed; cresce a cada tela). Cada job vira verificação obrigatória da proteção da `main` depois de ficar verde (o `e2e` no PL3).
 
 Testes ligados aos dados:
 
