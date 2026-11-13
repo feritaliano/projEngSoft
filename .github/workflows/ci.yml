@@ -1,4 +1,4 @@
-# CI do Carteira B3 (D40). Cada job vira verificação obrigatória da proteção da `main` assim que existir.
+# CI do Carteira B3 (D40). Cada job vira verificação obrigatória da proteção da `main` depois de ficar verde (o `e2e` no PL3).
 # Job `database` desde 26/10/2026; `backend` desde o K1 (01/11/2026); `frontend` desde o W1 (12/11/2026); `e2e` desde o FE-1 (13/11/2026).
 name: CI
 
@@ -19,7 +19,7 @@ jobs:
     services:
       postgres:
         # Fixada por digest, igual ao docker-compose.yml: a tag postgres:16 passou a 16.16 em 13/11/2026,
-        # que grava pg_attver em attoptions e mudava o ddl.sql gerado. Atualizar junto com o job e2e.
+        # que grava pg_attver em attoptions e mudava o ddl.sql gerado. Atualizar os três juntos (este job, o e2e e o docker-compose.yml).
         image: postgres:16.15@sha256:f9a7b9ebf6f56201f949db745e47bc423c0f0f8294bafe991cc10bf74b029657
         env:
           POSTGRES_USER: carteira
@@ -210,7 +210,7 @@ jobs:
         run: npm run build
 
   # FE-1 (M4, revisão de 12/11/2026): o E2E do frontend contra a API e o PostgreSQL reais, sem mock (D40). Cresce a cada
-  # tela (regra do perfil do frontend); o R1 só acrescenta o fluxo completo do S1.
+  # tela (regra do perfil do frontend); o R1 acrescenta o fluxo completo do S1.
   e2e:
     name: e2e
     runs-on: ubuntu-24.04
@@ -291,8 +291,9 @@ jobs:
         working-directory: frontend
         run: npm run e2e
 
-      - name: API log (on failure)
-        if: failure()
+      # Sempre: um erro da API durante o E2E fica visível mesmo quando o teste não o pega.
+      - name: API log
+        if: always()
         run: cat "$RUNNER_TEMP/api.log"
 
       - name: Playwright traces (on failure)
