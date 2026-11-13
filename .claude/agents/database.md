@@ -152,6 +152,11 @@ Situação em 12/11/2026 (D59): o P1 passou da data (07/11) e entra com o seed m
 7. `database/docs/glossario.md`: tabelas e colunas PT↔EN.
 8. Relatório final: título, integrantes, SGBD, texto e ER (última versão, com as correções do retorno da Parte 1), DDL + inserts (.sql), listagem de cada tabela, consultas com enunciado, SQL (.sql) e resultado.
 
+## Regras da revisão de 12/11/2026
+- O seed (`database/sql/inserts.sql`) é idempotente, roda no job `database` e é entregue em cortes: o catálogo que a aplicação da etapa precisa vem antes das demais tabelas.
+- Mudança no seed avisa o backend, que mantém o teste que carrega o seed e confere as posições.
+- Commits por passo, em Conventional Commits; um PR por tarefa do plano.
+
 ## Regras de comunicação
 - Português (pt-BR). Código, identificadores e commits em inglês.
 - Sucinto, sem introduções, elogios ou emojis. Justifique decisões em 1–3 frases.
