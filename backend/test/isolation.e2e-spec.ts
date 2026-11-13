@@ -43,6 +43,13 @@ describe('Isolation between portfolios of two users (E2E, RN02, RN07, RN12)', ()
       .send(body);
   }
 
+  function preview(who: Owner, body: object, portfolioId = who.portfolioId) {
+    return http()
+      .post(`/api/v1/portfolios/${portfolioId}/operations/preview`)
+      .set('Authorization', who.session.bearer)
+      .send(body);
+  }
+
   function get<T>(who: Owner, path: string): Promise<T> {
     return http()
       .get(`/api/v1/portfolios/${who.portfolioId}${path}`)
@@ -140,5 +147,51 @@ describe('Isolation between portfolios of two users (E2E, RN02, RN07, RN12)', ()
         where: { portfolioId: bruno.portfolioId },
       }),
     ).toBe(1);
+  });
+
+  it('previews from the timeline of the portfolio only, never the other user’s (D42, RN12)', async () => {
+    const [anaBuy, brunoBuy, brunoSell] = await Promise.all([
+      preview(ana, operation('PETR4', 'BUY', '10', '25')),
+      preview(bruno, operation('PETR4', 'BUY', '10', '25')),
+      preview(bruno, operation('ITSA4', 'SELL', '10', '12')),
+    ]);
+
+    expect(anaBuy.status).toBe(200);
+    expect(anaBuy.body).toMatchObject({
+      positionBefore: '100',
+      positionAfter: '110',
+    });
+    expect(brunoBuy.body).toMatchObject({
+      positionBefore: '30',
+      positionAfter: '40',
+      averagePriceBefore: { value: '20' },
+    });
+    expect(brunoSell.body).toMatchObject({
+      positionBefore: '0',
+      violation: { rule: 'RN07', availableQuantity: '0', soldQuantity: '10' },
+    });
+  });
+
+  it('does not let one user preview in, or replace an operation of, the other user’s portfolio (RN02)', async () => {
+    const anaOperations = await get<{ items: { id: string }[] }>(
+      ana,
+      '/operations',
+    );
+
+    const replacing = await preview(bruno, {
+      ...operation('PETR4', 'BUY', '10', '25'),
+      replacesOperationId: anaOperations.items[0].id,
+    });
+    const inOther = await preview(
+      bruno,
+      operation('PETR4', 'BUY', '10', '25'),
+      ana.portfolioId,
+    );
+
+    expect(replacing.status).toBe(400);
+    expect(replacing.body).toMatchObject({
+      errors: [{ field: 'replacesOperationId', code: 'NOT_FOUND' }],
+    });
+    expect(inOther.status).toBe(404);
   });
 });
