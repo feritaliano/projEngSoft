@@ -12,10 +12,21 @@ import {
   OperationInput,
   StoredOperation,
 } from '../domain/operation';
+import type { AssetType } from '../domain/asset-type';
 import { MissingReferenceError } from './operation-details';
 
 /** Fields of an edit (PATCH): absent ones keep the stored value. */
 export type OperationPatch = Partial<OperationInput>;
+
+function mergePatch(
+  stored: StoredOperation,
+  patch: OperationPatch,
+): OperationInput {
+  const changes = Object.fromEntries(
+    Object.entries(patch).filter(([, value]) => value !== undefined),
+  ) as OperationPatch;
+  return { ...inputOf(stored), ...changes };
+}
 
 /**
  * RN04 against the catalog: a new operation (or an edit that changes the asset or the broker) needs an active asset and
@@ -38,24 +49,33 @@ export class OperationDrafts {
     });
   }
 
-  async edit(
+  /**
+   * The catalog checks of an edit of `current`, outside any transaction (M1); returns the class of the edited asset.
+   * They hold for any version of the operation with the same asset and broker (see editDraft).
+   */
+  async checkEdit(
     current: StoredOperation,
     patch: OperationPatch,
-  ): Promise<OperationDraft> {
-    const changes = Object.fromEntries(
-      Object.entries(patch).filter(([, value]) => value !== undefined),
-    ) as OperationPatch;
-    const input: OperationInput = { ...inputOf(current), ...changes };
-
-    const assetChanged = input.assetId !== current.assetId;
-    const asset = assetChanged
-      ? await this.activeAsset(input.assetId)
-      : await this.storedAsset(current.assetId);
+  ): Promise<AssetType> {
+    const input = mergePatch(current, patch);
+    const asset =
+      input.assetId !== current.assetId
+        ? await this.activeAsset(input.assetId)
+        : await this.storedAsset(current.assetId);
     if (input.brokerId !== current.operation.brokerId) {
       await this.existingBroker(input.brokerId);
     }
-    return operationDraft(input, {
-      assetType: asset.assetType,
+    return asset.assetType;
+  }
+
+  /** The edit applied to the operation as locked, which must have the asset and broker that checkEdit saw. */
+  editDraft(
+    locked: StoredOperation,
+    patch: OperationPatch,
+    assetType: AssetType,
+  ): OperationDraft {
+    return operationDraft(mergePatch(locked, patch), {
+      assetType,
       today: this.clock.today(),
     });
   }
