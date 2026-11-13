@@ -12,6 +12,9 @@ export const FORMULA_CODES = [
   'POSITION_REALIZED_PROFIT',
   'PORTFOLIO_TOTAL_COST',
   'PORTFOLIO_REALIZED_PROFIT',
+  'OPERATION_GROSS',
+  'OPERATION_TOTAL_BUY',
+  'OPERATION_NET_SELL',
 ] as const;
 export type FormulaCode = (typeof FORMULA_CODES)[number];
 
@@ -29,7 +32,8 @@ export type PositionStatus = (typeof POSITION_STATUSES)[number];
 
 /** The operation an OPERATION input comes from: "{Compra | Venda} de {data} · {corretora}". */
 export interface OperationRef {
-  readonly id: string;
+  /** Null for the operation of a preview that is not saved yet (D42), as in the `violation`. */
+  readonly id: string | null;
   readonly type: OperationType;
   readonly broker: BrokerRef;
 }
@@ -51,7 +55,8 @@ export type InputName =
   | 'quantitySold'
   | 'avgPriceAtSale'
   | 'sales'
-  | 'positions';
+  | 'positions'
+  | 'grossValue';
 
 interface InputBase {
   /** `sales` and `positions` repeat once per item. */

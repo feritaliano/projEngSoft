@@ -7,12 +7,19 @@ import type { AssetType } from './asset-type';
 import type { AssetRef, BrokerRef } from './catalog-refs';
 import { calculatePosition } from './position-calculator';
 import {
+  operationPreview,
   PositionLine,
   positionLine,
   portfolioTotals,
   TraceContext,
 } from './position-trace';
-import { timelineOperation, TimelineItem } from './timeline';
+import { timelineOperation, TimelineItem, TimelineOperation } from './timeline';
+import {
+  evaluateChange,
+  TimelineChange,
+  UNSAVED_OPERATION_ID,
+  UNSAVED_SEQUENCE,
+} from './timeline-change';
 
 const TODAY = LocalDate.parse('2026-11-11');
 const BROKERS: Record<string, BrokerRef> = {
@@ -440,5 +447,315 @@ describe('portfolioTotals (B7, D41)', () => {
       },
       assetCount: 0,
     });
+  });
+});
+
+describe('operationPreview (D42, frame 5)', () => {
+  const stored = buy('2026-01-05', '100', '29.95', '5.00', {
+    id: 'b1',
+    sequence: 1n,
+  });
+  const storedRef = { id: 'b1', type: 'BUY', broker: XP_REF };
+
+  function previewOf(
+    items: readonly TimelineItem[],
+    change: TimelineChange,
+    operation: TimelineOperation,
+  ) {
+    return operationPreview(
+      operation,
+      evaluateChange({ portfolioId: 'p1', assetId: 'a1', items }, change),
+      context,
+    );
+  }
+
+  /** The preview of a new operation: unsaved, last of its date (as CreateOperation). */
+  function previewNew(
+    items: readonly TimelineItem[],
+    operation: TimelineOperation,
+  ) {
+    const unsaved = {
+      ...operation,
+      id: UNSAVED_OPERATION_ID,
+      sequence: UNSAVED_SEQUENCE,
+    };
+    return previewOf(items, { kind: 'add', operation: unsaved }, unsaved);
+  }
+
+  /** AVG_PRICE_BUY of PM 30 by the stored buy of 100 × 29.95 + 5.00. */
+  const PM_30 = {
+    value: '30',
+    formulaCode: 'AVG_PRICE_BUY',
+    asOf: '2026-11-11',
+    inputs: [
+      {
+        name: 'quantityBefore',
+        value: '0',
+        source: 'POSITION',
+        referenceDate: '2026-01-05',
+      },
+      {
+        name: 'avgPriceBefore',
+        value: '0',
+        source: 'POSITION',
+        referenceDate: '2026-01-05',
+      },
+      ...(
+        [
+          ['quantityBought', '100'],
+          ['unitPrice', '29.95'],
+          ['fees', '5'],
+        ] as const
+      ).map(([name, value]) => ({
+        name,
+        value,
+        source: 'OPERATION',
+        referenceDate: '2026-01-05',
+        operation: storedRef,
+      })),
+    ],
+  };
+
+  it('previews a first buy: gross, total with fees and the PM after it, linked to the unsaved operation (id null)', () => {
+    const preview = previewNew([], buy('2026-01-05', '100', '29.95', '5.00'));
+
+    const unsavedRef = { id: null, type: 'BUY', broker: XP_REF };
+    const fromForm = (name: string, value: string) => ({
+      name,
+      value,
+      source: 'OPERATION',
+      referenceDate: '2026-01-05',
+      operation: unsavedRef,
+    });
+    const gross = {
+      value: '2995',
+      formulaCode: 'OPERATION_GROSS',
+      asOf: '2026-11-11',
+      inputs: [fromForm('quantity', '100'), fromForm('unitPrice', '29.95')],
+    };
+    expect(preview).toEqual({
+      grossAmount: gross,
+      netAmount: {
+        value: '3000',
+        formulaCode: 'OPERATION_TOTAL_BUY',
+        asOf: '2026-11-11',
+        inputs: [
+          {
+            name: 'grossValue',
+            value: '2995',
+            source: 'DERIVED',
+            referenceDate: '2026-01-05',
+            derived: gross,
+          },
+          fromForm('fees', '5'),
+        ],
+      },
+      positionBefore: '0',
+      positionAfter: '100',
+      averagePriceBefore: null,
+      averagePriceAfter: {
+        ...PM_30,
+        inputs: [
+          ...PM_30.inputs.slice(0, 2),
+          fromForm('quantityBought', '100'),
+          fromForm('unitPrice', '29.95'),
+          fromForm('fees', '5'),
+        ],
+      },
+    });
+    expect(preview).not.toHaveProperty('realizedProfit');
+  });
+
+  it('previews a sell with profit: net of fees, the PM kept and the estimated REALIZED_PROFIT (RN06)', () => {
+    const preview = previewNew(
+      [stored],
+      sell('2026-06-02', '40', '38.50', '4.90'),
+    );
+
+    expect(preview.netAmount).toMatchObject({
+      value: '1535.1',
+      formulaCode: 'OPERATION_NET_SELL',
+    });
+    expect(preview).toMatchObject({
+      grossAmount: { value: '1540' },
+      positionBefore: '100',
+      positionAfter: '60',
+      averagePriceBefore: PM_30,
+      averagePriceAfter: PM_30,
+      realizedProfit: {
+        value: '335.1',
+        formulaCode: 'REALIZED_PROFIT',
+        inputs: [
+          { name: 'quantitySold', value: '40', operation: { id: null } },
+          { name: 'unitPrice', value: '38.5' },
+          { name: 'fees', value: '4.9' },
+          { name: 'avgPriceAtSale', value: '30', source: 'POSITION' },
+        ],
+      },
+    });
+  });
+
+  it('previews a total sell with no PM after it (RN08)', () => {
+    const preview = previewNew(
+      [stored],
+      sell('2026-06-02', '100', '38.50', '0'),
+    );
+
+    expect(preview).toMatchObject({
+      positionBefore: '100',
+      positionAfter: '0',
+      averagePriceBefore: PM_30,
+      averagePriceAfter: null,
+      realizedProfit: { value: '850' },
+    });
+  });
+
+  it('measures before and after at the date of a retroactive buy, not at the end of the timeline (D42)', () => {
+    const later = buy('2026-03-01', '50', '40', '0', {
+      id: 'b2',
+      sequence: 2n,
+    });
+
+    const preview = previewNew(
+      [stored, later],
+      buy('2026-02-01', '100', '32', '0'),
+    );
+
+    expect(preview).toMatchObject({
+      positionBefore: '100',
+      positionAfter: '200',
+      averagePriceBefore: PM_30,
+      averagePriceAfter: { value: '31' },
+    });
+  });
+
+  it('keeps the values before a sell above the position and leaves the rest null (RN07)', () => {
+    const preview = previewNew(
+      [stored],
+      sell('2026-06-02', '150', '38.50', '0'),
+    );
+
+    expect(preview).toMatchObject({
+      grossAmount: { value: '5775' },
+      positionBefore: '100',
+      positionAfter: null,
+      averagePriceBefore: PM_30,
+      averagePriceAfter: null,
+      realizedProfit: null,
+    });
+  });
+
+  it('previews a sell without any units as RN07 from zero, with no PM (RN07)', () => {
+    const preview = previewNew([], sell('2026-06-02', '10', '38.50', '0'));
+
+    expect(preview).toMatchObject({
+      positionBefore: '0',
+      positionAfter: null,
+      averagePriceBefore: null,
+      averagePriceAfter: null,
+      realizedProfit: null,
+    });
+  });
+
+  it('gives full values when the violation is a later sell (RN10)', () => {
+    const later = sell('2026-08-01', '80', '40', '0', {
+      id: 's1',
+      sequence: 2n,
+    });
+
+    const preview = previewNew(
+      [stored, later],
+      sell('2026-06-02', '40', '38.50', '0'),
+    );
+
+    expect(preview).toMatchObject({
+      positionBefore: '100',
+      positionAfter: '60',
+      averagePriceAfter: PM_30,
+      realizedProfit: { value: '340' },
+    });
+  });
+
+  it('gives no value of the position when an edit moves a buy past a sell that needed it (RN10)', () => {
+    const later = sell('2026-06-02', '50', '38', '0', {
+      id: 's1',
+      sequence: 2n,
+    });
+    const moved = buy('2026-09-01', '100', '29.95', '5.00', {
+      id: 'b1',
+      sequence: 1n,
+    });
+
+    const preview = previewOf(
+      [stored, later],
+      { kind: 'replace', operation: moved },
+      moved,
+    );
+
+    expect(preview).toMatchObject({
+      grossAmount: { value: '2995' },
+      netAmount: { value: '3000', formulaCode: 'OPERATION_TOTAL_BUY' },
+      positionBefore: null,
+      positionAfter: null,
+      averagePriceBefore: null,
+      averagePriceAfter: null,
+    });
+    expect(preview).not.toHaveProperty('realizedProfit');
+    // The stored operation keeps its id in the trace (an edit).
+    expect(preview.grossAmount.inputs[0]).toMatchObject({
+      operation: { id: 'b1' },
+    });
+  });
+
+  it('refuses a corporate event before the operation until S2 traces it (D29)', () => {
+    expect(() =>
+      previewNew(
+        [stored, split('2026-02-01', '1', '2')],
+        sell('2026-06-02', '10', '20', '0'),
+      ),
+    ).toThrow('has no trace yet (S2)');
+  });
+
+  it('refuses an evaluation that does not contain the operation: a programming error, not a preview', () => {
+    const other = buy('2026-02-01', '10', '20');
+
+    expect(() =>
+      operationPreview(
+        other,
+        evaluateChange(
+          { portfolioId: 'p1', assetId: 'a1', items: [stored] },
+          { kind: 'replace', operation: stored },
+        ),
+        context,
+      ),
+    ).toThrow('is not in its evaluated timeline');
+  });
+
+  it('refuses units held without a buy: a broken timeline, not a guessed trace (RN09)', () => {
+    const lone = sell('2026-06-02', '5', '10', '0', { id: 's1' });
+    const held = {
+      quantity: Quantity.of('10'),
+      totalCost: Money.of('100'),
+      averagePrice: Money.of('10'),
+    };
+
+    expect(() =>
+      operationPreview(
+        lone,
+        {
+          ok: true,
+          position: { ...held, realizedProfit: Money.zero() },
+          steps: [
+            {
+              item: lone as Extract<TimelineOperation, { type: 'SELL' }>,
+              before: held,
+              after: { ...held, quantity: Quantity.of('5') },
+              realizedProfit: Money.zero(),
+            },
+          ],
+        },
+        context,
+      ),
+    ).toThrow('without a buy');
   });
 });
