@@ -72,7 +72,7 @@ O conteúdo de `.claude/agents/*.md` é o mesmo de `agentes/*.md`; ao alterar um
 
 ## Testes e CI (D40)
 - Onde cada tipo de teste roda: `claude/arquitetura.md`, seção 9. Resumo: unitário sem banco; integração e E2E do backend com Testcontainers (migrations pelo Prisma da raiz, em série); specs do frontend com Vitest; E2E do frontend com `@playwright/test` contra `carteira_test` na máquina; `db:test` contra `carteira_dev`.
-- CI em `.github/workflows/ci.yml`: job `database` (já existe); `backend` (K1), `frontend` (W1) e `e2e` (R1) entram nas tarefas indicadas.
+- CI em `.github/workflows/ci.yml`: jobs `database`, `backend` (K1), `frontend` (W1) e `e2e` (FE-1: API, PostgreSQL com migrations e seed, Playwright e axe).
 - Permissões em `.claude/settings.json`: comandos destrutivos, `docker exec`, `npm install <pacote>`, push e merge pedem confirmação; ler `.env` e `docker compose config` são bloqueados.
 
 ## Regras invioláveis
