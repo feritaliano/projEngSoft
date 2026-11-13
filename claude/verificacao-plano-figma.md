@@ -99,7 +99,7 @@ Parte B (produto completo, fora do handoff do S1; uma etapa por vez, na ordem do
 10. Todo dado novo de tela que não esteja no ER vira linha na tabela D47 do agente de banco.
 Pronto quando: cada estado da tabela de telas do S1 tem frame com link no handoff; cada item do escopo (A1–I3) tem ao menos um frame ou um registro de por que não tem tela.
 Não faça: mostrar no S1 o que não funciona; linguagem de recomendação de ativo.
-Prazo: parte A até 18/11; parte B acompanha a etapa (sem data neste semestre).
+Prazo: parte A de 13/11 a 17/11 (replanejamento de 12/11, antes do W3 e do W4b); parte B acompanha a etapa (sem data neste semestre).
 ```
 
 ### Para o chat do projeto (contexto)
