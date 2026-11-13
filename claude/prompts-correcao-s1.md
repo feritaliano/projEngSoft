@@ -66,6 +66,7 @@ Pronto quando: npm run db:seed num banco migrado do zero passa no seed-check; ro
 Não faça: inventar dado de mercado sem fonte; mexer em backend/ ou frontend/; mudar schema (mudança vira decisão registrada).
 Se em 18/11 faltar tabela (G-P1): abra o PR com as prontas e liste as que faltam com o motivo, para o relatório.
 Ao terminar: avise o backend (BK-3 confere a carteira de demonstração) e o frontend (FE-2 usa o usuário de demonstração).
+Feito em 13/11/2026: os avisos estão no fim dos prompts BK-3 e FE-2 ("Aviso do agente de banco"); basta rodá-los depois do merge do PR do P1-2.
 Prazo: 18/11. Esforço: 8–12 h.
 ```
 
@@ -106,11 +107,20 @@ Leia claude/revisao-es.md (achados A1 e M6), claude/handoff-ux.md (massa do hand
 Problema: o perfil exige um teste de integração que carrega o seed e confere o resultado; ele não existe. O backend/README.md (seção "Endpoints") lista só health e auth, embora K3 e K4 tenham entregado catálogo, carteiras, operações, posições e totais.
 Faça:
 1. Teste de integração que aplica database/sql/inserts.sql (npm run db:seed ou o mesmo arquivo pelo Testcontainers) num banco migrado, cria um usuário próprio pela API (e-mail único, sem colidir com os do seed), lança as 9 operações da massa do handoff com os ativos e corretoras do seed e confere posições e totais: custo total 10.051,27, lucro realizado 693,87, assetCount 4, operationCount 9 (arredondados na asserção).
-2. Se o segundo corte do P1 (P1-2) já estiver na main: confira também a carteira "Longo prazo" do usuário de demonstração semeado (custo total 16.151,27, lucro realizado 693,87, 6 posições abertas e WEGE3 encerrada). Se ainda não estiver, deixe o caso com it.todo e o nome da tarefa.
-3. backend/README.md: troque a lista de endpoints por um resumo por grupo com link para o Swagger (/api/docs) e para backend/openapi/openapi.json.
-Pronto quando: o teste falha se um ativo ou corretora da massa sair do seed; README sem endpoint faltando.
+2. Carteira de demonstração semeada (o P1-2 entrou na main, então este item é obrigatório, sem it.todo): entre como demo@carteirab3.dev e confira a carteira "Longo prazo" pelos endpoints (valores no aviso abaixo).
+3. Isolamento (BK-2): com o usuário de demonstração, GET /portfolios não lista "Ações BR" (de bruno.almeida@example.com, que também tem PETR4) e GET /portfolios/00000000-0000-0000-0000-000000001104/summary responde 404.
+4. backend/README.md: troque a lista de endpoints por um resumo por grupo com link para o Swagger (/api/docs) e para backend/openapi/openapi.json.
+Pronto quando: o teste falha se um ativo ou corretora da massa sair do seed, ou se a carteira de demonstração mudar; README sem endpoint faltando.
 Não faça: editar o seed (peça ao agente de banco).
 Prazo: 20/11. Esforço: 2–3 h.
+
+Aviso do agente de banco (P1-2, 13/11/2026), para usar no teste:
+- Como carregar o seed: database/sql/inserts.sql tem vários comandos numa transação e cria e apaga uma view temporária (seed_asset_key), então precisa rodar numa sessão só e com o protocolo simples. Use o psql do contêiner do Testcontainers (container.exec(["psql", "-U", ..., "-d", ..., "-v", "ON_ERROR_STOP=1", "-f", ...]) depois de copiar o arquivo) ou client.query(sql) do pacote pg sem parâmetros; o $executeRawUnsafe do Prisma usa o protocolo estendido e falha com vários comandos. Depois do seed, database/tests/seed-check.sql pode rodar do mesmo jeito: ele lança erro se o seed estiver inconsistente.
+- Usuário de demonstração: demo@carteirab3.dev, senha demo-carteira-2026 (a mesma dos 10 usuários do seed; está num comentário do inserts.sql; só desenvolvimento, nunca em .env). Carteiras com UUID fixo: Longo prazo 00000000-0000-0000-0000-000000001101 (11 operações, 6 ativos), Dividendos ...001102 (6 operações, 3 ativos), Testes FII ...001103 (sem operações).
+- "Longo prazo" esperado: GET /portfolios/:id/summary → totalCost 16151.2666… (asserção arredondada: 16151.27), realizedProfit 693.8666… (693.87), assetCount 6; GET /portfolios/:id → operationCount 11, lastTradeDate 2026-10-28. GET /portfolios/:id/positions → abertas PETR4 100 (PM 32.0326…, custo 3203.2666…, lucro realizado 293.4666…), MXRF11 150 (PM 10.12, −12.40), ITSA4 300 (9.87), BOVA11 20 (118.45), Tesouro IPCA+ 2035 0.52 (PM 3846.15384615, custo 1999.999999998), BTC 0.0125 (PM 328000, custo 4100); encerrada WEGE3 (lucro 412.80). A API devolve os valores com precisão total (strings); arredonde só na asserção. Conferido contra a API em 13/11.
+- O preço unitário do título é 3846.15384615 (2000 ÷ 0,52), não 3846.15: com 3846.15 a soma exata daria 16151.26 (achado F13 de database/docs/fontes-poc.md).
+- E-mails do seed (não use no usuário do teste): demo@carteirab3.dev e bruno.almeida, carla.souza, diego.ferreira, eduarda.lima, felipe.rocha, gabriela.martins, henrique.costa, isabela.nunes e joao.pereira @example.com. Use outro domínio no usuário próprio do teste (ex.: bk3-<uuid>@test.local).
+- O seed tem 11 eventos corporativos (corporate_events), todos com ex_date antes da primeira operação do ativo em qualquer carteira (o seed-check confere); a linha do tempo de posição não é afetada.
 ```
 
 ## BK-4 — Fronteira entre módulos e dívidas menores (M3, M7, B2, B5, B6, B8)
@@ -152,6 +162,12 @@ Faça: seção única "Como rodar" com pré-requisitos (Docker, Node 24), .env a
 Pronto quando: seguindo só o README num clone novo, dá para entrar, criar carteira e lançar uma compra pela tela. Atualize a seção a cada tela entregue depois disso; o roteiro de demonstração continua no R1.
 Não faça: duplicar o conteúdo de backend/README.md e frontend/README.md; aponte para eles.
 Prazo: 27/11. Esforço: 2–3 h.
+
+Aviso do agente de banco (P1-2, 13/11/2026), para o README e para conferir a tela:
+- Usuário de demonstração: demo@carteirab3.dev, senha demo-carteira-2026 (só desenvolvimento; também está num comentário de database/sql/inserts.sql; nunca em .env). Os outros 9 usuários do seed (@example.com) usam a mesma senha; Gabriela Martins não tem carteira (estado vazio da Lista).
+- Depois de npm run db:seed, o usuário de demonstração vê na Lista as três carteiras do Figma: Longo prazo (6 ativos · 11 operações), Dividendos (3 ativos · 6 operações) e Testes FII (sem operações). No Detalhe da Longo prazo: custo total R$ 16.151,27, lucro realizado + R$ 693,87, 6 ativos em carteira, WEGE3 em Posições encerradas. A API manda os valores com precisão total; o front só formata (D5, D28).
+- Para conferir o seed no README: node database/scripts/run-sql.mjs database/tests/seed-check.sql (lista as contagens por tabela e falha se o seed estiver inconsistente). O seed é idempotente: rodar de novo não duplica nada.
+- Se a API em Docker for de uma imagem antiga (sem GET /portfolios/:id/summary, que responde 404), reconstrua: docker compose --profile app up -d --build. No Windows, em 13/11, o build do compose falhou sem mensagem ("failed to execute bake"); o contorno foi docker build -f backend/Dockerfile --target runtime -t carteira-b3-backend . e depois docker compose --profile app up -d --no-build api worker. Vale uma linha de "problemas comuns" no README.
 ```
 
 ---
@@ -181,9 +197,9 @@ Com a sua resposta, o registro em `claude/contexto-projeto.md` e `claude/arquite
 | 1 | U7 parte A (`claude/verificacao-plano-figma.md`) | UX/UI | — | 13/11–17/11 |
 | 2 | FE-1 (com o W2) | frontend | BK-1 | 13/11–16/11 |
 | 3 | BK-2 (com o PR 3 do K4) | backend | BK-1 | 15/11–19/11 |
-| 4 | BK-3 | backend | BD-1 (P1-2 opcional) | 20/11 |
+| 4 | BK-3 | backend | BD-1 e P1-2 (merge do PR; aviso no fim do prompt) | 20/11 |
 | 5 | K5 (`claude/fontes-de-dados.md`, seção 8) | backend | BK-2, PR 3 do K4 | 21/11–26/11 |
-| 6 | FE-2 | frontend | BK-3, K5 ou G-K5 | 27/11 |
+| 6 | FE-2 | frontend | BK-3, K5 ou G-K5; usuário de demonstração do P1-2 (aviso no fim do prompt) | 27/11 |
 | 7 | BK-4 | backend | K4 concluído | depois de 06/12, antes do S2 |
 
 Agentes diferentes correm em paralelo; cada agente faz os seus prompts na ordem da tabela. Esforço restante antes de 06/12: 22 a 33 horas (BK-4 fica para depois).
