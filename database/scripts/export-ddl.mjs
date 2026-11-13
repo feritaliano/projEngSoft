@@ -1,7 +1,8 @@
 // Gera database/sql/ddl.sql a partir do banco migrado (D7, D22): só o schema public, sem a
 // tabela de controle do Prisma. Uso: npm run db:ddl
-// Por padrão roda o pg_dump dentro do contêiner do docker-compose (carteira-b3-db);
-// com PG_DUMP=local usa o pg_dump instalado na máquina (PostgreSQL 16).
+// Por padrão roda o pg_dump dentro do contêiner do banco (PG_CONTAINER, padrão carteira-b3-db), que
+// tem a mesma versão do servidor: um pg_dump mais antigo que o servidor exporta opções internas novas
+// (ex.: pg_attver do 16.16) como ALTER COLUMN e muda o ddl.sql. Com PG_DUMP=local usa o pg_dump da máquina.
 import "dotenv/config";
 import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
@@ -18,7 +19,7 @@ if (process.env.PG_DUMP === "local") {
     encoding: "utf8",
   });
 } else {
-  dump = execFileSync("docker", ["exec", "carteira-b3-db", "pg_dump", "-U", user, "-d", db, ...args], { encoding: "utf8" });
+  dump = execFileSync("docker", ["exec", process.env.PG_CONTAINER || "carteira-b3-db", "pg_dump", "-U", user, "-d", db, ...args], { encoding: "utf8" });
 }
 
 const header = [
