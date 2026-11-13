@@ -8,6 +8,8 @@ description: Agente de banco de dados do projeto Carteira B3 (PostgreSQL + Prism
 # Agente de Banco de Dados — PostgreSQL + Prisma
 
 > Atualizado em 05/10/2026; banco do sistema (D2, D39) e ferramentas (D38) em 26/10/2026; tarefa D3 (D43, D44) e requisitos de dados das telas (D47) em 30/10/2026; renda fixa e cripto no S1 sem preço (D55, sem mudança no schema) em 10/11/2026. Fontes que este prompt resume e que prevalecem em caso de conflito, nesta ordem: `claude/contexto-projeto.md` → `claude/arquitetura.md` → `database/docs/modelo-er.md`. Leia as três antes de qualquer tarefa. Estrutura do repositório e onde cada arquivo fica: `claude/estrutura-repositorio.md`. Tarefas, datas e critérios de pronto: `claude/plano-de-acao.md`. Git, PR, definição de pronto e ferramentas: `claude/convencoes-equipe.md`.
+>
+> Atualizado em 12/11/2026 com a D59: fontes de dados do mercado inteiro (`claude/fontes-de-dados.md`), prova de conceito das fontes (PF) e seed com linhas tiradas de arquivos reais.
 
 ## Contexto do projeto
 Um único sistema atende duas disciplinas da UNIFESP/ICT:
@@ -125,10 +127,13 @@ Além das 36 tabelas do ER, o sistema precisa de objetos nos schemas `ops` e `an
 | ID | Tarefa | Datas | Depende de | Pronto quando |
 |---|---|---|---|---|
 | D3 | **Concluído (31/10/2026, D50)**; brModelo com o usuário (seção 8 de `modelo-er.md`); seed das tabelas novas no P1 (lista na seção 11 do contexto). ER e schema das decisões D43 (carteira ideal, metas) e D44 (renda fixa, cripto), com os requisitos de dados das telas (D47, tabela acima; prioridade A obrigatória, B se couber): brModelo, `modelo-er.md`, `mapeamento.md`, `glossario.md`, `schema.prisma` + migration, `ddl.sql`, testes de restrição | 31/10–04/11 | D1, D43, D44, D47 | Migrations sobem do zero; `db:drift` sem diferenças; `ddl.sql` bate com o mapeamento novo; testes novos passando; cada linha A da tabela D47 resolvida no ER e cada linha B resolvida ou registrada como "sai da tela" |
+| PF | **Prova de conceito das fontes (D59).** Baixar para `data/raw/fontes-poc/` um arquivo real de cada fonte: COTAHIST diário do último pregão, Cadastro de Instrumentos (`InstrumentsConsolidatedFile`) do mesmo dia, página de dados históricos do IBOV do ano corrente, resposta do `listedCompaniesProxy` da B3 para PETR, BBDC e HGLG, candles diários de BTC-BRL da API v4 do Mercado Bitcoin e CSV de taxas do Tesouro Transparente. Sem migration e sem código de produção. Prompt completo em `claude/fontes-de-dados.md`, seção 8 | 12/11–16/11 | D3 | `database/docs/fontes-poc.md` com URL, data e hora, SHA-256, número de registros e mapeamento campo → coluna do glossário de cada arquivo; contagem de tickers distintos por tipo no COTAHIST (CODBDI/TPMERC); resposta a: o COTAHIST traz linhas de índice? o informe mensal de FII traz rendimento por cota e data-com?; `data/raw/` conferido no `.gitignore`. Base do P1 e do K5 do backend |
 
 Gatilho G-D3 (04/11): primeiro saem as linhas B da tabela D47 (o rótulo correspondente sai da tela, registrado no contexto). Se ainda assim a D3 não fechar, renda fixa e cripto saem do ER da Parte 2 (ficam só como escopo do produto) e carteira ideal e metas continuam; o P1 não passa de 07/11 por causa da D3. No seed das tabelas novas: carteira com carteira ideal completa e carteira sem carteira ideal (LEFT JOIN); meta de cada tipo, com e sem prazo; título de renda fixa com série de preços; cripto com quantidade fracionária.
 
 Situação em 24/10/2026: P0 (regras de IR em `database/docs/memoria-calculo.md`), G1 (`database/docs/glossario.md`) e D1 (schema, migration `20261024000000_init`, `ddl.sql`, `database/tests/constraints.sql`) concluídos e conferidos pelo Prisma. Próximas: P1 seed 25/10–07/11, P2 consultas 08–14/11, P3 resultados 15–17/11, P4 relatório 18–28/11. Pendente com o usuário: `tax_categories` e `economic_indexes` têm só 4 registros reais cada (enunciado pede ±10 tuplas por tabela).
+
+Situação em 12/11/2026 (D59): o P1 passou da data (07/11) e entra com o seed mínimo do prompt BD-1 (`claude/prompts-correcao-s1.md`) até 19/11. As linhas de `assets` (~50 ativos reais do Cadastro de Instrumentos, com os mesmos ISIN e ticker que o K5 do backend vai carregar), `crypto_prices` (Mercado Bitcoin; deixa de estar bloqueado), `index_values` do IBOV (página de índices da B3) e `income_distributions` (endpoint de proventos da B3) saem dos arquivos da prova de conceito PF, com a fonte citada em comentário no `inserts.sql`. O catálogo completo da B3 não é do seed: é carregado pelo K5 (backend), fora da entrega de BD.
 
 1. `ddl.sql` (gerado) e `inserts.sql`.
 2. **Dados:** no mínimo 10 tuplas por tabela, variadas de propósito. Incluir:
@@ -139,6 +144,7 @@ Situação em 24/10/2026: P0 (regras de IR em `database/docs/memoria-calculo.md`
    - meses com lucro, com prejuízo, isentos e com DARF abaixo do mínimo acumulado;
    - FII de tijolo com itens de cada classe e FII de papel sem imóveis;
    - filtro salvo com e sem indicador de ordenação.
+   - `assets` com ~50 ativos reais tirados do Cadastro de Instrumentos (PF), sem duplicar ISIN e ticker com a carga do K5; `crypto_prices`, `index_values` (IBOV) e `income_distributions` de arquivos reais da PF, com a fonte em comentário (D59).
 3. **Consistência:** nenhuma sequência de operações deixa a posição negativa; `ProventoRecebido` bate com a posição na data-com; `Apuracao` bate com as operações; a memória de cálculo fica em `database/docs/memoria-calculo.md`.
 4. UUIDs de seed legíveis e fixos (`00000000-0000-0000-0000-0000000000NN`); `ON CONFLICT DO NOTHING` torna o seed idempotente.
 5. `database/sql/queries.sql`: 10 consultas com junção de no mínimo duas tabelas; 3 com LEFT ou RIGHT JOIN; 5 com agregação usando GROUP BY, HAVING e ORDER BY. Cada uma com número e enunciado em português em comentário, respondendo perguntas reais do domínio.

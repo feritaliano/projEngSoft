@@ -1,6 +1,6 @@
 # Convenções da equipe — Carteira B3
 
-> Atualizado em 26/10/2026 (D38: ferramentas do Claude Code e revisão sem segundo revisor). Regras de trabalho que valem para pessoas e agentes. Complementam `claude/contexto-projeto.md` e `claude/plano-de-acao.md`.
+> Atualizado em 26/10/2026 (D38: ferramentas do Claude Code e revisão sem segundo revisor) e em 12/11/2026 (agente revisor e cláusula de correção). Regras de trabalho que valem para pessoas e agentes. Complementam `claude/contexto-projeto.md` e `claude/plano-de-acao.md`.
 > Ordem de precedência em caso de conflito: `claude/contexto-projeto.md` → `claude/arquitetura.md` → `database/docs/modelo-er.md` → prompts em `agentes/`.
 
 ## Git e GitHub
@@ -30,6 +30,13 @@
 5. Documentação atualizada quando o comportamento muda (README, OpenAPI, docs de `database/`).
 
 Para tarefas de banco, também: migrations sobem do zero, `ddl.sql` regenerado e coerente com `database/docs/mapeamento.md`, seed idempotente.
+
+## Revisão e auditoria (12/11/2026)
+- Auditoria de requisitos (matriz de rastreabilidade) e revisão de Engenharia de Software de cada etapa são feitas pelo agente revisor (`agentes/agente-revisor.md`), independente de quem escreveu o código. O revisor não altera código nem documento de outro agente.
+- **Cláusula de correção:** sempre que for identificada uma falha de qualquer gravidade, o revisor elabora um prompt para o agente correto, visando a tratativa e a solução do problema. Vale para a auditoria, para a revisão de etapa e para o `/review-pr` de cada PR: achado sem prompt de correção (ou sem registro de descarte, com o motivo) deixa a revisão incompleta.
+- Os prompts de uma etapa ficam em `claude/prompts-correcao-<etapa>.md`: um por agente e por PR, com achados cobertos, evidência, o que fazer, critério de pronto, o que não fazer, prazo pelo plano e esforço. Agente correto = dono do artefato (ver "Uso dos agentes").
+- Quando o achado revela um erro que pode se repetir, o prompt inclui a regra a acrescentar ao perfil do agente (`agentes/<agente>.md` e `.claude/agents/`).
+- Achado cuja correção depende de mudar ou registrar decisão vai para a lista "Decisão do usuário" do mesmo documento e só vira prompt depois da resposta.
 
 ## Ferramentas do Claude Code (D38)
 Plugins oficiais instalados com escopo de projeto (registrados em `.claude/settings.json`, que vai para o Git):
@@ -73,9 +80,12 @@ Desativados neste projeto (via `enabledPlugins` em `.claude/settings.json`): `fr
 | `claude/handoff-ux.md` | Handoff do UX para o frontend: link do arquivo Figma e do frame de cada tela (preenchido em 30/10; revisado no U5) |
 | `claude/design-tokens.md` | Tokens do design system (cores claro/escuro, espaçamento, raio, tipografia), espelhados no `@theme` de `frontend/src/styles.css` (D58) |
 | `claude/microcopy.md` | Textos do "como foi calculado" por `formulaCode` e chaves dos insumos do `DerivedValue` (U4) |
+| `claude/rastreabilidade-s1.md` | Matriz de rastreabilidade do S1 (auditoria de requisitos de 12/11/2026) |
+| `claude/revisao-es.md` | Revisão de Engenharia de Software do S1 (12/11/2026): achados por severidade e itens a verificar |
+| `claude/prompts-correcao-s1.md` | Prompts de correção dos achados da revisão do S1, por agente e por PR |
 | `database/docs/modelo-er.md` | Modelo ER: 34 entidades, 39 relacionamentos + 1 especialização, verificação 3FN, roteiro do brModelo (D50) |
 | `database/docs/mapeamento.md` | Mapeamento ER→relacional: regras aplicadas e as 36 tabelas |
 | `database/docs/descricao-problema.md` | Texto do problema + ODS (BD Parte 1) |
-| `agentes/*.md` | Prompts de cada agente (banco, backend, frontend, UX/UI) |
+| `agentes/*.md` | Prompts de cada agente (banco, backend, frontend, UX/UI e revisor) |
 | `claude/enunciadoBancoDeDados.md` | Enunciado de Banco de Dados |
 | `projetoEngSoftware.md` | Enunciado de Engenharia de Software |
