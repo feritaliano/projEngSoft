@@ -23,8 +23,14 @@ const STATUS_PROPERTY = {
 
 @ApiSchema({ name: 'OperationRef' })
 export class OperationRefDto {
-  @ApiProperty({ format: 'uuid' })
-  id: string;
+  @ApiProperty({
+    type: String,
+    format: 'uuid',
+    nullable: true,
+    description:
+      'Null only for the operation of a preview, which is not saved yet (D42).',
+  })
+  id: string | null;
 
   @ApiProperty({
     enum: OPERATION_TYPES,

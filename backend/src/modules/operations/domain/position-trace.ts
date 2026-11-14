@@ -15,6 +15,7 @@ import type {
   SellStep,
 } from './position-calculator';
 import type { BuyOperation, TimelineOperation } from './timeline';
+import { ChangeEvaluation, savedIdOf } from './timeline-change';
 
 /** What the trace needs besides the timeline: the day of the calculation (D54) and the broker names. */
 export interface TraceContext {
@@ -78,7 +79,7 @@ function derived(
 /** Inputs taken from an operation (OPERATION source): its date, type and broker. */
 function fromOperation(operation: TimelineOperation, context: TraceContext) {
   const ref = {
-    id: operation.id,
+    id: savedIdOf(operation),
     type: operation.type,
     broker: context.brokerOf(operation.brokerId),
   };
@@ -147,11 +148,14 @@ function totalCostTrace(
   );
 }
 
-/** One `sales` input of POSITION_REALIZED_PROFIT, linking to the REALIZED_PROFIT (RN06) of the sale. */
-function saleInput(step: SellStep, context: TraceContext): DerivedValueInput {
+/** REALIZED_PROFIT (RN06) of one sale, with the PM at its date. */
+function realizedProfitTrace(
+  step: SellStep,
+  context: TraceContext,
+): DerivedValue {
   const sale = step.item;
   const operation = fromOperation(sale, context);
-  const realizedProfit = derived(
+  return derived(
     'REALIZED_PROFIT',
     step.realizedProfit,
     [
@@ -162,9 +166,13 @@ function saleInput(step: SellStep, context: TraceContext): DerivedValueInput {
     ],
     context.asOf,
   );
+}
+
+/** One `sales` input of POSITION_REALIZED_PROFIT, linking to the REALIZED_PROFIT of the sale. */
+function saleInput(step: SellStep, context: TraceContext): DerivedValueInput {
   return {
-    ...operation('sales', step.realizedProfit),
-    derived: realizedProfit,
+    ...fromOperation(step.item, context)('sales', step.realizedProfit),
+    derived: realizedProfitTrace(step, context),
   };
 }
 
@@ -286,5 +294,144 @@ export function portfolioTotals(
       asOf,
     ),
     assetCount: open.length,
+  };
+}
+
+/** The Resumo da operação (D42, frame 5): what the operation is worth and how it changes the position at its date. */
+export interface OperationPreview {
+  /** OPERATION_GROSS. */
+  readonly grossAmount: DerivedValue;
+  /** OPERATION_TOTAL_BUY on a buy, OPERATION_NET_SELL on a sell. */
+  readonly netAmount: DerivedValue;
+  /**
+   * Units held at the date of the operation, before it (decimal string, RN11). Null, like every value of the position,
+   * when the timeline breaks at an earlier sell: an edit that moves a buy past a sell that needed it (RN10).
+   */
+  readonly positionBefore: string | null;
+  /** Null when the operation is itself the offending sell (RN07). */
+  readonly positionAfter: string | null;
+  /** AVG_PRICE_BUY; null without units (RN08). */
+  readonly averagePriceBefore: DerivedValue | null;
+  readonly averagePriceAfter: DerivedValue | null;
+  /** REALIZED_PROFIT, sells only (absent on a buy); null when the sell is the offending one (RN07). */
+  readonly realizedProfit?: DerivedValue | null;
+}
+
+/** The last buy among the steps: the one that set the PM (RN05; sells keep it, RN06). */
+function lastBuyOf(steps: readonly PositionStep[]): BuyStep {
+  for (let i = steps.length - 1; i >= 0; i -= 1) {
+    const step = steps[i];
+    if (step.item.kind === 'corporate-event') {
+      // shortcut: as in positionLine, an event changes the PM with no formula traced until S2: fail loudly.
+      throw new Error(`Corporate event ${step.item.id} has no trace yet (S2)`);
+    }
+    if (step.realizedProfit === null) {
+      return step as BuyStep;
+    }
+  }
+  throw new Error('Units held without a buy in the timeline');
+}
+
+/** AVG_PRICE_BUY after the last of `steps`; null when no units are held there (RN08). */
+function averagePriceAfter(
+  steps: readonly PositionStep[],
+  context: TraceContext,
+): DerivedValue | null {
+  const state = steps.length > 0 ? steps[steps.length - 1].after : null;
+  return state && !state.quantity.isZero()
+    ? averagePriceTrace(lastBuyOf(steps), state.averagePrice, context)
+    : null;
+}
+
+/** OPERATION_GROSS and, from it, OPERATION_TOTAL_BUY or OPERATION_NET_SELL: values of the operation alone. */
+function operationAmounts(
+  operation: TimelineOperation,
+  context: TraceContext,
+): Pick<OperationPreview, 'grossAmount' | 'netAmount'> {
+  const fromForm = fromOperation(operation, context);
+  const gross = operation.unitPrice.times(operation.quantity.value);
+  const grossAmount = derived(
+    'OPERATION_GROSS',
+    gross,
+    [
+      fromForm('quantity', operation.quantity),
+      fromForm('unitPrice', operation.unitPrice),
+    ],
+    context.asOf,
+  );
+  const inputs: DerivedValueInput[] = [
+    {
+      name: 'grossValue',
+      value: grossAmount.value,
+      source: 'DERIVED',
+      referenceDate: operation.date.toString(),
+      derived: grossAmount,
+    },
+    fromForm('fees', operation.fees),
+  ];
+  const netAmount =
+    operation.type === 'BUY'
+      ? derived(
+          'OPERATION_TOTAL_BUY',
+          gross.plus(operation.fees),
+          inputs,
+          context.asOf,
+        )
+      : derived(
+          'OPERATION_NET_SELL',
+          gross.minus(operation.fees),
+          inputs,
+          context.asOf,
+        );
+  return { grossAmount, netAmount };
+}
+
+/**
+ * D42: the Resumo da operação of `operation` from the evaluation of its timeline with it (evaluateChange, the same
+ * calculation as the command), before and after it at its date. Without a step of its own, the timeline stopped at it
+ * (RN07: only the values before it are known) or at an earlier sell (none of the position is).
+ */
+export function operationPreview(
+  operation: TimelineOperation,
+  evaluation: ChangeEvaluation,
+  context: TraceContext,
+): OperationPreview {
+  const amounts = operationAmounts(operation, context);
+  const { steps } = evaluation;
+  const index = steps.findIndex(
+    (step) => step.item.kind === 'operation' && step.item.id === operation.id,
+  );
+
+  if (index >= 0) {
+    const step = steps[index];
+    return {
+      ...amounts,
+      positionBefore: step.before.quantity.toString(),
+      positionAfter: step.after.quantity.toString(),
+      averagePriceBefore: averagePriceAfter(steps.slice(0, index), context),
+      averagePriceAfter: averagePriceAfter(steps.slice(0, index + 1), context),
+      ...(step.realizedProfit !== null && {
+        realizedProfit: realizedProfitTrace(step, context),
+      }),
+    };
+  }
+
+  if (evaluation.ok) {
+    // A successful calculation applies every item: missing the operation means it was not in the change.
+    throw new Error(
+      `Operation ${operation.id} is not in its evaluated timeline`,
+    );
+  }
+  const atIt =
+    evaluation.violation.operation.id === operation.id
+      ? evaluation.violation
+      : null;
+  return {
+    ...amounts,
+    positionBefore: atIt ? atIt.availableQuantity.toString() : null,
+    positionAfter: null,
+    averagePriceBefore: atIt ? averagePriceAfter(steps, context) : null,
+    averagePriceAfter: null,
+    ...(operation.type === 'SELL' && { realizedProfit: null }),
   };
 }

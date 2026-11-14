@@ -1,9 +1,13 @@
 import { buy, sell } from '../../../../test/factories/timeline.factory';
+import { LocalDate } from '../../../shared/domain/local-date';
+import { operationDraft, StoredOperation } from './operation';
 import { InconsistentTimelineError } from './inconsistent-timeline';
 import { NegativePositionError } from './position-calculator';
 import { TimelineItem } from './timeline';
 import {
   ChangeEvaluation,
+  createPlan,
+  editPlan,
   evaluateChange,
   RuleViolationError,
   UNSAVED_OPERATION_ID,
@@ -234,4 +238,68 @@ describe('evaluateChange (RN07, RN09, RN10)', () => {
       );
     },
   );
+});
+
+describe('createPlan and editPlan (B2, B4, D42)', () => {
+  const draft = (assetId: string) =>
+    operationDraft(
+      {
+        assetId,
+        brokerId: 'broker-xp',
+        type: 'BUY',
+        tradeDate: '2026-02-01',
+        quantity: '10',
+        unitPrice: '20',
+        fees: '0',
+      },
+      { assetType: 'STOCK', today: LocalDate.parse('2026-11-11') },
+    );
+  const stored: StoredOperation = {
+    assetId: 'a-petr4',
+    operation: buy('2026-01-05', '100', '29.95', '5.00', {
+      id: 'b1',
+      sequence: 7n,
+    }),
+  };
+
+  it('adds a new operation, unsaved and last of its date, to its timeline', () => {
+    const plan = createPlan(draft('a-petr4'));
+
+    expect(plan.operation).toMatchObject({
+      id: UNSAVED_OPERATION_ID,
+      sequence: UNSAVED_SEQUENCE,
+      type: 'BUY',
+    });
+    expect(plan.changes).toEqual([
+      {
+        assetId: 'a-petr4',
+        change: { kind: 'add', operation: plan.operation },
+      },
+    ]);
+  });
+
+  it('replaces an edited operation in its timeline, keeping its id and sequence', () => {
+    const plan = editPlan(stored, draft('a-petr4'));
+
+    expect(plan.operation).toMatchObject({ id: 'b1', sequence: 7n });
+    expect(plan.operation.quantity.toString()).toBe('10');
+    expect(plan.changes).toEqual([
+      {
+        assetId: 'a-petr4',
+        change: { kind: 'replace', operation: plan.operation },
+      },
+    ]);
+  });
+
+  it('moves an edited operation to another asset: out of the old timeline first, then into the new one (RN10)', () => {
+    const plan = editPlan(stored, draft('a-itsa4'));
+
+    expect(plan.changes).toEqual([
+      { assetId: 'a-petr4', change: { kind: 'remove', operationId: 'b1' } },
+      {
+        assetId: 'a-itsa4',
+        change: { kind: 'add', operation: plan.operation },
+      },
+    ]);
+  });
 });

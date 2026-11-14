@@ -16,6 +16,7 @@ import {
   OperationRejectedError,
   RuleViolationView,
 } from '../application/operation-details';
+import { PreviewOperation } from '../application/preview-operation.use-case';
 import { UpdateOperation } from '../application/update-operation.use-case';
 import { OperationNotFoundError } from '../domain/operation';
 import { InvalidQuantityError } from '../domain/quantity-rules';
@@ -82,6 +83,7 @@ describe('OperationsController (B2–B5, RN04, RN07, RN10)', () => {
     create: { execute: jest.fn() },
     update: { execute: jest.fn() },
     delete: { execute: jest.fn() },
+    preview: { execute: jest.fn() },
   };
 
   beforeAll(async () => {
@@ -93,6 +95,7 @@ describe('OperationsController (B2–B5, RN04, RN07, RN10)', () => {
         { provide: CreateOperation, useValue: useCases.create },
         { provide: UpdateOperation, useValue: useCases.update },
         { provide: DeleteOperation, useValue: useCases.delete },
+        { provide: PreviewOperation, useValue: useCases.preview },
         {
           provide: AccessTokens,
           useValue: {
@@ -138,6 +141,83 @@ describe('OperationsController (B2–B5, RN04, RN07, RN10)', () => {
     expect(response.json()).toEqual(VIEW);
     expect(response.headers['cache-control']).toBe('no-store');
     expect(useCases.create.execute).toHaveBeenCalledWith('user-1', P1, BODY);
+  });
+
+  it('previews with 200, never cached, splitting replacesOperationId from the operation (D42)', async () => {
+    const preview = { positionBefore: '0', violation: VIOLATION };
+    useCases.preview.execute.mockResolvedValue(preview);
+
+    const created = await inject('POST', `${BASE}/preview`, BODY);
+    const edited = await inject('POST', `${BASE}/preview`, {
+      ...BODY,
+      replacesOperationId: OP,
+    });
+
+    expect(created.statusCode).toBe(200);
+    expect(created.headers['cache-control']).toBe('no-store');
+    expect(created.json()).toEqual(preview);
+    expect(useCases.preview.execute).toHaveBeenNthCalledWith(
+      1,
+      'user-1',
+      P1,
+      BODY,
+      null,
+    );
+    expect(edited.statusCode).toBe(200);
+    expect(useCases.preview.execute).toHaveBeenNthCalledWith(
+      2,
+      'user-1',
+      P1,
+      BODY,
+      OP,
+    );
+  });
+
+  it.each([
+    ['replacesOperationId', { replacesOperationId: 'abc' }],
+    ['quantity', { quantity: '1e3' }],
+  ])(
+    'rejects a malformed %s in the preview body before the use case (400, D56)',
+    async (field, overrides) => {
+      const response = await inject('POST', `${BASE}/preview`, {
+        ...BODY,
+        ...overrides,
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(
+        response.json<{ errors: { field: string; code: string }[] }>().errors,
+      ).toContainEqual(expect.objectContaining({ field }));
+      expect(useCases.preview.execute).not.toHaveBeenCalled();
+    },
+  );
+
+  it('answers 400 on replacesOperationId when the replaced operation is not found (D56)', async () => {
+    useCases.preview.execute.mockRejectedValue(
+      new InvalidValueError(
+        'replacesOperationId',
+        'NOT_FOUND',
+        'must be an operation of this portfolio',
+      ),
+    );
+
+    const response = await inject('POST', `${BASE}/preview`, {
+      ...BODY,
+      replacesOperationId: OP,
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({
+      errors: [{ field: 'replacesOperationId', code: 'NOT_FOUND' }],
+    });
+  });
+
+  it('answers 404 to a preview in a portfolio that is not the user’s (RN02)', async () => {
+    useCases.preview.execute.mockRejectedValue(new PortfolioNotFoundError());
+
+    const response = await inject('POST', `${BASE}/preview`, BODY);
+
+    expect(response.statusCode).toBe(404);
   });
 
   it('lists with the defaults (page 1, 50 per page) and passes the filters', async () => {
@@ -327,6 +407,7 @@ describe('OperationsController (B2–B5, RN04, RN07, RN10)', () => {
   it.each([
     ['GET', BASE],
     ['POST', BASE],
+    ['POST', `${BASE}/preview`],
     ['GET', `${BASE}/${OP}`],
     ['PATCH', `${BASE}/${OP}`],
     ['DELETE', `${BASE}/${OP}`],
