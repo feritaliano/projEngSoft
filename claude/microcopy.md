@@ -144,6 +144,8 @@ O backend devolve `errors: [{ field, code, message, params? }]`. A tela mostra, 
 
 E-mail ou senha errados não são erro de campo: o 401 mostra o aviso do frame "credencial inválida" ("E-mail ou senha incorretos." / "Confira os dados e tente de novo. Depois de 5 tentativas, aguarde 1 minuto.").
 
+**Limite de tentativas (429, login e cadastro).** Acima de `AUTH_RATE_LIMIT_MAX` tentativas por minuto e por IP (BK-1), `POST /auth/login` e `POST /auth/register` respondem 429. Não é erro de campo: o aviso fica no mesmo componente do 401, no topo do cartão, com título "Muitas tentativas seguidas." e texto "Aguarde 1 minuto e tente de novo."; os campos mantêm o que foi digitado. Frames: [Login](https://www.figma.com/design/71YUqOEoUNi1HIPcLZd0qo?node-id=152-2651), [Cadastro](https://www.figma.com/design/71YUqOEoUNi1HIPcLZd0qo?node-id=152-2671).
+
 **Nova carteira (`POST /portfolios`, frame 3)**
 
 | `field` | `code` | Texto |
