@@ -360,21 +360,27 @@ describe('configureApiApp (D52)', () => {
     expect(denied.headers['access-control-allow-origin']).toBeUndefined();
   });
 
-  it('answers the CORS preflight for the frontend origin', async () => {
-    const response = await app.inject({
-      method: 'OPTIONS',
-      url: '/api/v1/probe',
-      headers: {
-        origin: FRONTEND_ORIGIN,
-        'access-control-request-method': 'POST',
-      },
-    });
+  it.each(['POST', 'PATCH', 'DELETE'])(
+    'answers the CORS preflight of %s for the frontend origin',
+    async (method) => {
+      const response = await app.inject({
+        method: 'OPTIONS',
+        url: '/api/v1/probe',
+        headers: {
+          origin: FRONTEND_ORIGIN,
+          'access-control-request-method': method,
+        },
+      });
 
-    expect(response.statusCode).toBe(204);
-    expect(response.headers['access-control-allow-origin']).toBe(
-      FRONTEND_ORIGIN,
-    );
-  });
+      expect(response.statusCode).toBe(204);
+      expect(response.headers['access-control-allow-origin']).toBe(
+        FRONTEND_ORIGIN,
+      );
+      expect(
+        String(response.headers['access-control-allow-methods']).split(/,\s*/),
+      ).toContain(method);
+    },
+  );
 
   it('sends helmet security headers, without CSP outside production (Swagger UI)', async () => {
     const response = await app.inject({ method: 'GET', url: '/api/v1/probe' });
