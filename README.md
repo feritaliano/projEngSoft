@@ -63,7 +63,7 @@ O seed cria um usuário de demonstração:
 
 É uma senha só para desenvolvimento, a mesma do comentário em `database/sql/inserts.sql`.
 
-**Pela tela:** abra `http://localhost:4200`, entre com o e-mail e a senha acima e você chega a "Suas carteiras". Para criar outro usuário, clique em "Criar conta": a conta nova já entra logada. A API aceita 5 cadastros ou logins por minuto por IP (`AUTH_RATE_LIMIT_MAX`); a sessão fica só na memória da aba e volta sozinha ao recarregar a página, pelo cookie de refresh.
+**Pela tela:** abra `http://localhost:4200`, entre com o e-mail e a senha acima e você chega a "Suas carteiras". Para criar outro usuário, clique em "Criar conta": a conta nova já entra logada. A API aceita 5 cadastros ou logins por minuto por IP (`AUTH_RATE_LIMIT_MAX`); a partir daí a tela mostra "Muitas tentativas seguidas." e é preciso aguardar 1 minuto; a sessão fica só na memória da aba e volta sozinha ao recarregar a página, pelo cookie de refresh.
 
 **Pela API (carteiras, operações e posições, até as telas ficarem prontas):** no Swagger UI, em `http://localhost:3000/api/docs`:
 1. Abra `POST /api/v1/auth/login`, clique em "Try it out", envie `{ "email": "demo@carteirab3.dev", "password": "demo-carteira-2026" }` e confira a resposta 200.
