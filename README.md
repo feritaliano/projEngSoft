@@ -12,7 +12,7 @@ Projeto acadêmico (UNIFESP/ICT) que atende as disciplinas de Engenharia de Soft
 - Estrutura do repositório: `claude/estrutura-repositorio.md`
 
 ## Como rodar
-> **Telas em construção.** Por enquanto, o frontend tem só a navegação: a entrada, as carteiras e as operações ainda não existem na tela. Para usar o sistema hoje, use a API pelo Swagger (passo 6). Esta seção é atualizada a cada tela entregue.
+> **Telas em construção.** Por enquanto, o frontend tem a entrada (login e cadastro) e a navegação; carteiras e operações ainda não existem na tela e, para elas, use a API pelo Swagger (passo 6). Esta seção é atualizada a cada tela entregue.
 
 ### 1. Pré-requisitos
 - Docker Desktop (ou Docker Engine com o plugin Compose).
@@ -63,12 +63,12 @@ O seed cria um usuário de demonstração:
 
 É uma senha só para desenvolvimento, a mesma do comentário em `database/sql/inserts.sql`.
 
-Até a tela de login ficar pronta, entre pelo Swagger UI em `http://localhost:3000/api/docs`:
+**Pela tela:** abra `http://localhost:4200`, entre com o e-mail e a senha acima e você chega a "Suas carteiras". Para criar outro usuário, clique em "Criar conta": a conta nova já entra logada. A API aceita 5 cadastros ou logins por minuto por IP (`AUTH_RATE_LIMIT_MAX`); a sessão fica só na memória da aba e volta sozinha ao recarregar a página, pelo cookie de refresh.
+
+**Pela API (carteiras, operações e posições, até as telas ficarem prontas):** no Swagger UI, em `http://localhost:3000/api/docs`:
 1. Abra `POST /api/v1/auth/login`, clique em "Try it out", envie `{ "email": "demo@carteirab3.dev", "password": "demo-carteira-2026" }` e confira a resposta 200.
 2. Copie o `accessToken` da resposta, clique em "Authorize" e cole o token.
 3. Teste as rotas de carteiras, operações, posições e catálogo, como `GET /api/v1/portfolios`.
-
-Para criar outro usuário, use `POST /api/v1/auth/register`. A API aceita 5 cadastros ou logins por minuto por IP (`AUTH_RATE_LIMIT_MAX`).
 
 ### 7. Testes
 | Pacote | Onde | Comandos |

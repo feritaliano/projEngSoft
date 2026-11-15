@@ -47,6 +47,49 @@ describe('AuthService', () => {
     expect(auth.user()?.name).toBe('Ana Lima');
   });
 
+  it('login sends the credentials and starts the session', () => {
+    let done = false;
+    auth
+      .login({ email: 'ana.lima@email.com', password: 'segredo-123' })
+      .subscribe(() => (done = true));
+
+    const request = http.expectOne({ method: 'POST', url: `${API}/api/v1/auth/login` });
+    expect(request.request.body).toEqual({ email: 'ana.lima@email.com', password: 'segredo-123' });
+    request.flush(session('t1'));
+
+    expect(done).toBe(true);
+    expect(auth.accessToken()).toBe('t1');
+  });
+
+  it('register creates the account already signed in (K2)', () => {
+    auth
+      .register({ name: 'Ana Lima', email: 'ana.lima@email.com', password: 'segredo-123' })
+      .subscribe();
+
+    http
+      .expectOne({ method: 'POST', url: `${API}/api/v1/auth/register` })
+      .flush(session('t2'), { status: 201, statusText: 'Created' });
+
+    expect(auth.accessToken()).toBe('t2');
+  });
+
+  it('login leaves the session empty and passes the error on', () => {
+    let status: number | undefined;
+    auth.login({ email: 'ana.lima@email.com', password: 'errada' }).subscribe({
+      error: (error: { status: number }) => (status = error.status),
+    });
+
+    http
+      .expectOne(`${API}/api/v1/auth/login`)
+      .flush(
+        { type: 'about:blank', title: 'Unauthorized', status: 401 },
+        { status: 401, statusText: 'Unauthorized' },
+      );
+
+    expect(status).toBe(401);
+    expect(auth.accessToken()).toBeNull();
+  });
+
   it('refresh stores the new session and emits the new access token', () => {
     let token: string | undefined;
     auth.refresh().subscribe((value) => (token = value));

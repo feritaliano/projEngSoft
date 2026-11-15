@@ -12,9 +12,11 @@ import {
   throwError,
 } from 'rxjs';
 import { ApiConfiguration } from '../../api/api-configuration';
+import { authControllerLogin } from '../../api/fn/auth/auth-controller-login';
 import { authControllerLogout } from '../../api/fn/auth/auth-controller-logout';
 import { authControllerRefresh } from '../../api/fn/auth/auth-controller-refresh';
-import { AuthResponseDto } from '../../api/models';
+import { authControllerRegister } from '../../api/fn/auth/auth-controller-register';
+import { AuthResponseDto, LogInDto, SignUpDto } from '../../api/models';
 
 export const REFRESH_LOCK = 'carteira-b3-auth-refresh';
 
@@ -30,9 +32,23 @@ export class AuthService {
   readonly user = computed(() => this.session()?.user ?? null);
   readonly accessToken = computed(() => this.session()?.accessToken ?? null);
 
-  /** Starts the session with the response of POST /auth/login or /auth/register (W2). */
+  /** Starts the session with the response of POST /auth/login or /auth/register. */
   start(session: AuthResponseDto): void {
     this.session.set(session);
+  }
+
+  /** POST /auth/login: on success the session starts; errors (400, 401, 429) go to the caller. */
+  login(body: LogInDto): Observable<void> {
+    return authControllerLogin(this.http, this.rootUrl, { body }).pipe(
+      map(({ body: session }) => this.start(session)),
+    );
+  }
+
+  /** POST /auth/register: the new account is already signed in (K2); errors (400, 409, 429) go to the caller. */
+  register(body: SignUpDto): Observable<void> {
+    return authControllerRegister(this.http, this.rootUrl, { body }).pipe(
+      map(({ body: session }) => this.start(session)),
+    );
   }
 
   /**
