@@ -1,0 +1,31 @@
+-- Consulta 2. Quais proventos a carteira "Dividendos" da conta de demonstração recebeu? Data, ativo, tipo de
+-- provento, corretora que pagou, quantidade que gerou o direito, valor bruto, IR retido na fonte e valor líquido.
+SELECT r.received_at AS recebido_em, a.ticker, d.type AS tipo_provento, br.name AS corretora,
+       r.base_quantity AS quantidade_base, r.gross_amount AS valor_bruto, r.withheld_tax AS ir_retido,
+       r.gross_amount - r.withheld_tax AS valor_liquido
+FROM received_income r
+JOIN income_distributions d ON d.id = r.income_distribution_id
+JOIN assets a ON a.id = d.asset_id
+JOIN brokers br ON br.id = r.broker_id
+JOIN portfolios p ON p.id = r.portfolio_id
+JOIN users u ON u.id = p.user_id
+WHERE u.email = 'demo@carteirab3.dev' AND p.name = 'Dividendos'
+ORDER BY r.received_at, a.ticker, d.record_date, br.name;
+
+ recebido_em | ticker | tipo_provento |    corretora     | quantidade_base | valor_bruto | ir_retido | valor_liquido 
+-------------+--------+---------------+------------------+-----------------+-------------+-----------+---------------
+ 2026-02-13  | HGLG11 | FII_INCOME    | NuInvest         |              20 |       22.00 |      0.00 |         22.00
+ 2026-03-13  | HGLG11 | FII_INCOME    | NuInvest         |              20 |       22.00 |      0.00 |         22.00
+ 2026-04-15  | HGLG11 | FII_INCOME    | NuInvest         |              20 |       22.00 |      0.00 |         22.00
+ 2026-05-15  | HGLG11 | FII_INCOME    | NuInvest         |              20 |       22.00 |      0.00 |         22.00
+ 2026-06-15  | HGLG11 | FII_INCOME    | NuInvest         |              20 |       22.00 |      0.00 |         22.00
+ 2026-07-14  | HGLG11 | FII_INCOME    | NuInvest         |              20 |       22.00 |      0.00 |         22.00
+ 2026-08-14  | HGLG11 | FII_INCOME    | NuInvest         |              20 |       23.40 |      0.00 |         23.40
+ 2026-09-15  | BBDC4  | JCP           | Itaú Corretora   |             100 |       29.73 |      5.20 |         24.53
+ 2026-09-15  | BBDC4  | JCP           | XP Investimentos |             100 |       29.73 |      5.20 |         24.53
+ 2026-09-15  | BBDC4  | JCP           | Itaú Corretora   |             100 |       34.69 |      6.07 |         28.62
+ 2026-09-15  | BBDC4  | JCP           | XP Investimentos |             100 |       34.69 |      6.07 |         28.62
+ 2026-09-15  | HGLG11 | FII_INCOME    | NuInvest         |              20 |       23.40 |      0.00 |         23.40
+ 2026-10-15  | HGLG11 | FII_INCOME    | NuInvest         |              20 |       23.40 |      0.00 |         23.40
+(13 rows)
+

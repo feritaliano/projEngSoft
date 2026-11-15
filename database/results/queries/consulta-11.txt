@@ -1,0 +1,26 @@
+-- Consulta 11. Quantas carteiras cada usuário tem, e quantas operações cada carteira registra, incluindo o usuário
+-- sem carteira e as carteiras sem operação?
+SELECT u.name AS usuario, p.name AS carteira, count(o.id) AS operacoes, max(o.trade_date) AS ultima_operacao
+FROM users u
+LEFT JOIN portfolios p ON p.user_id = u.id
+LEFT JOIN operations o ON o.portfolio_id = p.id
+GROUP BY u.name, p.name
+ORDER BY u.name, p.name;
+
+        usuario        |      carteira      | operacoes | ultima_operacao 
+-----------------------+--------------------+-----------+-----------------
+ Bruno Almeida         | Ações BR           |         9 | 2026-10-05
+ Carla Souza           | Renda FII          |         5 | 2026-06-08
+ Conta de Demonstração | Dividendos         |         6 | 2026-03-02
+ Conta de Demonstração | Longo prazo        |        11 | 2026-10-28
+ Conta de Demonstração | Testes FII         |         0 | 
+ Diego Ferreira        | Internacional      |         6 | 2026-08-19
+ Eduarda Lima          | Reserva e cripto   |         7 | 2026-11-05
+ Felipe Rocha          | Corretora XP       |         8 | 2026-08-03
+ Gabriela Martins      |                    |         0 | 
+ Henrique Costa        | Aposentadoria      |         4 | 2026-10-14
+ Henrique Costa        | Reserva            |         0 | 
+ Isabela Nunes         | Carteira principal |         7 | 2026-09-24
+ João Pereira          | Bolsa e BDR        |         5 | 2026-10-08
+(13 rows)
+

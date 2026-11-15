@@ -1,0 +1,23 @@
+-- Consulta 9. Qual a receita, o lucro líquido e a margem líquida de cada empresa na DFP de 2025 (demonstração
+-- consolidada)? Conta 3.01 = receita (para bancos, receitas de intermediação financeira); 3.11 = lucro líquido.
+SELECT i.name AS empresa, f.period_end AS fim_periodo, rec.value AS receita, luc.value AS lucro_liquido,
+       round(luc.value / rec.value * 100, 2) AS margem_liquida_pct
+FROM financial_statements f
+JOIN issuers i ON i.id = f.issuer_id
+JOIN statement_lines rec ON rec.financial_statement_id = f.id AND rec.scope = 'CONSOLIDATED' AND rec.account_code = '3.01'
+JOIN statement_lines luc ON luc.financial_statement_id = f.id AND luc.scope = 'CONSOLIDATED' AND luc.account_code = '3.11'
+WHERE f.filing_type = 'DFP' AND f.period_end = DATE '2025-12-31'
+ORDER BY margem_liquida_pct DESC;
+
+              empresa               | fim_periodo |     receita     |  lucro_liquido  | margem_liquida_pct 
+------------------------------------+-------------+-----------------+-----------------+--------------------
+ B3 S.A. - BRASIL, BOLSA, BALCÃO    | 2025-12-31  |  11121545000.00 |   4586872000.00 |              41.24
+ SUZANO S.A.                        | 2025-12-31  |  50115679000.00 |  13437687000.00 |              26.81
+ PETROLEO BRASILEIRO S.A. PETROBRAS | 2025-12-31  | 497549000000.00 | 110605000000.00 |              22.23
+ WEG S.A.                           | 2025-12-31  |  40804110000.00 |   6775958000.00 |              16.61
+ BCO BRADESCO S.A.                  | 2025-12-31  | 270183106000.00 |  23924636000.00 |               8.85
+ KLABIN S.A.                        | 2025-12-31  |  20697507000.00 |   1678211000.00 |               8.11
+ BCO BRASIL S.A.                    | 2025-12-31  | 319462104000.00 |  16781938000.00 |               5.25
+ LOCALIZA RENT A CAR S.A.           | 2025-12-31  |  41781588000.00 |   1870470000.00 |               4.48
+(8 rows)
+

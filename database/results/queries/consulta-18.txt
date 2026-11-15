@@ -1,0 +1,21 @@
+-- Consulta 18. Quais carteiras têm a carteira ideal fechada em 100%, e como ela se divide entre renda variável
+-- (ações, FIIs, ETFs e BDRs), renda fixa e cripto? Do maior percentual em renda variável para o menor.
+SELECT u.name AS usuario, p.name AS carteira, count(*) AS classes,
+       round(coalesce(sum(ta.target_percent) FILTER (WHERE ta.asset_class IN ('STOCK', 'FII', 'ETF', 'BDR')), 0) * 100, 2) AS renda_variavel_pct,
+       round(coalesce(sum(ta.target_percent) FILTER (WHERE ta.asset_class = 'FIXED_INCOME'), 0) * 100, 2) AS renda_fixa_pct,
+       round(coalesce(sum(ta.target_percent) FILTER (WHERE ta.asset_class = 'CRYPTO'), 0) * 100, 2) AS cripto_pct
+FROM target_allocations ta
+JOIN portfolios p ON p.id = ta.portfolio_id
+JOIN users u ON u.id = p.user_id
+GROUP BY u.name, p.name
+HAVING sum(ta.target_percent) = 1
+ORDER BY renda_variavel_pct DESC, u.name;
+
+        usuario        |     carteira     | classes | renda_variavel_pct | renda_fixa_pct | cripto_pct 
+-----------------------+------------------+---------+--------------------+----------------+------------
+ Conta de Demonstração | Longo prazo      |       6 |              80.00 |          15.00 |       5.00
+ Felipe Rocha          | Corretora XP     |       4 |              80.00 |          20.00 |       0.00
+ Henrique Costa        | Aposentadoria    |       3 |              80.00 |          20.00 |       0.00
+ Eduarda Lima          | Reserva e cripto |       2 |               0.00 |          80.00 |      20.00
+(4 rows)
+
