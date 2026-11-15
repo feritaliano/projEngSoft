@@ -11,6 +11,15 @@ import { Button } from './button';
 })
 class Host {}
 
+@Component({
+  imports: [Button],
+  template: `
+    <button appButton variant="danger">Excluir carteira</button>
+    <button appButton variant="ghost">Cancelar</button>
+  `,
+})
+class Variants {}
+
 describe('Button', () => {
   it('styles <button> as Primary by default and <a> as the chosen variant, keeping its own classes', async () => {
     const fixture = TestBed.createComponent(Host);
@@ -24,5 +33,18 @@ describe('Button', () => {
     expect(secondary.classList).toContain('border-strong');
     expect(secondary.classList).not.toContain('bg-primary');
     expect(secondary.classList).toContain('w-full');
+  });
+
+  it('has the Danger (ConfirmDialog) and Ghost styles', async () => {
+    const fixture = TestBed.createComponent(Variants);
+    await fixture.whenStable();
+    const [danger, ghost] = [
+      ...fixture.nativeElement.querySelectorAll('[appButton]'),
+    ] as HTMLElement[];
+
+    expect(danger.classList).toContain('bg-negative');
+    expect(danger.classList).toContain('text-on-primary');
+    expect(ghost.classList).toContain('text-link');
+    expect(ghost.classList).not.toContain('bg-primary');
   });
 });

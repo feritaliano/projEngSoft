@@ -23,15 +23,22 @@ import {
 } from '../../shared/forms/field-errors.pt-BR';
 import { Button } from '../../shared/ui/button';
 import { TextField } from '../../shared/ui/text-field';
+import { AuthAlert, TOO_MANY_ATTEMPTS } from './auth-alert';
 import { AuthLayout } from './auth-layout';
 
-/** Frame 2 (A1, RN01): default, field error (400/409 by field + code, D56) and loading; the new account enters signed in. */
+/**
+ * Frame 2 (A1, RN01): default, field error (400/409 by field + code, D56), too many attempts (429) and loading;
+ * the new account enters signed in.
+ */
 @Component({
   selector: 'app-register-page',
-  imports: [ReactiveFormsModule, RouterLink, AuthLayout, TextField, Button],
+  imports: [ReactiveFormsModule, RouterLink, AuthLayout, AuthAlert, TextField, Button],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-auth-layout heading="Criar conta" lead="Gratuita. Seus dados ficam só na sua conta.">
+      @if (notice(); as alert) {
+        <app-auth-alert [heading]="alert.heading" [text]="alert.text" />
+      }
       <form [formGroup]="form" (ngSubmit)="submit()" novalidate class="flex flex-col gap-5">
         <app-text-field
           label="Nome"
@@ -92,6 +99,7 @@ export class RegisterPage {
     password: ['', [Validators.required, minChars(PASSWORD_MIN_LENGTH)]],
   });
   protected readonly loading = signal(false);
+  protected readonly notice = signal<typeof TOO_MANY_ATTEMPTS | null>(null);
 
   protected errorOf(field: keyof typeof REGISTER_TEXTS): string | null {
     return fieldErrorText(REGISTER_TEXTS[field], this.form.controls[field], {
@@ -104,6 +112,7 @@ export class RegisterPage {
     if (this.form.invalid) return this.focusInvalid();
 
     const body = this.form.getRawValue();
+    this.notice.set(null);
     this.loading.set(true);
     this.form.disable();
     this.auth.register(body).subscribe({
@@ -111,10 +120,12 @@ export class RegisterPage {
       error: (error: unknown) => {
         this.loading.set(false);
         this.form.enable();
-        if (applyServerErrors(this.form, problemOf(error))) {
+        if (error instanceof HttpErrorResponse && error.status === 429) {
+          this.notice.set(TOO_MANY_ATTEMPTS);
+        } else if (applyServerErrors(this.form, problemOf(error))) {
           this.focusInvalid();
         } else if (!(error instanceof HttpErrorResponse && error.status === 0)) {
-          // Status 0 shows the connection banner. 429 and 5xx have no text in the microcopy yet (pending with UX).
+          // Status 0 shows the connection banner; 5xx has no text in the microcopy.
           this.errors.handleError(error);
         }
       },

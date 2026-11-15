@@ -1,0 +1,23 @@
+-- Consulta 10. Quais metas têm prazo, e quantos meses faltam para cada uma (contando de 11/2026)? Usuário, carteira,
+-- tipo da meta (patrimônio ou renda mensal com proventos), valor-alvo e prazo.
+SELECT u.name AS usuario, p.name AS carteira, g.type AS tipo_meta, g.target_amount AS valor_alvo,
+       to_char(g.target_month, 'MM/YYYY') AS prazo,
+       (extract(year FROM g.target_month) - 2026) * 12 + extract(month FROM g.target_month) - 11 AS meses_restantes
+FROM portfolio_goals g
+JOIN portfolios p ON p.id = g.portfolio_id
+JOIN users u ON u.id = p.user_id
+WHERE g.target_month IS NOT NULL
+ORDER BY meses_restantes, u.name;
+
+        usuario        |     carteira     |   tipo_meta    | valor_alvo |  prazo  | meses_restantes 
+-----------------------+------------------+----------------+------------+---------+-----------------
+ Eduarda Lima          | Reserva e cripto | NET_WORTH      |   25000.00 | 06/2027 |               7
+ Carla Souza           | Renda FII        | MONTHLY_INCOME |     500.00 | 12/2027 |              13
+ Diego Ferreira        | Internacional    | NET_WORTH      |   30000.00 | 06/2028 |              19
+ Conta de Demonstração | Dividendos       | MONTHLY_INCOME |     300.00 | 12/2028 |              25
+ Felipe Rocha          | Corretora XP     | NET_WORTH      |   80000.00 | 12/2029 |              37
+ Conta de Demonstração | Longo prazo      | NET_WORTH      |  100000.00 | 12/2030 |              49
+ Henrique Costa        | Aposentadoria    | MONTHLY_INCOME |    3000.00 | 01/2045 |             218
+ Henrique Costa        | Aposentadoria    | NET_WORTH      |  500000.00 | 01/2045 |             218
+(8 rows)
+

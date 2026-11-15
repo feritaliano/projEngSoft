@@ -21,28 +21,29 @@ import {
 } from '../../shared/forms/field-errors.pt-BR';
 import { Button } from '../../shared/ui/button';
 import { TextField } from '../../shared/ui/text-field';
+import { AuthAlert, TOO_MANY_ATTEMPTS } from './auth-alert';
 import { AuthLayout } from './auth-layout';
 
-/** Frame 1 (A2): default, invalid credentials, session expired (?sessao=expirada, from AuthService.expire) and loading. */
+const INVALID_CREDENTIALS = {
+  heading: 'E-mail ou senha incorretos.',
+  text: 'Confira os dados e tente de novo. Depois de 5 tentativas, aguarde 1 minuto.',
+} as const;
+
+/**
+ * Frame 1 (A2): default, invalid credentials (401), too many attempts (429), session expired
+ * (?sessao=expirada, from AuthService.expire) and loading.
+ */
 @Component({
   selector: 'app-login-page',
-  imports: [ReactiveFormsModule, RouterLink, AuthLayout, TextField, Button],
+  imports: [ReactiveFormsModule, RouterLink, AuthLayout, AuthAlert, TextField, Button],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-auth-layout
       heading="Entrar"
       lead="Acompanhe sua carteira e veja como cada número foi calculado."
     >
-      @if (invalidCredentials()) {
-        <div
-          role="alert"
-          class="flex flex-col gap-1 rounded-md border border-negative bg-negative-subtle p-3"
-        >
-          <p class="text-label-md text-negative">E-mail ou senha incorretos.</p>
-          <p class="text-body-sm text-primary">
-            Confira os dados e tente de novo. Depois de 5 tentativas, aguarde 1 minuto.
-          </p>
-        </div>
+      @if (notice(); as alert) {
+        <app-auth-alert [heading]="alert.heading" [text]="alert.text" />
       } @else if (sessionExpired) {
         <div
           role="status"
@@ -106,7 +107,9 @@ export class LoginPage {
   protected readonly sessionExpired =
     inject(ActivatedRoute).snapshot.queryParamMap.get('sessao') === 'expirada';
   protected readonly loading = signal(false);
-  protected readonly invalidCredentials = signal(false);
+  protected readonly notice = signal<typeof INVALID_CREDENTIALS | typeof TOO_MANY_ATTEMPTS | null>(
+    null,
+  );
 
   protected errorOf(field: keyof typeof LOGIN_TEXTS): string | null {
     return fieldErrorText(LOGIN_TEXTS[field], this.form.controls[field]);
@@ -117,7 +120,7 @@ export class LoginPage {
     if (this.form.invalid) return this.focusInvalid();
 
     const body = this.form.getRawValue();
-    this.invalidCredentials.set(false);
+    this.notice.set(null);
     this.loading.set(true);
     this.form.disable();
     this.auth.login(body).subscribe({
@@ -127,13 +130,15 @@ export class LoginPage {
         this.form.enable();
         if (error instanceof HttpErrorResponse && error.status === 401) {
           // Frame "credencial inválida": the e-mail stays, the password is cleared and focused.
-          this.invalidCredentials.set(true);
+          this.notice.set(INVALID_CREDENTIALS);
           this.form.controls.password.reset();
           this.host.querySelector<HTMLElement>('#password')?.focus();
+        } else if (error instanceof HttpErrorResponse && error.status === 429) {
+          this.notice.set(TOO_MANY_ATTEMPTS);
         } else if (applyServerErrors(this.form, problemOf(error))) {
           this.focusInvalid();
         } else if (!(error instanceof HttpErrorResponse && error.status === 0)) {
-          // Status 0 shows the connection banner. 429 and 5xx have no text in the microcopy yet (pending with UX).
+          // Status 0 shows the connection banner; 5xx has no text in the microcopy.
           this.errors.handleError(error);
         }
       },

@@ -178,6 +178,9 @@
 /* Active navigation link (routerLink with ariaCurrentWhenActive="page"). */
 @custom-variant current (&[aria-current='page']);
 
+/* Clickable card (D51): the ring goes around the whole card when its link has keyboard focus. */
+@custom-variant link-focus (&:has(a:focus-visible));
+
 @layer base {
   body {
     @apply bg-canvas text-body-md text-primary;

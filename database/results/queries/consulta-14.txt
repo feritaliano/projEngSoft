@@ -1,0 +1,44 @@
+-- Consulta 14. Quanto custam as posições abertas da carteira "Longo prazo" da conta de demonstração? Para cada ativo
+-- com quantidade > 0: quantidade, preço médio e custo (quantidade × preço médio); e o custo total da carteira, que
+-- deve ser R$ 16.151,27. O preço médio é refeito em ordem de data e sequência (RN05 a RN09): a compra soma
+-- quantidade × preço + custos ao custo, a venda tira quantidade × preço médio e não muda o preço médio.
+WITH RECURSIVE o AS (
+  -- ::numeric sem escala: o termo recursivo da CTE precisa do mesmo tipo do termo inicial.
+  SELECT op.asset_id, op.type, op.quantity::numeric AS q, op.unit_price::numeric AS p, op.fees::numeric AS f,
+         row_number() OVER (PARTITION BY op.asset_id ORDER BY op.trade_date, op.sequence) AS rn
+  FROM operations op
+  JOIN portfolios pf ON pf.id = op.portfolio_id
+  JOIN users u ON u.id = pf.user_id
+  WHERE u.email = 'demo@carteirab3.dev' AND pf.name = 'Longo prazo'
+), s AS (
+  SELECT asset_id, rn, type, q, q AS qty, q * p + f AS cost FROM o WHERE rn = 1
+  UNION ALL
+  SELECT o.asset_id, o.rn, o.type, o.q,
+         CASE o.type WHEN 'BUY' THEN s.qty + o.q ELSE s.qty - o.q END,
+         CASE WHEN o.type = 'BUY' THEN s.cost + o.q * o.p + o.f WHEN s.qty = o.q THEN 0 ELSE s.cost - o.q * s.cost / s.qty END
+  FROM s JOIN o ON o.asset_id = s.asset_id AND o.rn = s.rn + 1
+)
+SELECT coalesce(a.ticker, t.name || ' ' || extract(year FROM fb.maturity_date)) AS ativo, a.type AS classe,
+       count(*) AS operacoes,
+       sum(CASE s.type WHEN 'BUY' THEN s.q ELSE -s.q END) AS quantidade,
+       round((array_agg(s.cost / nullif(s.qty, 0) ORDER BY s.rn DESC))[1], 2) AS preco_medio,
+       round((array_agg(s.cost ORDER BY s.rn DESC))[1], 2) AS custo,
+       round(sum((array_agg(s.cost ORDER BY s.rn DESC))[1]) OVER (), 2) AS custo_total_carteira
+FROM s
+JOIN assets a ON a.id = s.asset_id
+LEFT JOIN fixed_income_bonds fb ON fb.asset_id = a.id
+LEFT JOIN fixed_income_types t ON t.id = fb.fixed_income_type_id
+GROUP BY a.id, a.ticker, a.type, t.name, fb.maturity_date
+HAVING sum(CASE s.type WHEN 'BUY' THEN s.q ELSE -s.q END) > 0
+ORDER BY custo DESC;
+
+       ativo        |    classe    | operacoes |  quantidade  | preco_medio |  custo  | custo_total_carteira 
+--------------------+--------------+-----------+--------------+-------------+---------+----------------------
+ BTC                | CRYPTO       |         1 |   0.01250000 |   328000.00 | 4100.00 |             16151.27
+ PETR4              | STOCK        |         3 | 100.00000000 |       32.03 | 3203.27 |             16151.27
+ ITSA4              | STOCK        |         1 | 300.00000000 |        9.87 | 2961.00 |             16151.27
+ BOVA11             | ETF          |         1 |  20.00000000 |      118.45 | 2369.00 |             16151.27
+ Tesouro IPCA+ 2035 | FIXED_INCOME |         1 |   0.52000000 |     3846.15 | 2000.00 |             16151.27
+ MXRF11             | FII          |         2 | 150.00000000 |       10.12 | 1518.00 |             16151.27
+(6 rows)
+

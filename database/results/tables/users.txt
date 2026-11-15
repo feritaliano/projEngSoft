@@ -1,0 +1,16 @@
+-- Listagem completa da tabela users (ordem: id)
+
+                  id                  |         name          |            email             |                                           password_hash                                           |       created_at       
+--------------------------------------+-----------------------+------------------------------+---------------------------------------------------------------------------------------------------+------------------------
+ 00000000-0000-0000-0000-000000001001 | Conta de Demonstração | demo@carteirab3.dev          | $argon2id$v=19$m=19456,p=1,t=2$bkCOqkD4dy5ZYfyBeledrw$PENbUhTIZsmrJrf7hZ/+7WH4efEYbBJe8FI/tj3rBls | 2025-02-01 09:00:00-03
+ 00000000-0000-0000-0000-000000001002 | Bruno Almeida         | bruno.almeida@example.com    | $argon2id$v=19$m=19456,p=1,t=2$WeUIopoMBT8SdnzA34gZBQ$kKqPKQkxq8H/W1eMqk3QGxpt8UHBcj7cyVjr+Z60Kdk | 2025-12-15 18:20:00-03
+ 00000000-0000-0000-0000-000000001003 | Carla Souza           | carla.souza@example.com      | $argon2id$v=19$m=19456,p=1,t=2$+essLD3zbVSA/o7JLAnS4w$BLf2+kVvT21BIAXptxzrAkB760oT9oAUJz0QLRCZUp4 | 2025-11-28 10:05:00-03
+ 00000000-0000-0000-0000-000000001004 | Diego Ferreira        | diego.ferreira@example.com   | $argon2id$v=19$m=19456,p=1,t=2$dQH6TfCAc75/0ZH3JqLvBw$ol7kkHhgc2wWM5OsQe3R+Qo3mNQvuKpjfZ2MCkXHiI0 | 2026-01-18 21:40:00-03
+ 00000000-0000-0000-0000-000000001005 | Eduarda Lima          | eduarda.lima@example.com     | $argon2id$v=19$m=19456,p=1,t=2$aGqqWWdMSYKA/qoFmxK6+Q$dGJdjOZlE8uHfJhuIQgN3V//2OJrFVOBAcQoS3gHY+s | 2026-01-30 08:15:00-03
+ 00000000-0000-0000-0000-000000001006 | Felipe Rocha          | felipe.rocha@example.com     | $argon2id$v=19$m=19456,p=1,t=2$RbR11Bk4EQnKjK4kg0HYpA$gAtAyE+/5NbLWKd990XoweRGEhP7rBLB+Iojf6raMMg | 2025-12-30 14:00:00-03
+ 00000000-0000-0000-0000-000000001007 | Gabriela Martins      | gabriela.martins@example.com | $argon2id$v=19$m=19456,p=1,t=2$tYP11tWNbnYEks46fiV7eQ$eNi4PT9rC3zGwU44cD4FuUyHzvzf6JMrHLzw4CL5Db0 | 2026-09-14 19:30:00-03
+ 00000000-0000-0000-0000-000000001008 | Henrique Costa        | henrique.costa@example.com   | $argon2id$v=19$m=19456,p=1,t=2$DRfttg6VjI1rQE0jOHYtzA$Lsa0PgKvfXcbM2ye4DS7koGghFVFETsr+pDVGotKOJ8 | 2026-02-25 12:45:00-03
+ 00000000-0000-0000-0000-000000001009 | Isabela Nunes         | isabela.nunes@example.com    | $argon2id$v=19$m=19456,p=1,t=2$f71xZ/TSZKyNNVW1jovrMQ$r0ASQQBo+CCkLbLBDf1k897Zt4ItQ8isJlb96gEgaFg | 2026-01-10 16:10:00-03
+ 00000000-0000-0000-0000-000000001010 | João Pereira          | joao.pereira@example.com     | $argon2id$v=19$m=19456,p=1,t=2$z23ZtrT/CGz0H/NO8OkqWQ$7o5qhdpIquL8mDkh/qBO2Iynr/YZr4rT5oboIFJtCeI | 2026-04-28 20:00:00-03
+(10 rows)
+

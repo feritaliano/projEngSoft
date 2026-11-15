@@ -7,6 +7,9 @@ const BASE =
 const VARIANTS = {
   primary: 'bg-primary text-on-primary hover:bg-primary-hover',
   secondary: 'border border-strong bg-surface text-primary hover:bg-subtle',
+  /** Destructive, only in ConfirmDialog. */
+  danger: 'bg-negative text-on-primary enabled:hover:opacity-88',
+  ghost: 'text-link hover:bg-subtle',
 } as const;
 
 /** Button of the design system (Figma "Button"): `<button appButton>` acts, `<a appButton>` navigates. */

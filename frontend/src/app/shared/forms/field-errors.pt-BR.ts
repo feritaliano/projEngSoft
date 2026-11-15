@@ -34,6 +34,14 @@ export const LOGIN_TEXTS = {
   password: { REQUIRED: 'Informe sua senha.' },
 } satisfies Record<string, FieldTexts>;
 
+export const PORTFOLIO_TEXTS = {
+  name: {
+    REQUIRED: 'Dê um nome à carteira.',
+    TOO_LONG: 'Use até {max} caracteres.',
+    ALREADY_EXISTS: 'Você já tem uma carteira com este nome. Escolha outro.',
+  },
+} satisfies Record<string, FieldTexts>;
+
 type CodedError = Pick<FieldError, 'code' | 'params'>;
 
 /** The server error put on the control by applyServerErrors, or the one its validators stand for. */

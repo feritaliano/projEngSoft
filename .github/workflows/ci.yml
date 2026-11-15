@@ -75,6 +75,13 @@ jobs:
       - name: Constraint tests (public, ops and D3), on the seeded database
         run: npm run db:test
 
+      # Os testes de restrição não deixam linhas; os arquivos versionados vêm de um banco recém-semeado como este.
+      - name: database/results matches the seeded database (P3)
+        run: |
+          npm run db:results
+          git add -N database/results
+          git diff --exit-code -- database/results
+
       - name: PostgreSQL versions and column options (diagnostic)
         run: |
           docker exec "$PG_CONTAINER" pg_dump --version
@@ -290,6 +297,27 @@ jobs:
       - name: E2E (@playwright/test, with axe in light and dark)
         working-directory: frontend
         run: npm run e2e
+
+      # O aviso do 429 (W2) precisa do limite padrão: a API volta com AUTH_RATE_LIMIT_MAX=5 só para esse arquivo.
+      - name: Restart the API with the default login limit (5 per minute)
+        working-directory: backend
+        env:
+          NODE_ENV: development
+          API_PORT: 3000
+          CORS_ORIGIN: http://localhost:4200
+          JWT_ACCESS_SECRET: ci-only-secret-with-at-least-32-characters
+          AUTH_RATE_LIMIT_MAX: 5
+        run: |
+          pkill -f "node dist/main.api"
+          while curl --silent --output /dev/null http://localhost:3000/api/v1/health; do sleep 1; done
+          nohup npm run start:prod >> "$RUNNER_TEMP/api.log" 2>&1 &
+          curl --fail --silent --show-error --retry 30 --retry-delay 2 --retry-all-errors \
+            http://localhost:3000/api/v1/health
+          echo
+
+      - name: E2E of the login limit (429)
+        working-directory: frontend
+        run: npm run e2e:rate-limit
 
       # Sempre: um erro da API durante o E2E fica visível mesmo quando o teste não o pega.
       - name: API log

@@ -85,6 +85,7 @@ describe('App (routes and startup)', () => {
     const harness = await boot('session');
 
     await harness.navigateByUrl('/');
+    http.expectOne(`${environment.apiRootUrl}/api/v1/portfolios`).flush([]);
 
     expect(TestBed.inject(Router).url).toBe('/carteiras');
     expect(harness.routeNativeElement?.querySelector('header nav')).not.toBeNull();

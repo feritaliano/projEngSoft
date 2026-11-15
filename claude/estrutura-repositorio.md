@@ -72,7 +72,7 @@ carteira-b3/
 │   │   ├── ddl.sql                  [ok] gerado (pg_dump --schema-only --schema=public)
 │   │   ├── inserts.sql              [P1] seed
 │   │   └── queries.sql              [P2] 18 consultas com enunciado
-│   └── results/                     [P3] resultados das consultas e listagens (.gitkeep até lá)
+│   └── results/                     [P3] gerado por npm run db:results: tables/<tabela>.txt e queries/consulta-NN.txt
 ├── data/
 │   └── raw/                         arquivos brutos das fontes externas (bronze); só o .gitkeep vai para o Git
 ├── docker/
