@@ -1,0 +1,39 @@
+-- Consulta 7. Quais apurações mensais de IR foram quitadas por DARF, e quanto de imposto cada uma gerou pela regra
+-- vigente no mês? A regra aplicável é a de maior início de vigência até o mês (RegraIR), não uma FK. Imposto =
+-- (resultado − prejuízo compensado) × alíquota, zero se o mês é isento (vendas até o limite de isenção); IRRF de
+-- 0,005% sobre as vendas, deduzido quando passa de R$ 1,00 (memoria-calculo.md, R13). Um DARF pode quitar mais de
+-- uma apuração (Carla: 02 e 04/2026, R17).
+SELECT u.name AS usuario, ta.reference_month AS mes, c.code AS categoria, ta.total_sales AS vendas,
+       ta.net_result AS resultado, ta.loss_offset AS prejuizo_compensado, round(tr.rate * 100, 2) AS aliquota_pct,
+       x.imposto, x.irrf, x.imposto - x.irrf AS devido,
+       d.reference_month AS mes_darf, d.amount_paid AS valor_pago_darf, d.paid_at AS pago_em
+FROM tax_assessments ta
+JOIN users u ON u.id = ta.user_id
+JOIN tax_categories c ON c.id = ta.tax_category_id
+JOIN darfs d ON d.id = ta.darf_id
+JOIN tax_rules tr ON tr.tax_category_id = ta.tax_category_id
+                 AND tr.effective_from = (SELECT max(r2.effective_from) FROM tax_rules r2
+                                          WHERE r2.tax_category_id = ta.tax_category_id
+                                            AND r2.effective_from <= ta.reference_month)
+CROSS JOIN LATERAL (
+  SELECT CASE WHEN ta.total_sales <= tr.sales_exemption_limit THEN 0
+              ELSE round(greatest(ta.net_result - ta.loss_offset, 0) * tr.rate, 2) END AS imposto,
+         CASE WHEN round(ta.total_sales * 0.00005, 2) > 1 THEN round(ta.total_sales * 0.00005, 2) ELSE 0 END AS irrf
+) x
+ORDER BY u.name, ta.reference_month;
+
+    usuario     |    mes     |  categoria   |  vendas  | resultado | prejuizo_compensado | aliquota_pct | imposto | irrf | devido |  mes_darf  | valor_pago_darf |  pago_em   
+----------------+------------+--------------+----------+-----------+---------------------+--------------+---------+------+--------+------------+-----------------+------------
+ Bruno Almeida  | 2026-03-01 | COMMON_STOCK | 28960.00 |   4539.00 |                0.00 |        15.00 |  680.85 | 1.45 | 679.40 | 2026-03-01 |          679.40 | 2026-04-30
+ Bruno Almeida  | 2026-09-01 | COMMON_STOCK | 27360.00 |   2696.50 |             2415.40 |        15.00 |   42.17 | 1.37 |  40.80 | 2026-09-01 |           40.80 | 2026-10-30
+ Carla Souza    | 2026-02-01 | FII          |  2955.00 |     42.00 |                0.00 |        20.00 |    8.40 |    0 |   8.40 | 2026-04-01 |           13.80 | 2026-05-29
+ Carla Souza    | 2026-04-01 | FII          |  2940.00 |     27.00 |                0.00 |        20.00 |    5.40 |    0 |   5.40 | 2026-04-01 |           13.80 | 2026-05-29
+ Diego Ferreira | 2026-02-01 | COMMON_OTHER |  7900.00 |    295.10 |                0.00 |        15.00 |   44.27 |    0 |  44.27 | 2026-02-01 |           44.27 | 2026-03-31
+ Diego Ferreira | 2026-08-01 | COMMON_OTHER | 16000.00 |   3989.00 |             2109.00 |        15.00 |  282.00 |    0 | 282.00 | 2026-08-01 |          282.00 | 2026-09-30
+ Felipe Rocha   | 2026-06-01 | COMMON_STOCK | 25210.00 |   1984.60 |                0.00 |        15.00 |  297.69 | 1.26 | 296.43 | 2026-06-01 |          296.43 | 2026-07-31
+ Henrique Costa | 2026-07-01 | COMMON_OTHER | 14000.00 |   1183.00 |                0.00 |        15.00 |  177.45 |    0 | 177.45 | 2026-07-01 |          177.45 | 2026-08-31
+ Isabela Nunes  | 2026-09-01 | COMMON_STOCK | 35700.00 |   3278.00 |             2410.00 |        15.00 |  130.20 | 1.79 | 128.41 | 2026-09-01 |          128.41 | 2026-10-30
+ João Pereira   | 2026-06-01 | COMMON_OTHER |  7600.00 |    595.00 |                0.00 |        15.00 |   89.25 |    0 |  89.25 | 2026-06-01 |           89.25 | 2026-07-31
+ João Pereira   | 2026-10-01 | COMMON_OTHER |  7800.00 |    795.00 |                0.00 |        15.00 |  119.25 |    0 | 119.25 | 2026-10-01 |                 | 
+(11 rows)
+

@@ -1,0 +1,11 @@
+-- Listagem completa da tabela economic_indexes (ordem: id)
+
+                  id                  | code  |   name   | periodicity |     unit     |   source    
+--------------------------------------+-------+----------+-------------+--------------+-------------
+ 00000000-0000-0000-0000-000000000901 | CDI   | CDI      | DAILY       | RATE_PERCENT | BCB SGS 12
+ 00000000-0000-0000-0000-000000000902 | SELIC | Selic    | DAILY       | RATE_PERCENT | BCB SGS 11
+ 00000000-0000-0000-0000-000000000903 | IPCA  | IPCA     | MONTHLY     | RATE_PERCENT | BCB SGS 433
+ 00000000-0000-0000-0000-000000000904 | IGPM  | IGP-M    | MONTHLY     | RATE_PERCENT | BCB SGS 189
+ 00000000-0000-0000-0000-000000000905 | IBOV  | Ibovespa | DAILY       | POINTS       | B3
+(5 rows)
+

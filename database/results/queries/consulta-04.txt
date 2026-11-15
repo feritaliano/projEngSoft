@@ -1,0 +1,39 @@
+-- Consulta 4. Em que setor, subsetor e segmento da classificação da B3 está cada ação negociada? A classificação é
+-- hierárquica (autorrelacionamento de Setor): o emissor aponta para o segmento, que aponta para o subsetor e este
+-- para o setor econômico.
+SELECT a.ticker, i.name AS emissor, s1.name AS setor_economico, s2.name AS subsetor, s3.name AS segmento
+FROM assets a
+JOIN issuers i ON i.id = a.issuer_id
+JOIN sectors s3 ON s3.id = i.sector_id
+JOIN sectors s2 ON s2.id = s3.parent_id
+JOIN sectors s1 ON s1.id = s2.parent_id
+WHERE a.type = 'STOCK' AND a.is_active
+ORDER BY s1.name, s2.name, s3.name, a.ticker;
+
+ ticker |                    emissor                    |         setor_economico         |            subsetor             |             segmento              
+--------+-----------------------------------------------+---------------------------------+---------------------------------+-----------------------------------
+ WEGE3  | WEG S.A.                                      | Bens Industriais                | Máquinas e Equipamentos         | Motores, Compressores e Outros
+ VIVT3  | TELEFÔNICA BRASIL S.A                         | Comunicações                    | Telecomunicações                | Telecomunicações
+ RENT3  | LOCALIZA RENT A CAR S.A.                      | Consumo Cíclico                 | Diversos                        | Aluguel de carros
+ ABEV3  | AMBEV S.A.                                    | Consumo não Cíclico             | Bebidas                         | Cervejas e Refrigerantes
+ ITSA4  | ITAUSA S.A.                                   | Financeiro                      | Holdings Diversificadas         | Holdings Diversificadas
+ BBAS3  | BCO BRASIL S.A.                               | Financeiro                      | Intermediários Financeiros      | Bancos
+ BBDC3  | BCO BRADESCO S.A.                             | Financeiro                      | Intermediários Financeiros      | Bancos
+ BBDC4  | BCO BRADESCO S.A.                             | Financeiro                      | Intermediários Financeiros      | Bancos
+ ITUB4  | ITAU UNIBANCO HOLDING S.A.                    | Financeiro                      | Intermediários Financeiros      | Bancos
+ SANB11 | BCO SANTANDER (BRASIL) S.A.                   | Financeiro                      | Intermediários Financeiros      | Bancos
+ B3SA3  | B3 S.A. - BRASIL, BOLSA, BALCÃO               | Financeiro                      | Serviços Financeiros Diversos   | Serviços Financeiros Diversos
+ KLBN11 | KLABIN S.A.                                   | Materiais Básicos               | Madeira e Papel                 | Papel e Celulose
+ SUZB3  | SUZANO S.A.                                   | Materiais Básicos               | Madeira e Papel                 | Papel e Celulose
+ VALE3  | VALE S.A.                                     | Materiais Básicos               | Mineração                       | Minerais Metálicos
+ GGBR4  | GERDAU S.A.                                   | Materiais Básicos               | Siderurgia e Metalurgia         | Siderurgia
+ CSAN3  | COSAN S.A.                                    | Petróleo, Gás e Biocombustíveis | Petróleo, Gás e Biocombustíveis | Exploração, Refino e Distribuição
+ PETR3  | PETROLEO BRASILEIRO S.A. PETROBRAS            | Petróleo, Gás e Biocombustíveis | Petróleo, Gás e Biocombustíveis | Exploração, Refino e Distribuição
+ PETR4  | PETROLEO BRASILEIRO S.A. PETROBRAS            | Petróleo, Gás e Biocombustíveis | Petróleo, Gás e Biocombustíveis | Exploração, Refino e Distribuição
+ PRIO3  | PRIO S.A.                                     | Petróleo, Gás e Biocombustíveis | Petróleo, Gás e Biocombustíveis | Exploração, Refino e Distribuição
+ RADL3  | RAIA DROGASIL S.A.                            | Saúde                           | Comércio e Distribuição         | Medicamentos e Outros Produtos
+ AXIA3  | AXIA ENERGIA S.A.                             | Utilidade Pública               | Energia Elétrica                | Energia Elétrica
+ EGIE3  | ENGIE BRASIL ENERGIA S.A.                     | Utilidade Pública               | Energia Elétrica                | Energia Elétrica
+ TAEE11 | TRANSMISSORA ALIANÇA DE ENERGIA ELÉTRICA S.A. | Utilidade Pública               | Energia Elétrica                | Energia Elétrica
+(23 rows)
+

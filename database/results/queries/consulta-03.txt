@@ -1,0 +1,22 @@
+-- Consulta 3. Quais alertas de preço já dispararam, e qual fechamento do pregão os disparou? Usuário, ativo,
+-- direção, preço-alvo, data e preço de fechamento da cotação.
+SELECT u.name AS usuario, a.ticker, al.direction AS direcao, al.target_price AS preco_alvo,
+       q.quote_date AS data_cotacao, q.close AS fechamento
+FROM price_alerts al
+JOIN users u ON u.id = al.user_id
+JOIN assets a ON a.id = al.asset_id
+JOIN quotes q ON q.asset_id = al.asset_id AND q.quote_date = al.triggered_quote_date
+ORDER BY q.quote_date, u.name, a.ticker;
+
+        usuario        | ticker | direcao | preco_alvo  | data_cotacao |  fechamento  
+-----------------------+--------+---------+-------------+--------------+--------------
+ Carla Souza           | MXRF11 | BELOW   |  8.90000000 | 2026-10-30   |   8.88000000
+ Bruno Almeida         | VALE3  | ABOVE   | 63.00000000 | 2026-11-12   |  63.95000000
+ Conta de Demonstração | PETR4  | BELOW   | 45.00000000 | 2026-11-12   |  44.70000000
+ Conta de Demonstração | WEGE3  | ABOVE   | 50.00000000 | 2026-11-12   |  51.65000000
+ Diego Ferreira        | AAPL34 | ABOVE   | 95.00000000 | 2026-11-12   | 100.12000000
+ Diego Ferreira        | NVDC34 | BELOW   | 20.00000000 | 2026-11-12   |  19.53000000
+ Gabriela Martins      | BBAS3  | BELOW   | 16.00000000 | 2026-11-12   |  15.48000000
+ Gabriela Martins      | TAEE11 | ABOVE   | 40.00000000 | 2026-11-12   |  41.57000000
+(8 rows)
+
