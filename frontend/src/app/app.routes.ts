@@ -26,6 +26,13 @@ export const routes: Routes = [
           import('./features/portfolios/portfolios-page').then((m) => m.PortfoliosPage),
       },
       {
+        path: 'carteiras/:id',
+        title: 'Carteira · Carteira B3',
+        canActivate: [authGuard],
+        loadComponent: () =>
+          import('./features/portfolios/portfolio-detail-page').then((m) => m.PortfolioDetailPage),
+      },
+      {
         path: 'ativos',
         title: 'Ativos · Carteira B3',
         canActivate: [authGuard],
