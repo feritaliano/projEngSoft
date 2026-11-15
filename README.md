@@ -12,7 +12,7 @@ Projeto acadêmico (UNIFESP/ICT) que atende as disciplinas de Engenharia de Soft
 - Estrutura do repositório: `claude/estrutura-repositorio.md`
 
 ## Como rodar
-> **Telas em construção.** Por enquanto, o frontend tem a entrada (login e cadastro) e a navegação; carteiras e operações ainda não existem na tela e, para elas, use a API pelo Swagger (passo 6). Esta seção é atualizada a cada tela entregue.
+> **Telas em construção.** Por enquanto, o frontend tem a entrada (login e cadastro), a navegação e a lista de carteiras (criar e excluir); o detalhe da carteira e as operações ainda não existem na tela e, para eles, use a API pelo Swagger (passo 6). Esta seção é atualizada a cada tela entregue.
 
 ### 1. Pré-requisitos
 - Docker Desktop (ou Docker Engine com o plugin Compose).
@@ -65,7 +65,9 @@ O seed cria um usuário de demonstração:
 
 **Pela tela:** abra `http://localhost:4200`, entre com o e-mail e a senha acima e você chega a "Suas carteiras". Para criar outro usuário, clique em "Criar conta": a conta nova já entra logada. A API aceita 5 cadastros ou logins por minuto por IP (`AUTH_RATE_LIMIT_MAX`); a partir daí a tela mostra "Muitas tentativas seguidas." e é preciso aguardar 1 minuto; a sessão fica só na memória da aba e volta sozinha ao recarregar a página, pelo cookie de refresh.
 
-**Pela API (carteiras, operações e posições, até as telas ficarem prontas):** no Swagger UI, em `http://localhost:3000/api/docs`:
+**Criar uma carteira pela tela:** em "Suas carteiras", clique em "Nova carteira", digite o nome (ex.: "Minha carteira") e clique em "Criar carteira"; ela aparece no fim da lista com "Sem operações ainda". O usuário de demonstração já tem 3 carteiras ("Longo prazo", "Dividendos" e "Testes FII"); uma conta nova começa vazia e cria a primeira carteira no próprio aviso "Você ainda não tem carteiras". Para excluir, use a lixeira do cartão e digite o nome da carteira para confirmar: as operações dela são apagadas junto.
+
+**Pela API (operações e posições, até as telas ficarem prontas):** no Swagger UI, em `http://localhost:3000/api/docs`:
 1. Abra `POST /api/v1/auth/login`, clique em "Try it out", envie `{ "email": "demo@carteirab3.dev", "password": "demo-carteira-2026" }` e confira a resposta 200.
 2. Copie o `accessToken` da resposta, clique em "Authorize" e cole o token.
 3. Teste as rotas de carteiras, operações, posições e catálogo, como `GET /api/v1/portfolios`.
