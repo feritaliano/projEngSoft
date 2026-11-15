@@ -68,6 +68,7 @@ O conteúdo de `.claude/agents/*.md` é o mesmo de `agentes/*.md`; ao alterar um
 - `npm run db:test` roda `database/tests/constraints.sql`, `database/tests/ops-constraints.sql` e `database/tests/full-product-constraints.sql` (testes das restrições de `public`, de `ops` e das tabelas da D3; não deixam dados e rodam com ou sem o seed).
 - `npm run db:seed` carrega `database/sql/inserts.sql` (idempotente; também via `prisma db seed`): catálogo do S1 (setores, emissores, ativos das 6 classes, corretoras) e linhas de mercado da PF (D59). `database/tests/seed-check.sql` confere o resultado.
 - `npm run db:ddl` regenera `database/sql/ddl.sql` a partir do banco migrado.
+- `npm run db:results` regenera `database/results/` (P3): listagem de cada tabela de `public` (`tables/`) e resultado de cada consulta de `queries.sql` com enunciado e SQL (`queries/`). Os arquivos versionados vêm de um banco recém-migrado e semeado; o CI regera e confere o diff.
 - CHECK constraints e as extensões `citext` e `unaccent` ficam escritos à mão nas migrations; o Prisma não os expressa nem os remove.
 
 ## Testes e CI (D40)

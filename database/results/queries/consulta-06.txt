@@ -1,0 +1,23 @@
+-- Consulta 6. Em quais compras de criptoativos o preço pago ficou acima ou abaixo do preço de referência do dia?
+-- Usuário, carteira, exchange, data, cripto, quantidade, preço pago, preço de referência e diferença em %.
+SELECT u.name AS usuario, p.name AS carteira, br.name AS exchange, o.trade_date AS data_pregao, a.ticker,
+       c.name AS criptoativo, o.quantity AS quantidade, o.unit_price AS preco_pago, cp.reference_price AS preco_referencia,
+       round((o.unit_price / cp.reference_price - 1) * 100, 2) AS diferenca_pct
+FROM operations o
+JOIN portfolios p ON p.id = o.portfolio_id
+JOIN users u ON u.id = p.user_id
+JOIN brokers br ON br.id = o.broker_id
+JOIN assets a ON a.id = o.asset_id
+JOIN crypto_assets c ON c.asset_id = o.asset_id
+JOIN crypto_prices cp ON cp.asset_id = o.asset_id AND cp.price_date = o.trade_date
+WHERE o.type = 'BUY'
+ORDER BY o.trade_date, u.name;
+
+        usuario        |     carteira     |    exchange     | data_pregao | ticker | criptoativo | quantidade |   preco_pago    | preco_referencia | diferenca_pct 
+-----------------------+------------------+-----------------+-------------+--------+-------------+------------+-----------------+------------------+---------------
+ Eduarda Lima          | Reserva e cripto | Foxbit          | 2026-04-02  | BTC    | Bitcoin     | 0.00500000 | 346388.00000000 |  346388.00000000 |          0.00
+ Eduarda Lima          | Reserva e cripto | Foxbit          | 2026-05-15  | ETH    | Ethereum    | 0.25000000 |  11281.80000000 |   11281.80000000 |          0.00
+ Conta de Demonstração | Longo prazo      | Mercado Bitcoin | 2026-07-29  | BTC    | Bitcoin     | 0.01250000 | 328000.00000000 |  328452.00000000 |         -0.14
+ Eduarda Lima          | Reserva e cripto | Foxbit          | 2026-09-01  | BTC    | Bitcoin     | 0.00350000 | 399998.00000000 |  399998.00000000 |          0.00
+(4 rows)
+

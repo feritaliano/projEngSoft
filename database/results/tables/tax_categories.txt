@@ -1,0 +1,10 @@
+-- Listagem completa da tabela tax_categories (ordem: id)
+
+                  id                  |     code     |                     name                      | revenue_code 
+--------------------------------------+--------------+-----------------------------------------------+--------------
+ 00000000-0000-0000-0000-000000001501 | COMMON_STOCK | Operações comuns com ações no mercado à vista | 6015
+ 00000000-0000-0000-0000-000000001502 | COMMON_OTHER | Operações comuns com ETF, BDR e demais ativos | 6015
+ 00000000-0000-0000-0000-000000001503 | DAY_TRADE    | Operações day trade                           | 6015
+ 00000000-0000-0000-0000-000000001504 | FII          | Alienação de cotas de fundos imobiliários     | 6015
+(4 rows)
+

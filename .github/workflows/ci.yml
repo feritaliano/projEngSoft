@@ -75,6 +75,13 @@ jobs:
       - name: Constraint tests (public, ops and D3), on the seeded database
         run: npm run db:test
 
+      # Os testes de restrição não deixam linhas; os arquivos versionados vêm de um banco recém-semeado como este.
+      - name: database/results matches the seeded database (P3)
+        run: |
+          npm run db:results
+          git add -N database/results
+          git diff --exit-code -- database/results
+
       - name: PostgreSQL versions and column options (diagnostic)
         run: |
           docker exec "$PG_CONTAINER" pg_dump --version

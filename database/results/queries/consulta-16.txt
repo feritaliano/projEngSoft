@@ -1,0 +1,19 @@
+-- Consulta 16. Qual a vacância de cada fundo imobiliário no informe trimestral? Média da vacância dos imóveis para
+-- renda acabados, ponderada pela área (modelo-er.md, 2.2); só fundos com área declarada nesses imóveis.
+SELECT i.name AS fundo, r.reference_date AS data_referencia, count(*) AS imoveis_renda_acabados,
+       sum(pr.area) AS area_total, round(sum(pr.area * pr.vacancy_rate) / sum(pr.area) * 100, 2) AS vacancia_pct
+FROM fii_report_properties pr
+JOIN fii_quarterly_reports r ON r.id = pr.fii_quarterly_report_id
+JOIN issuers i ON i.id = r.issuer_id
+WHERE pr.property_class = 'RENT_FINISHED' AND pr.vacancy_rate IS NOT NULL
+GROUP BY i.name, r.reference_date
+HAVING sum(pr.area) > 0
+ORDER BY vacancia_pct DESC;
+
+                       fundo                        | data_referencia | imoveis_renda_acabados | area_total | vacancia_pct 
+----------------------------------------------------+-----------------+------------------------+------------+--------------
+ OPPORTUNITY FDO INV IMOB  RESPONS LIMITADA         | 2026-06-30      |                      1 |    2082.62 |        83.33
+ PATRIA LOG - FDO INV IMOB - RESPONSABILIDADE LTDA. | 2026-06-30      |                      6 |  426420.06 |         0.64
+ KINEA RENDA IMOBILIÁRIA FDO INV IMOB RESP LIM      | 2026-06-30      |                      2 |   27313.06 |         0.47
+(3 rows)
+

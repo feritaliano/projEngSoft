@@ -1,0 +1,42 @@
+-- Consulta 12. Para cada provento anunciado, quantas carteiras o receberam e quanto foi pago no total, incluindo os
+-- proventos sem nenhum recebimento? Situação em 13/11/2026: "a pagar" se a data de pagamento é posterior.
+SELECT a.ticker, d.type AS tipo_provento, d.record_date AS data_com, d.payment_date AS data_pagamento,
+       d.amount_per_share AS valor_por_cota,
+       CASE WHEN d.payment_date > DATE '2026-11-13' THEN 'a pagar' ELSE 'pago' END AS situacao,
+       count(r.id) AS recebimentos, coalesce(sum(r.gross_amount), 0) AS total_bruto_recebido
+FROM income_distributions d
+JOIN assets a ON a.id = d.asset_id
+LEFT JOIN received_income r ON r.income_distribution_id = d.id
+GROUP BY d.id, a.ticker
+ORDER BY a.ticker, d.record_date, d.payment_date, d.type;
+
+ ticker | tipo_provento |  data_com  | data_pagamento | valor_por_cota | situacao | recebimentos | total_bruto_recebido 
+--------+---------------+------------+----------------+----------------+----------+--------------+----------------------
+ BBDC4  | JCP           | 2025-12-29 | 2026-07-31     |     0.38630982 | pago     |            0 |                    0
+ BBDC4  | JCP           | 2026-01-02 | 2026-02-02     |     0.01897481 | pago     |            0 |                    0
+ BBDC4  | JCP           | 2026-04-06 | 2026-09-15     |     0.29733852 | pago     |            2 |                59.46
+ BBDC4  | JCP           | 2026-07-03 | 2026-09-15     |     0.34689494 | pago     |            3 |               242.83
+ BBDC4  | JCP           | 2026-10-13 | 2027-04-30     |     0.35624459 | a pagar  |            0 |                    0
+ BBDC4  | JCP           | 2026-11-03 | 2026-12-01     |     0.01897481 | a pagar  |            0 |                    0
+ HGLG11 | FII_INCOME    | 2026-01-30 | 2026-02-13     |     1.10000000 | pago     |            2 |                77.00
+ HGLG11 | FII_INCOME    | 2026-02-27 | 2026-03-13     |     1.10000000 | pago     |            2 |                77.00
+ HGLG11 | FII_INCOME    | 2026-03-31 | 2026-04-15     |     1.10000000 | pago     |            2 |                77.00
+ HGLG11 | FII_INCOME    | 2026-04-30 | 2026-05-15     |     1.10000000 | pago     |            2 |                77.00
+ HGLG11 | FII_INCOME    | 2026-05-29 | 2026-06-15     |     1.10000000 | pago     |            2 |                77.00
+ HGLG11 | FII_INCOME    | 2026-06-30 | 2026-07-14     |     1.10000000 | pago     |            2 |                77.00
+ HGLG11 | FII_INCOME    | 2026-07-31 | 2026-08-14     |     1.17000000 | pago     |            2 |                81.90
+ HGLG11 | FII_INCOME    | 2026-08-31 | 2026-09-15     |     1.17000000 | pago     |            2 |                81.90
+ HGLG11 | FII_INCOME    | 2026-09-30 | 2026-10-15     |     1.17000000 | pago     |            2 |                81.90
+ HGLG11 | FII_INCOME    | 2026-10-30 | 2026-11-16     |     1.17000000 | a pagar  |            0 |                    0
+ PETR4  | JCP           | 2025-12-22 | 2026-02-20     |     0.47160378 | pago     |            0 |                    0
+ PETR4  | DIVIDEND      | 2025-12-22 | 2026-03-20     |     0.29642144 | pago     |            0 |                    0
+ PETR4  | JCP           | 2025-12-22 | 2026-03-20     |     0.17518233 | pago     |            0 |                    0
+ PETR4  | JCP           | 2026-04-22 | 2026-05-20     |     0.31311454 | pago     |            1 |                46.97
+ PETR4  | JCP           | 2026-04-22 | 2026-06-22     |     0.31311454 | pago     |            1 |                46.97
+ PETR4  | JCP           | 2026-06-01 | 2026-08-20     |     0.35048636 | pago     |            2 |               192.76
+ PETR4  | JCP           | 2026-06-01 | 2026-09-21     |     0.35048636 | pago     |            2 |               192.76
+ PETR4  | JCP           | 2026-08-21 | 2026-11-23     |     0.67407131 | a pagar  |            0 |                    0
+ PETR4  | DIVIDEND      | 2026-08-21 | 2026-12-21     |     0.47156696 | a pagar  |            0 |                    0
+ PETR4  | JCP           | 2026-08-21 | 2026-12-21     |     0.20250435 | a pagar  |            0 |                    0
+(26 rows)
+

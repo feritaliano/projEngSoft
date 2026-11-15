@@ -1,0 +1,26 @@
+-- Consulta 5. Quanto custava comprar e quanto pagava vender cada título do Tesouro Direto na data-base de
+-- 11/11/2026? Tipo do título, vencimento, se paga juros semestrais, taxas de compra e de venda (% ao ano) e
+-- preços unitários (PU) de compra e de venda. Taxa e PU de compra vazios = título fora de venda no dia.
+SELECT t.name AS tipo_titulo, b.maturity_date AS vencimento, t.semiannual_interest AS juros_semestrais,
+       round(fp.buy_rate * 100, 2) AS taxa_compra_pct, round(fp.sell_rate * 100, 2) AS taxa_venda_pct,
+       round(fp.buy_price, 2) AS pu_compra, round(fp.sell_price, 2) AS pu_venda
+FROM fixed_income_bonds b
+JOIN fixed_income_types t ON t.id = b.fixed_income_type_id
+JOIN fixed_income_prices fp ON fp.asset_id = b.asset_id
+WHERE fp.base_date = DATE '2026-11-11'
+ORDER BY t.name, b.maturity_date;
+
+              tipo_titulo               | vencimento | juros_semestrais | taxa_compra_pct | taxa_venda_pct | pu_compra | pu_venda 
+----------------------------------------+------------+------------------+-----------------+----------------+-----------+----------
+ Tesouro Educa+                         | 2030-12-15 | f                |            7.29 |           7.41 |   3462.03 |  3453.36
+ Tesouro IGPM+ com Juros Semestrais     | 2031-01-01 | t                |            7.64 |           7.76 |   8083.81 |  8049.40
+ Tesouro IPCA+                          | 2029-05-15 | f                |            7.46 |           7.58 |   3996.08 |  3983.62
+ Tesouro IPCA+                          | 2035-05-15 | f                |            7.70 |           7.82 |   2552.48 |  2527.66
+ Tesouro IPCA+ com Juros Semestrais     | 2032-08-15 | t                |            7.64 |           7.76 |   4504.47 |  4478.70
+ Tesouro Prefixado                      | 2028-01-01 | f                |           14.13 |          14.25 |    861.15 |   859.68
+ Tesouro Prefixado com Juros Semestrais | 2031-01-01 | t                |           15.01 |          15.13 |    895.43 |   891.87
+ Tesouro Renda+ Aposentadoria Extra     | 2049-12-15 | f                |            7.53 |           7.65 |   2016.75 |  1992.06
+ Tesouro Selic                          | 2027-03-01 | f                |            0.02 |           0.03 |  20281.94 | 20270.97
+ Tesouro Selic                          | 2029-03-01 | f                |            0.05 |           0.06 |  20258.59 | 20243.58
+(10 rows)
+

@@ -1,0 +1,50 @@
+-- Listagem completa da tabela statement_lines (ordem: financial_statement_id, scope, account_code)
+
+        financial_statement_id        |    scope     | account_code |               account_description                |      value       
+--------------------------------------+--------------+--------------+--------------------------------------------------+------------------
+ 00000000-0000-0000-0000-000000001801 | INDIVIDUAL   | 1            | Ativo Total                                      | 1592566000000.00
+ 00000000-0000-0000-0000-000000001801 | CONSOLIDATED | 1            | Ativo Total                                      | 1223389000000.00
+ 00000000-0000-0000-0000-000000001801 | CONSOLIDATED | 3.01         | Receita de Venda de Bens e/ou Serviços           |  497549000000.00
+ 00000000-0000-0000-0000-000000001801 | CONSOLIDATED | 3.11         | Lucro/Prejuízo Consolidado do Período            |  110605000000.00
+ 00000000-0000-0000-0000-000000001802 | INDIVIDUAL   | 1            | Ativo Total                                      | 1865604850000.00
+ 00000000-0000-0000-0000-000000001802 | CONSOLIDATED | 1            | Ativo Total                                      | 2330327216000.00
+ 00000000-0000-0000-0000-000000001802 | CONSOLIDATED | 3.01         | Receitas de Intermediação Financeira             |  270183106000.00
+ 00000000-0000-0000-0000-000000001802 | CONSOLIDATED | 3.11         | Lucro ou Prejuízo Líquido Consolidado do Período |   23924636000.00
+ 00000000-0000-0000-0000-000000001803 | INDIVIDUAL   | 1            | Ativo Total                                      |   22689918000.00
+ 00000000-0000-0000-0000-000000001803 | CONSOLIDATED | 1            | Ativo Total                                      |   42645030000.00
+ 00000000-0000-0000-0000-000000001803 | CONSOLIDATED | 3.01         | Receita de Venda de Bens e/ou Serviços           |   40804110000.00
+ 00000000-0000-0000-0000-000000001803 | CONSOLIDATED | 3.11         | Lucro/Prejuízo Consolidado do Período            |    6775958000.00
+ 00000000-0000-0000-0000-000000001804 | INDIVIDUAL   | 1            | Ativo Total                                      |   56261343000.00
+ 00000000-0000-0000-0000-000000001804 | CONSOLIDATED | 1            | Ativo Total                                      |   63796777000.00
+ 00000000-0000-0000-0000-000000001804 | CONSOLIDATED | 3.01         | Receita de Venda de Bens e/ou Serviços           |   20697507000.00
+ 00000000-0000-0000-0000-000000001804 | CONSOLIDATED | 3.11         | Lucro/Prejuízo Consolidado do Período            |    1678211000.00
+ 00000000-0000-0000-0000-000000001805 | INDIVIDUAL   | 1            | Ativo Total                                      | 2414775306000.00
+ 00000000-0000-0000-0000-000000001805 | CONSOLIDATED | 1            | Ativo Total                                      | 2455143253000.00
+ 00000000-0000-0000-0000-000000001805 | CONSOLIDATED | 3.01         | Receitas de Intermediação Financeira             |  319462104000.00
+ 00000000-0000-0000-0000-000000001805 | CONSOLIDATED | 3.11         | Lucro ou Prejuízo Líquido Consolidado do Período |   16781938000.00
+ 00000000-0000-0000-0000-000000001806 | INDIVIDUAL   | 1            | Ativo Total                                      |   48850175000.00
+ 00000000-0000-0000-0000-000000001806 | CONSOLIDATED | 1            | Ativo Total                                      |   48487647000.00
+ 00000000-0000-0000-0000-000000001806 | CONSOLIDATED | 3.01         | Receita de Venda de Bens e/ou Serviços           |   11121545000.00
+ 00000000-0000-0000-0000-000000001806 | CONSOLIDATED | 3.11         | Lucro/Prejuízo Consolidado do Período            |    4586872000.00
+ 00000000-0000-0000-0000-000000001807 | INDIVIDUAL   | 1            | Ativo Total                                      |  163908054000.00
+ 00000000-0000-0000-0000-000000001807 | CONSOLIDATED | 1            | Ativo Total                                      |  167935519000.00
+ 00000000-0000-0000-0000-000000001807 | CONSOLIDATED | 3.01         | Receita de Venda de Bens e/ou Serviços           |   50115679000.00
+ 00000000-0000-0000-0000-000000001807 | CONSOLIDATED | 3.11         | Lucro/Prejuízo Consolidado do Período            |   13437687000.00
+ 00000000-0000-0000-0000-000000001808 | INDIVIDUAL   | 1            | Ativo Total                                      |   69605003000.00
+ 00000000-0000-0000-0000-000000001808 | CONSOLIDATED | 1            | Ativo Total                                      |   85566576000.00
+ 00000000-0000-0000-0000-000000001808 | CONSOLIDATED | 3.01         | Receita de Venda de Bens e/ou Serviços           |   41781588000.00
+ 00000000-0000-0000-0000-000000001808 | CONSOLIDATED | 3.11         | Lucro/Prejuízo Consolidado do Período            |    1870470000.00
+ 00000000-0000-0000-0000-000000001809 | INDIVIDUAL   | 1            | Ativo Total                                      | 1639874000000.00
+ 00000000-0000-0000-0000-000000001809 | CONSOLIDATED | 1            | Ativo Total                                      | 1279019000000.00
+ 00000000-0000-0000-0000-000000001809 | CONSOLIDATED | 3.01         | Receita de Venda de Bens e/ou Serviços           |  293216000000.00
+ 00000000-0000-0000-0000-000000001809 | CONSOLIDATED | 3.11         | Lucro/Prejuízo Consolidado do Período            |   85256000000.00
+ 00000000-0000-0000-0000-000000001810 | INDIVIDUAL   | 1            | Ativo Total                                      |   24914890000.00
+ 00000000-0000-0000-0000-000000001810 | CONSOLIDATED | 1            | Ativo Total                                      |   46666431000.00
+ 00000000-0000-0000-0000-000000001810 | CONSOLIDATED | 3.01         | Receita de Venda de Bens e/ou Serviços           |   19611868000.00
+ 00000000-0000-0000-0000-000000001810 | CONSOLIDATED | 3.11         | Lucro/Prejuízo Consolidado do Período            |    3226245000.00
+ 00000000-0000-0000-0000-000000001811 | INDIVIDUAL   | 1            | Ativo Total                                      | 1974637832000.00
+ 00000000-0000-0000-0000-000000001811 | CONSOLIDATED | 1            | Ativo Total                                      | 2468826550000.00
+ 00000000-0000-0000-0000-000000001811 | CONSOLIDATED | 3.01         | Receitas de Intermediação Financeira             |  155209600000.00
+ 00000000-0000-0000-0000-000000001811 | CONSOLIDATED | 3.11         | Lucro ou Prejuízo Líquido Consolidado do Período |   12476353000.00
+(44 rows)
+
