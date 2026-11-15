@@ -179,13 +179,32 @@ describe('LoginPage', () => {
     expect(TestBed.inject(ConnectionService).offline()).toBe(false); // no error interceptor in this spec
   });
 
-  it('reports a 429 or 5xx, which have no text yet, and lets the user try again', async () => {
+  it('on 429 shows the too-many-attempts notice and keeps what was typed', async () => {
+    const { harness, element, field, type, submit, submitButton } = await open();
+    type('email', 'ana.lima@email.com');
+    type('password', 'errada-123');
+    await submit();
+
+    http.expectOne(LOGIN_URL).flush(problem(429), { status: 429, statusText: 'Too Many Requests' });
+    await harness.fixture.whenStable();
+
+    const alert = element.querySelector('[role="alert"]');
+    expect(alert?.textContent).toContain('Muitas tentativas seguidas.');
+    expect(alert?.textContent).toContain('Aguarde 1 minuto e tente de novo.');
+    expect(alert?.textContent).not.toContain('E-mail ou senha incorretos.');
+    expect(field('email').value).toBe('ana.lima@email.com');
+    expect(field('password').value).toBe('errada-123');
+    expect(submitButton().disabled).toBe(false);
+    expect(handleError).not.toHaveBeenCalled();
+  });
+
+  it('reports a 5xx, which has no text, and lets the user try again', async () => {
     const { harness, element, type, submit, submitButton } = await open();
     type('email', 'ana.lima@email.com');
     type('password', 'segredo-123');
     await submit();
 
-    http.expectOne(LOGIN_URL).flush(problem(429), { status: 429, statusText: 'Too Many Requests' });
+    http.expectOne(LOGIN_URL).flush(problem(500), { status: 500, statusText: 'Error' });
     await harness.fixture.whenStable();
 
     expect(handleError).toHaveBeenCalledTimes(1);
