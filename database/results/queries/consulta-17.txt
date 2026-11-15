@@ -1,0 +1,25 @@
+-- Consulta 17. Quais usuários tiveram resultado líquido positivo em 2026 em cada categoria de IR, somando as
+-- apurações mensais? Meses apurados, total de vendas, resultado e prejuízo compensado, do maior resultado para o menor.
+SELECT u.name AS usuario, c.name AS categoria, count(*) AS meses_apurados, sum(ta.total_sales) AS total_vendas,
+       sum(ta.net_result) AS resultado_liquido, sum(ta.loss_offset) AS prejuizo_compensado
+FROM tax_assessments ta
+JOIN users u ON u.id = ta.user_id
+JOIN tax_categories c ON c.id = ta.tax_category_id
+WHERE ta.reference_month BETWEEN DATE '2026-01-01' AND DATE '2026-12-01'
+GROUP BY u.name, c.name
+HAVING sum(ta.net_result) > 0
+ORDER BY resultado_liquido DESC;
+
+        usuario        |                   categoria                   | meses_apurados | total_vendas | resultado_liquido | prejuizo_compensado 
+-----------------------+-----------------------------------------------+----------------+--------------+-------------------+---------------------
+ Bruno Almeida         | Operações comuns com ações no mercado à vista |              3 |     72520.00 |           4820.10 |             2415.40
+ Diego Ferreira        | Operações comuns com ETF, BDR e demais ativos |              3 |     40400.00 |           2175.10 |             2109.00
+ Isabela Nunes         | Operações comuns com ações no mercado à vista |              3 |     59500.00 |           2059.00 |             2410.00
+ Felipe Rocha          | Operações comuns com ações no mercado à vista |              1 |     25210.00 |           1984.60 |                0.00
+ João Pereira          | Operações comuns com ETF, BDR e demais ativos |              2 |     15400.00 |           1390.00 |                0.00
+ João Pereira          | Operações comuns com ações no mercado à vista |              1 |      9900.00 |           1287.00 |                0.00
+ Henrique Costa        | Operações comuns com ETF, BDR e demais ativos |              1 |     14000.00 |           1183.00 |                0.00
+ Conta de Demonstração | Operações comuns com ações no mercado à vista |              2 |      3762.00 |            706.27 |                0.00
+ Carla Souza           | Alienação de cotas de fundos imobiliários     |              2 |      5895.00 |             69.00 |                0.00
+(9 rows)
+

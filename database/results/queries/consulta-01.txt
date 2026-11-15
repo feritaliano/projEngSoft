@@ -1,0 +1,28 @@
+-- Consulta 1. Quais operações entraram por importação de planilha da corretora? Para cada uma: usuário, carteira,
+-- arquivo e situação do lote, data, tipo, ativo, quantidade e preço.
+SELECT u.name AS usuario, p.name AS carteira, b.file_name AS arquivo, b.status AS situacao_lote,
+       o.trade_date AS data_pregao, o.type AS tipo, a.ticker, o.quantity AS quantidade, o.unit_price AS preco_unitario
+FROM operations o
+JOIN import_batches b ON b.id = o.import_batch_id
+JOIN portfolios p ON p.id = o.portfolio_id
+JOIN users u ON u.id = p.user_id
+JOIN assets a ON a.id = o.asset_id
+ORDER BY u.name, o.trade_date, o.sequence;
+
+    usuario    |      carteira      |             arquivo             | situacao_lote | data_pregao | tipo | ticker |  quantidade   | preco_unitario 
+---------------+--------------------+---------------------------------+---------------+-------------+------+--------+---------------+----------------
+ Bruno Almeida | Ações BR           | extrato-btg-2026-01.csv         | CONFIRMED     | 2026-01-12  | BUY  | PETR4  |  800.00000000 |    30.50000000
+ Bruno Almeida | Ações BR           | extrato-btg-2026-01.csv         | CONFIRMED     | 2026-01-12  | BUY  | VALE3  |  300.00000000 |    62.00000000
+ Felipe Rocha  | Corretora XP       | notas-corretagem-2026-01-02.csv | CONFIRMED     | 2026-01-08  | BUY  | ITUB4  |  300.00000000 |    33.50000000
+ Felipe Rocha  | Corretora XP       | notas-corretagem-2026-01-02.csv | CONFIRMED     | 2026-01-08  | BUY  | BBAS3  |  400.00000000 |    24.10000000
+ Felipe Rocha  | Corretora XP       | notas-corretagem-2026-01-02.csv | CONFIRMED     | 2026-02-05  | BUY  | ITUB4  |  100.00000000 |    35.00000000
+ Felipe Rocha  | Corretora XP       | notas-corretagem-2026-01-02.csv | CONFIRMED     | 2026-02-19  | BUY  | WEGE3  |  100.00000000 |    47.00000000
+ Felipe Rocha  | Corretora XP       | notas-corretagem-2026-06.csv    | CONFIRMED     | 2026-06-16  | SELL | ITUB4  |  300.00000000 |    41.00000000
+ Felipe Rocha  | Corretora XP       | notas-corretagem-2026-06.csv    | CONFIRMED     | 2026-06-16  | SELL | ITUB4  |  100.00000000 |    41.10000000
+ Felipe Rocha  | Corretora XP       | notas-corretagem-2026-06.csv    | CONFIRMED     | 2026-06-22  | SELL | BBAS3  |  400.00000000 |    22.00000000
+ Isabela Nunes | Carteira principal | notas-genial-2026-01.csv        | CONFIRMED     | 2026-01-15  | BUY  | ABEV3  | 2000.00000000 |    12.40000000
+ Isabela Nunes | Carteira principal | notas-genial-2026-01.csv        | CONFIRMED     | 2026-01-15  | BUY  | RENT3  |  300.00000000 |    42.00000000
+ João Pereira  | Bolsa e BDR        | notas-santander-2026-05.csv     | CONFIRMED     | 2026-05-05  | BUY  | BBDC4  |  500.00000000 |    17.20000000
+ João Pereira  | Bolsa e BDR        | notas-santander-2026-05.csv     | CONFIRMED     | 2026-05-05  | BUY  | MSFT34 |  200.00000000 |    70.00000000
+(13 rows)
+

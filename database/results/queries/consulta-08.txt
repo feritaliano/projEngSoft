@@ -1,0 +1,24 @@
+-- Consulta 8. Qual o preço sobre valor patrimonial (P/VP) de cada FII? Valor patrimonial por cota do informe mensal
+-- da CVM de 09/2026 (patrimônio líquido ÷ cotas emitidas) e fechamento do pregão de 30/10/2026.
+SELECT a.ticker, i.name AS fundo, m.net_worth AS patrimonio_liquido, m.shares_outstanding AS cotas_emitidas,
+       round(m.net_worth / m.shares_outstanding, 2) AS vp_por_cota, q.close AS fechamento,
+       round(q.close / (m.net_worth / m.shares_outstanding), 2) AS p_vp
+FROM fii_monthly_reports m
+JOIN issuers i ON i.id = m.issuer_id
+JOIN assets a ON a.issuer_id = i.id AND a.type = 'FII'
+JOIN quotes q ON q.asset_id = a.id AND q.quote_date = DATE '2026-10-30'
+WHERE m.reference_month = DATE '2026-09-01'
+ORDER BY p_vp, a.ticker;
+
+ ticker |                       fundo                        | patrimonio_liquido | cotas_emitidas | vp_por_cota |  fechamento  | p_vp 
+--------+----------------------------------------------------+--------------------+----------------+-------------+--------------+------
+ VISC11 | VINCI SHOPPING CENTERS FII RESP LIM                |      3338022866.46 |       28828640 |      115.79 |  99.20000000 | 0.86
+ HGRU11 | PATRIA RENDA URBANA - FII - RESPONSABILIDADE LTDA. |      3176116740.57 |       24834204 |      127.89 | 114.00000000 | 0.89
+ HGLG11 | PATRIA LOG - FDO INV IMOB - RESPONSABILIDADE LTDA. |      7546017797.39 |       45601713 |      165.48 | 149.50000000 | 0.90
+ XPML11 | XP MALLS FDO INV IMOB FII RESP LIM                 |      6904091273.75 |       64308055 |      107.36 |  96.80000000 | 0.90
+ BTLG11 | BTG PACTUAL LOGISTICA FDO INV IMOB RESP LIM        |      7535098792.61 |       70940261 |      106.22 |  97.92000000 | 0.92
+ KNRI11 | KINEA RENDA IMOBILIÁRIA FDO INV IMOB RESP LIM      |      4615296750.95 |       28204047 |      163.64 | 150.50000000 | 0.92
+ MXRF11 | MAXI RENDA FDO INV IMOB RESP LIM                   |      5304823085.04 |      567206273 |        9.35 |   8.88000000 | 0.95
+ KNCR11 | KINEA RENDIMENTOS IMOBILIÁRIOS FII RESP LIM        |     10984431830.65 |      107089622 |      102.57 | 104.98000000 | 1.02
+(8 rows)
+

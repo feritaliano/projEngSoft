@@ -1,0 +1,21 @@
+-- Listagem completa da tabela indicators (ordem: id)
+
+                  id                  |    code     |            name            | indicator_group |                                              formula                                              |   unit   | applies_to 
+--------------------------------------+-------------+----------------------------+-----------------+---------------------------------------------------------------------------------------------------+----------+------------
+ 00000000-0000-0000-0000-000000002301 | PL          | P/L                        | VALUATION       | Preço da ação / lucro por ação (LPA)                                                              | RATIO    | STOCK
+ 00000000-0000-0000-0000-000000002302 | PVP         | P/VP                       | VALUATION       | Preço da ação / valor patrimonial por ação (VPA)                                                  | RATIO    | STOCK
+ 00000000-0000-0000-0000-000000002303 | DY          | Dividend yield             | VALUATION       | Proventos por ação com data-com nos últimos 12 meses / preço da ação                              | PERCENT  | STOCK
+ 00000000-0000-0000-0000-000000002304 | EV_EBITDA   | EV/EBITDA                  | VALUATION       | (Valor de mercado + dívida líquida) / EBITDA dos últimos 12 meses                                 | RATIO    | STOCK
+ 00000000-0000-0000-0000-000000002305 | LPA         | Lucro por ação             | VALUATION       | Lucro líquido dos últimos 12 meses / (ações emitidas − ações em tesouraria)                       | CURRENCY | STOCK
+ 00000000-0000-0000-0000-000000002306 | VPA         | Valor patrimonial por ação | VALUATION       | Patrimônio líquido / (ações emitidas − ações em tesouraria)                                       | CURRENCY | STOCK
+ 00000000-0000-0000-0000-000000002307 | MARG_LIQ    | Margem líquida             | EFFICIENCY      | Lucro líquido / receita líquida, últimos 12 meses                                                 | PERCENT  | STOCK
+ 00000000-0000-0000-0000-000000002308 | MARG_EBITDA | Margem EBITDA              | EFFICIENCY      | EBITDA / receita líquida, últimos 12 meses                                                        | PERCENT  | STOCK
+ 00000000-0000-0000-0000-000000002309 | ROE         | ROE                        | PROFITABILITY   | Lucro líquido dos últimos 12 meses / patrimônio líquido                                           | PERCENT  | STOCK
+ 00000000-0000-0000-0000-000000002310 | ROA         | ROA                        | PROFITABILITY   | Lucro líquido dos últimos 12 meses / ativo total                                                  | PERCENT  | STOCK
+ 00000000-0000-0000-0000-000000002311 | DL_EBITDA   | Dívida líquida / EBITDA    | DEBT            | (Empréstimos e financiamentos − caixa e equivalentes) / EBITDA dos últimos 12 meses               | RATIO    | STOCK
+ 00000000-0000-0000-0000-000000002312 | CAGR_LUC5   | CAGR do lucro (5 anos)     | GROWTH          | (Lucro líquido do último exercício / lucro líquido de 5 exercícios antes)^(1/5) − 1               | PERCENT  | STOCK
+ 00000000-0000-0000-0000-000000002313 | FII_DY      | Dividend yield do FII      | FII             | Rendimentos por cota com data-com nos últimos 12 meses / preço da cota                            | PERCENT  | FII
+ 00000000-0000-0000-0000-000000002314 | FII_PVP     | P/VP do FII                | FII             | Preço da cota / (patrimônio líquido / cotas emitidas) do último informe mensal                    | RATIO    | FII
+ 00000000-0000-0000-0000-000000002315 | FII_VAC     | Vacância física            | FII             | Média da vacância dos imóveis de renda acabados do último informe trimestral, ponderada pela área | PERCENT  | FII
+(15 rows)
+

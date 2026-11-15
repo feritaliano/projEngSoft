@@ -1,0 +1,22 @@
+-- Consulta 15. Quanto cada usuário recebeu de proventos em 2026, por tipo de provento? Só os totais de pelo menos
+-- R$ 100,00 brutos, do maior para o menor valor líquido.
+SELECT u.name AS usuario, d.type AS tipo_provento, count(*) AS recebimentos, sum(r.gross_amount) AS total_bruto,
+       sum(r.withheld_tax) AS total_ir_retido, sum(r.gross_amount - r.withheld_tax) AS total_liquido
+FROM received_income r
+JOIN income_distributions d ON d.id = r.income_distribution_id
+JOIN portfolios p ON p.id = r.portfolio_id
+JOIN users u ON u.id = p.user_id
+WHERE r.received_at BETWEEN DATE '2026-01-01' AND DATE '2026-12-31'
+GROUP BY u.name, d.type
+HAVING sum(r.gross_amount) >= 100
+ORDER BY total_liquido DESC;
+
+        usuario        | tipo_provento | recebimentos | total_bruto | total_ir_retido | total_liquido 
+-----------------------+---------------+--------------+-------------+-----------------+---------------
+ Carla Souza           | FII_INCOME    |            9 |      505.50 |            0.00 |        505.50
+ Conta de Demonstração | JCP           |            8 |      327.92 |           57.38 |        270.54
+ Bruno Almeida         | JCP           |            2 |      280.38 |           49.06 |        231.32
+ Conta de Demonstração | FII_INCOME    |            9 |      202.20 |            0.00 |        202.20
+ João Pereira          | JCP           |            1 |      173.45 |           30.35 |        143.10
+(5 rows)
+

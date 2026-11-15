@@ -1,0 +1,24 @@
+-- Consulta 13. Qual o último fechamento de cada ativo da lista de observação da Gabriela, incluindo os que não têm
+-- cotação na B3 (cripto e renda fixa têm séries próprias, não Cotação)? Renda fixa sem ticker aparece pelo tipo e
+-- vencimento do título.
+SELECT coalesce(a.ticker, t.name || ' ' || extract(year FROM fb.maturity_date)) AS ativo, a.type AS classe,
+       w.added_at::date AS incluido_em, q.close AS fechamento_12_11_2026
+FROM watchlist_items w
+JOIN users u ON u.id = w.user_id
+JOIN assets a ON a.id = w.asset_id
+LEFT JOIN fixed_income_bonds fb ON fb.asset_id = a.id
+LEFT JOIN fixed_income_types t ON t.id = fb.fixed_income_type_id
+LEFT JOIN quotes q ON q.asset_id = a.id AND q.quote_date = DATE '2026-11-12'
+WHERE u.email = 'gabriela.martins@example.com'
+ORDER BY w.added_at;
+
+       ativo        |    classe    | incluido_em | fechamento_12_11_2026 
+--------------------+--------------+-------------+-----------------------
+ PETR4              | STOCK        | 2026-09-14  |           44.70000000
+ WEGE3              | STOCK        | 2026-09-14  |           51.65000000
+ KNRI11             | FII          | 2026-09-15  |          146.25000000
+ AAPL34             | BDR          | 2026-09-20  |          100.12000000
+ BTC                | CRYPTO       | 2026-10-02  |                      
+ Tesouro IPCA+ 2035 | FIXED_INCOME | 2026-10-02  |                      
+(6 rows)
+
