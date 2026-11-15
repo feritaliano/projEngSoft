@@ -16,10 +16,11 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
       [id]="fieldId()"
       [type]="type()"
       [attr.autocomplete]="autocomplete()"
+      [attr.placeholder]="placeholder()"
       [formControl]="control()"
       [attr.aria-invalid]="error() ? 'true' : null"
       [attr.aria-describedby]="hint() ? hintId() : null"
-      class="h-11 w-full rounded-md bg-surface px-3 py-2 text-body-md text-primary disabled:bg-subtle disabled:text-secondary"
+      class="h-11 w-full rounded-md bg-surface px-3 py-2 text-body-md text-primary placeholder:text-secondary disabled:bg-subtle disabled:text-secondary"
       [class]="error() ? 'border-2 border-negative' : 'border border-strong'"
     />
     @if (hint(); as text) {
@@ -39,6 +40,7 @@ export class TextField {
   readonly control = input.required<FormControl<string>>();
   readonly type = input('text');
   readonly autocomplete = input<string | null>(null);
+  readonly placeholder = input<string | null>(null);
   readonly helper = input<string | null>(null);
   readonly error = input<string | null>(null);
 

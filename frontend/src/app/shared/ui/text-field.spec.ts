@@ -3,7 +3,11 @@ import { FormControl } from '@angular/forms';
 import { TextField } from './text-field';
 
 describe('TextField', () => {
-  const render = async (inputs: { helper?: string | null; error?: string | null }) => {
+  const render = async (inputs: {
+    helper?: string | null;
+    error?: string | null;
+    placeholder?: string | null;
+  }) => {
     const fixture = TestBed.createComponent(TextField);
     fixture.componentRef.setInput('label', 'Senha');
     fixture.componentRef.setInput('fieldId', 'password');
@@ -48,5 +52,12 @@ describe('TextField', () => {
     expect(input.getAttribute('aria-describedby')).toBe(hint?.id);
     expect(input.getAttribute('aria-invalid')).toBe('true');
     expect(input.classList).toContain('border-negative');
+  });
+
+  it('shows the placeholder of the frame, keeping the visible label', async () => {
+    const { label, input } = await render({ placeholder: 'Ex.: Longo prazo' });
+
+    expect(input.placeholder).toBe('Ex.: Longo prazo');
+    expect(label.textContent?.trim()).toBe('Senha');
   });
 });

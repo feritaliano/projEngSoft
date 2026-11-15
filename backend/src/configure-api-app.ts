@@ -32,8 +32,13 @@ export async function configureApiApp(
     }),
   );
   app.useGlobalFilters(new ProblemDetailsFilter());
-  // A list (not a string) makes the CORS headers appear only when the request origin matches.
-  app.enableCors({ origin: [options.corsOrigin], credentials: true });
+  // A list (not a string) makes the CORS headers appear only when the request origin matches. @fastify/cors allows
+  // only GET, HEAD and POST by default; the frontend also sends PATCH (operations) and DELETE (portfolios, operations).
+  app.enableCors({
+    origin: [options.corsOrigin],
+    credentials: true,
+    methods: ['GET', 'HEAD', 'POST', 'PATCH', 'DELETE'],
+  });
 
   // The Swagger UI (non-production only) needs inline scripts and styles, which the default CSP blocks.
   await app.register(helmet, {
