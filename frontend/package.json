@@ -13,7 +13,8 @@
     "pretest:cov": "npm run api:generate",
     "test:cov": "ng test --coverage --watch=false",
     "lint": "ng lint && node scripts/check-tokens.mjs && node scripts/check-money-lint.mjs",
-    "e2e": "playwright test"
+    "e2e": "playwright test --grep-invert @rate-limit",
+    "e2e:rate-limit": "playwright test --grep @rate-limit"
   },
   "private": true,
   "packageManager": "npm@11.19.1",
