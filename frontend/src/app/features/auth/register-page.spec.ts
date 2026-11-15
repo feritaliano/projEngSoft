@@ -183,7 +183,34 @@ describe('RegisterPage', () => {
     expect(document.activeElement?.id).toBe('name');
   });
 
-  it('reports a 429 or 5xx, which have no text yet, and lets the user try again', async () => {
+  it('on 429 shows the too-many-attempts notice and keeps what was typed', async () => {
+    const { harness, element, field, fillValid, submit, submitButton } = await open();
+    fillValid();
+    await submit();
+
+    http
+      .expectOne(REGISTER_URL)
+      .flush(
+        { type: 'about:blank', title: 'Too Many Requests', status: 429 },
+        { status: 429, statusText: 'Too Many Requests' },
+      );
+    await harness.fixture.whenStable();
+
+    const alert = element.querySelector('[role="alert"]');
+    expect(alert?.textContent).toContain('Muitas tentativas seguidas.');
+    expect(alert?.textContent).toContain('Aguarde 1 minuto e tente de novo.');
+    expect(field('name').value).toBe('Ana Lima');
+    expect(field('email').value).toBe('ana.lima@email.com');
+    expect(field('password').value).toBe('segredo-123');
+    expect(submitButton().disabled).toBe(false);
+    expect(handleError).not.toHaveBeenCalled();
+
+    await submit();
+    expect(element.querySelector('[role="alert"]')).toBeNull();
+    http.expectOne(REGISTER_URL).flush(SESSION);
+  });
+
+  it('reports a 5xx, which has no text, and lets the user try again', async () => {
     const { harness, fillValid, submit, submitButton } = await open();
     fillValid();
     await submit();
