@@ -40,14 +40,17 @@ const EXAMPLE_ASSET_ID = '6b0d3a52-1f5e-4f0a-9d7c-3e2b8a1c4d90';
 const EXAMPLE_BROKER_ID = '0c9e7f3a-5b2d-4e81-a6c4-9d1f2b3e4a57';
 const EXAMPLE_OPERATION_ID = '9a4e1c27-6d3b-4f80-b5a2-1e7c9d0f3b64';
 
-/** B2: the body of a new operation. Decimals as strings (RN11). */
+/**
+ * B2: the body of a new operation. Decimals as strings (RN11). Ids use IsUUID('loose'), like isUuid: the seed's fixed
+ * ids (00000000-…-000000000508) have no RFC 4122 version and 'all' rejects them.
+ */
 export class CreateOperationDto {
   @ApiProperty({
     format: 'uuid',
     example: EXAMPLE_ASSET_ID,
     description: 'An active asset of the catalog (C1).',
   })
-  @IsUUID('all')
+  @IsUUID('loose')
   assetId: string;
 
   @ApiProperty({
@@ -55,7 +58,7 @@ export class CreateOperationDto {
     example: EXAMPLE_BROKER_ID,
     description: 'Broker or exchange (D9).',
   })
-  @IsUUID('all')
+  @IsUUID('loose')
   brokerId: string;
 
   @ApiProperty({
@@ -117,12 +120,12 @@ export class UpdateOperationDto extends PartialType(CreateOperationDto) {}
 export class ListOperationsQueryDto {
   @ApiPropertyOptional({ format: 'uuid', example: EXAMPLE_ASSET_ID })
   @IsOptional()
-  @IsUUID('all')
+  @IsUUID('loose')
   assetId?: string;
 
   @ApiPropertyOptional({ format: 'uuid', example: EXAMPLE_BROKER_ID })
   @IsOptional()
-  @IsUUID('all')
+  @IsUUID('loose')
   brokerId?: string;
 
   @ApiPropertyOptional({

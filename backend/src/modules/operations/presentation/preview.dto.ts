@@ -12,7 +12,7 @@ export class PreviewOperationDto extends CreateOperationDto {
       'Edit mode: the operation that this body replaces in the simulation. An operation that does not exist or belongs to another portfolio is a 400 with code NOT_FOUND on this field.',
   })
   @IsOptional()
-  @IsUUID('all')
+  @IsUUID('loose')
   replacesOperationId?: string;
 }
 
