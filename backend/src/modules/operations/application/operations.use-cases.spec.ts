@@ -28,6 +28,7 @@ import {
   withRejectionDetails,
 } from './operation-details';
 import { OperationDrafts } from './operation-drafts';
+import { PreviewOperation } from './preview-operation.use-case';
 import { UpdateOperation } from './update-operation.use-case';
 
 const ANA = 'user-ana';
@@ -37,6 +38,8 @@ const PETR4 = '6b0d3a52-1f5e-4f0a-9d7c-3e2b8a1c4d90';
 const ITSA4 = '6b0d3a52-1f5e-4f0a-9d7c-3e2b8a1c4d91';
 const OIBR3 = '6b0d3a52-1f5e-4f0a-9d7c-3e2b8a1c4d92';
 const BTC = '6b0d3a52-1f5e-4f0a-9d7c-3e2b8a1c4d93';
+const TESOURO = '6b0d3a52-1f5e-4f0a-9d7c-3e2b8a1c4d94';
+const P2 = '3f1c2b9e-8d4a-4c6f-9b1e-2a7d5c8e0f14';
 const XP = '0c9e7f3a-5b2d-4e81-a6c4-9d1f2b3e4a57';
 const RICO = '0c9e7f3a-5b2d-4e81-a6c4-9d1f2b3e4a58';
 const MISSING = '00000000-0000-4000-8000-999999999999';
@@ -62,9 +65,10 @@ const ASSETS = new Map<string, AssetSummary>([
   [ITSA4, asset(ITSA4, 'ITSA4')],
   [OIBR3, asset(OIBR3, 'OIBR3')],
   [BTC, asset(BTC, 'BTC', 'CRYPTO')],
+  [TESOURO, asset(TESOURO, 'Tesouro IPCA+ 2035', 'FIXED_INCOME')],
 ]);
 /** OIBR3 was deactivated after operations were entered for it. */
-const ACTIVE = new Set([PETR4, ITSA4, BTC]);
+const ACTIVE = new Set([PETR4, ITSA4, BTC, TESOURO]);
 const BROKERS = new Map<string, Broker>([
   [XP, { id: XP, name: 'XP Investimentos', cnpj: '02332886000104' }],
   [RICO, { id: RICO, name: 'Rico', cnpj: null }],
@@ -147,6 +151,13 @@ function setup() {
     update: new UpdateOperation(portfolios, drafts, store, details),
     remove: new DeleteOperation(portfolios, store, details),
     get: new GetOperation(portfolios, store, details),
+    preview: new PreviewOperation(
+      portfolios,
+      drafts,
+      store,
+      details,
+      new FixedClock(),
+    ),
   };
 }
 
@@ -780,5 +791,479 @@ describe('OperationDetails', () => {
     await expect(
       withRejectionDetails(Promise.reject(failure), setup().details),
     ).rejects.toBe(failure);
+  });
+});
+
+describe('PreviewOperation (D42, RN04, RN07, RN10)', () => {
+  /** Rows as they were: the preview must never change the store. */
+  function snapshot(store: InMemoryOperationStore) {
+    return store.rows.map((row) => ({
+      ...row.operation,
+      assetId: row.assetId,
+    }));
+  }
+
+  it('previews a buy in one read-only snapshot: no lock, no write, nothing changed', async () => {
+    const { store, seed, preview } = setup();
+    seed();
+    const before = snapshot(store);
+    store.calls.length = 0;
+
+    const result = await preview.execute(
+      ANA,
+      P1,
+      input({
+        tradeDate: '2026-02-01',
+        quantity: '100',
+        unitPrice: '32',
+        fees: '0',
+      }),
+      null,
+    );
+
+    expect(result).toMatchObject({
+      grossAmount: {
+        value: '3200',
+        formulaCode: 'OPERATION_GROSS',
+        asOf: '2026-11-09',
+      },
+      netAmount: { value: '3200', formulaCode: 'OPERATION_TOTAL_BUY' },
+      positionBefore: '100',
+      positionAfter: '200',
+      averagePriceBefore: { value: '30', formulaCode: 'AVG_PRICE_BUY' },
+      averagePriceAfter: { value: '31', formulaCode: 'AVG_PRICE_BUY' },
+    });
+    expect(result).not.toHaveProperty('realizedProfit');
+    expect(result).not.toHaveProperty('violation');
+    expect(store.calls).toEqual(['read', `timeline:${PETR4}`]);
+    expect(snapshot(store)).toEqual(before);
+  });
+
+  it('previews a sell with the estimated profit (RN06)', async () => {
+    const { seed, preview } = setup();
+    seed();
+
+    const result = await preview.execute(
+      ANA,
+      P1,
+      input({
+        type: 'SELL',
+        tradeDate: '2026-06-02',
+        quantity: '40',
+        unitPrice: '38.50',
+        fees: '4.90',
+      }),
+      null,
+    );
+
+    expect(result).toMatchObject({
+      netAmount: { value: '1535.1', formulaCode: 'OPERATION_NET_SELL' },
+      positionBefore: '100',
+      positionAfter: '60',
+      averagePriceAfter: { value: '30' },
+      realizedProfit: { value: '335.1', formulaCode: 'REALIZED_PROFIT' },
+    });
+  });
+
+  it('previews a total sell: position 0 and no PM after it (RN08)', async () => {
+    const { seed, preview } = setup();
+    seed();
+
+    const result = await preview.execute(
+      ANA,
+      P1,
+      input({
+        type: 'SELL',
+        tradeDate: '2026-06-02',
+        quantity: '100',
+        unitPrice: '38.50',
+        fees: '0',
+      }),
+      null,
+    );
+
+    expect(result).toMatchObject({
+      positionAfter: '0',
+      averagePriceAfter: null,
+      realizedProfit: { value: '850' },
+    });
+  });
+
+  it('answers a sell above the position with the RN07 violation of the 422 (id null), not an error', async () => {
+    const { store, seed, preview } = setup();
+    seed();
+
+    const result = await preview.execute(
+      ANA,
+      P1,
+      input({
+        type: 'SELL',
+        tradeDate: '2026-06-02',
+        quantity: '150',
+        unitPrice: '38.50',
+      }),
+      null,
+    );
+
+    expect(result).toMatchObject({
+      positionBefore: '100',
+      positionAfter: null,
+      averagePriceAfter: null,
+      realizedProfit: null,
+      violation: {
+        rule: 'RN07',
+        operation: {
+          id: null,
+          type: 'SELL',
+          tradeDate: '2026-06-02',
+          quantity: '150',
+          asset: { id: PETR4, ticker: 'PETR4' },
+          broker: { id: XP, name: 'XP Investimentos' },
+        },
+        availableQuantity: '100',
+        soldQuantity: '150',
+      },
+    });
+    expect(store.rows).toHaveLength(1);
+  });
+
+  it('answers a retroactive sell that leaves a later sell above the position with RN10 naming it, and full values', async () => {
+    const { seed, preview } = setup();
+    seed();
+    const later = seed({
+      type: 'SELL',
+      tradeDate: '2026-08-01',
+      quantity: '80',
+      unitPrice: '40',
+    });
+
+    const result = await preview.execute(
+      ANA,
+      P1,
+      input({
+        type: 'SELL',
+        tradeDate: '2026-06-02',
+        quantity: '40',
+        unitPrice: '38.50',
+        fees: '0',
+      }),
+      null,
+    );
+
+    expect(result).toMatchObject({
+      positionBefore: '100',
+      positionAfter: '60',
+      realizedProfit: { value: '340' },
+      violation: {
+        rule: 'RN10',
+        operation: { id: later.operation.id, tradeDate: '2026-08-01' },
+        availableQuantity: '60',
+        soldQuantity: '80',
+      },
+    });
+  });
+
+  it('gives the same violation as the command would (RN10)', async () => {
+    const { seed, preview, create } = setup();
+    seed();
+    seed({
+      type: 'SELL',
+      tradeDate: '2026-08-01',
+      quantity: '80',
+      unitPrice: '40',
+    });
+    const body = input({
+      type: 'SELL',
+      tradeDate: '2026-06-02',
+      quantity: '40',
+      unitPrice: '38.50',
+    });
+
+    const result = await preview.execute(ANA, P1, body, null);
+    const rejection = await rejectionOf(create.execute(ANA, P1, body));
+
+    expect(result.violation).toEqual(rejection.violation);
+  });
+
+  it('previews an edit with replacesOperationId: the stored operation leaves the timeline and the form takes its place', async () => {
+    const { store, seed, preview } = setup();
+    const buy = seed({ quantity: '200' });
+    const sell = seed({
+      type: 'SELL',
+      tradeDate: '2026-05-22',
+      quantity: '50',
+      unitPrice: '9.88',
+    });
+    const before = snapshot(store);
+    store.calls.length = 0;
+
+    const result = await preview.execute(
+      ANA,
+      P1,
+      input({ quantity: '40' }),
+      buy.operation.id,
+    );
+
+    expect(result).toMatchObject({
+      grossAmount: {
+        value: '1198',
+        inputs: [{ name: 'quantity', operation: { id: buy.operation.id } }, {}],
+      },
+      positionBefore: '0',
+      positionAfter: '40',
+      violation: {
+        rule: 'RN10',
+        operation: { id: sell.operation.id },
+        availableQuantity: '40',
+        soldQuantity: '50',
+      },
+    });
+    expect(store.calls).toEqual([
+      'read',
+      `find:${buy.operation.id}`,
+      'read',
+      `find:${buy.operation.id}`,
+      `timeline:${PETR4}`,
+    ]);
+    expect(snapshot(store)).toEqual(before);
+  });
+
+  it('previews an edit that moves the operation to another asset: the old timeline is checked first (RN10)', async () => {
+    const { seed, preview } = setup();
+    const buy = seed();
+    const sell = seed({
+      type: 'SELL',
+      tradeDate: '2026-05-22',
+      quantity: '50',
+      unitPrice: '38',
+    });
+
+    const result = await preview.execute(
+      ANA,
+      P1,
+      input({ assetId: ITSA4 }),
+      buy.operation.id,
+    );
+
+    expect(result).toMatchObject({
+      positionBefore: '0',
+      positionAfter: '100',
+      averagePriceAfter: { value: '30' },
+      violation: {
+        rule: 'RN10',
+        operation: { id: sell.operation.id, asset: { id: PETR4 } },
+      },
+    });
+  });
+
+  it('previews fractional quantities of crypto and fixed income by the rule of their class (RN04, D55)', async () => {
+    const { preview } = setup();
+
+    const crypto = await preview.execute(
+      ANA,
+      P1,
+      input({
+        assetId: BTC,
+        quantity: '0.0125',
+        unitPrice: '350000',
+        fees: '0',
+      }),
+      null,
+    );
+    const bond = await preview.execute(
+      ANA,
+      P1,
+      input({
+        assetId: TESOURO,
+        quantity: '0.52',
+        unitPrice: '2500',
+        fees: '0',
+      }),
+      null,
+    );
+
+    expect(crypto).toMatchObject({
+      grossAmount: { value: '4375' },
+      positionAfter: '0.0125',
+    });
+    expect(bond).toMatchObject({
+      grossAmount: { value: '1300' },
+      positionAfter: '0.52',
+    });
+    await expect(
+      preview.execute(
+        ANA,
+        P1,
+        input({ assetId: TESOURO, quantity: '0.525' }),
+        null,
+      ),
+    ).rejects.toMatchObject({ field: 'quantity', code: 'INVALID_STEP' });
+  });
+
+  it('sums the brokers of the portfolio and names each one in the trace (RN12)', async () => {
+    const { seed, preview } = setup();
+    seed({ brokerId: RICO });
+
+    const result = await preview.execute(
+      ANA,
+      P1,
+      input({
+        type: 'SELL',
+        tradeDate: '2026-06-02',
+        quantity: '40',
+        unitPrice: '38.50',
+      }),
+      null,
+    );
+
+    expect(result).toMatchObject({
+      positionBefore: '100',
+      averagePriceAfter: {
+        inputs: [
+          {},
+          {},
+          { name: 'quantityBought', operation: { broker: { name: 'Rico' } } },
+          {},
+          {},
+        ],
+      },
+      realizedProfit: {
+        inputs: [
+          {
+            name: 'quantitySold',
+            operation: { broker: { name: 'XP Investimentos' } },
+          },
+          {},
+          {},
+          {},
+        ],
+      },
+    });
+  });
+
+  it('keeps every decimal place of crypto, unrounded, and rejects a fractional sell above the position (RN11, RN07)', async () => {
+    const { seed, preview } = setup();
+    seed({
+      assetId: BTC,
+      quantity: '0.0125',
+      unitPrice: '350000',
+      fees: '0',
+    });
+
+    const buy = await preview.execute(
+      ANA,
+      P1,
+      input({
+        assetId: BTC,
+        quantity: '0.00012345',
+        unitPrice: '351234.56789',
+        fees: '0',
+      }),
+      null,
+    );
+    const sell = await preview.execute(
+      ANA,
+      P1,
+      input({
+        assetId: BTC,
+        type: 'SELL',
+        tradeDate: '2026-06-02',
+        quantity: '0.0126',
+        unitPrice: '360000',
+        fees: '0',
+      }),
+      null,
+    );
+
+    expect(buy).toMatchObject({
+      grossAmount: { value: '43.3599074060205' },
+      positionAfter: '0.01262345',
+    });
+    expect(sell).toMatchObject({
+      positionBefore: '0.0125',
+      positionAfter: null,
+      violation: {
+        rule: 'RN07',
+        availableQuantity: '0.0125',
+        soldQuantity: '0.0126',
+      },
+    });
+  });
+
+  it('validates the body as the command does (RN04, D56): 400 with the field and code', async () => {
+    const { preview } = setup();
+
+    await expect(
+      preview.execute(ANA, P1, input({ tradeDate: '2026-11-10' }), null),
+    ).rejects.toMatchObject({ field: 'tradeDate', code: 'FUTURE_DATE' });
+    await expect(
+      preview.execute(ANA, P1, input({ brokerId: MISSING }), null),
+    ).rejects.toMatchObject({ field: 'brokerId', code: 'NOT_FOUND' });
+  });
+
+  it.each([
+    ['malformed', 'abc'],
+    ['missing', MISSING],
+  ])(
+    'answers a %s replacesOperationId as NOT_FOUND on that field (D56)',
+    async (_kind, id) => {
+      const { preview } = setup();
+
+      const error = await preview
+        .execute(ANA, P1, input(), id)
+        .catch((failure: unknown) => failure);
+
+      expect(error).toBeInstanceOf(InvalidValueError);
+      expect(error).toMatchObject({
+        field: 'replacesOperationId',
+        code: 'NOT_FOUND',
+      });
+    },
+  );
+
+  it('answers NOT_FOUND for an operation of another portfolio (RN02)', async () => {
+    const { store, preview } = setup();
+    store.portfolios.add(P2);
+    const other = store.add(
+      P2,
+      PETR4,
+      operationDraft(input(), { assetType: 'STOCK', today: TODAY }),
+    );
+
+    await expect(
+      preview.execute(ANA, P1, input(), other.operation.id),
+    ).rejects.toMatchObject({
+      field: 'replacesOperationId',
+      code: 'NOT_FOUND',
+    });
+  });
+
+  it('answers NOT_FOUND when the operation is deleted between the catalog checks and the snapshot', async () => {
+    const { store, seed, preview } = setup();
+    const buy = seed();
+    const read = store.read.bind(store);
+    jest
+      .spyOn(store, 'read')
+      .mockImplementationOnce((work) => read(work))
+      .mockImplementationOnce((work) => {
+        store.rows = [];
+        return read(work);
+      });
+
+    await expect(
+      preview.execute(ANA, P1, input(), buy.operation.id),
+    ).rejects.toMatchObject({
+      field: 'replacesOperationId',
+      code: 'NOT_FOUND',
+    });
+  });
+
+  it('answers not found for a portfolio of another user before reading anything (RN02)', async () => {
+    const { store, preview } = setup();
+
+    await expect(
+      preview.execute(BRUNO, P1, input(), null),
+    ).rejects.toBeInstanceOf(PortfolioNotFoundError);
+    expect(store.calls).toEqual([]);
   });
 });

@@ -2,6 +2,11 @@ import { DomainError } from '../../../shared/domain/domain-error';
 import { Quantity } from '../../../shared/domain/quantity';
 import { InconsistentTimelineError } from './inconsistent-timeline';
 import {
+  draftAsTimelineItem,
+  OperationDraft,
+  StoredOperation,
+} from './operation';
+import {
   calculatePosition,
   NegativePositionError,
   Position,
@@ -17,11 +22,70 @@ import { PortfolioAssetTimeline } from './timeline-reader';
 export const UNSAVED_OPERATION_ID = 'unsaved';
 export const UNSAVED_SEQUENCE = 9_223_372_036_854_775_807n;
 
+/** The id the API shows for an operation: null while it is not saved (a create, or its preview). */
+export function savedIdOf(operation: TimelineOperation): string | null {
+  return operation.id === UNSAVED_OPERATION_ID ? null : operation.id;
+}
+
 /** What a command does to one timeline: add an operation, replace one (same id) or remove one. */
 export type TimelineChange =
   | { readonly kind: 'add'; readonly operation: TimelineOperation }
   | { readonly kind: 'replace'; readonly operation: TimelineOperation }
   | { readonly kind: 'remove'; readonly operationId: string };
+
+/** A change and the (portfolio, asset) timeline it applies to. */
+export interface PlannedChange {
+  readonly assetId: string;
+  readonly change: TimelineChange;
+}
+
+/**
+ * What a create or an edit does to the timelines, shared by the command and its preview (D42) so both check the same
+ * changes: `operation` as it would be saved, and the changes in the order they are checked (the last one holds it).
+ */
+export interface ChangePlan {
+  readonly operation: TimelineOperation;
+  readonly changes: readonly PlannedChange[];
+}
+
+/** B2: a new operation is added to its timeline as the last of its date. */
+export function createPlan(draft: OperationDraft): ChangePlan {
+  const operation = draftAsTimelineItem(
+    draft,
+    UNSAVED_OPERATION_ID,
+    UNSAVED_SEQUENCE,
+  );
+  return {
+    operation,
+    changes: [{ assetId: draft.assetId, change: { kind: 'add', operation } }],
+  };
+}
+
+/**
+ * B4: the edit keeps the id and the sequence. It replaces the operation in its timeline or, when it moves it to
+ * another asset, removes it from the old timeline (checked first, RN10) and adds it to the new one.
+ */
+export function editPlan(
+  stored: StoredOperation,
+  draft: OperationDraft,
+): ChangePlan {
+  const operation = draftAsTimelineItem(
+    draft,
+    stored.operation.id,
+    stored.operation.sequence,
+  );
+  const changes: PlannedChange[] =
+    draft.assetId === stored.assetId
+      ? [{ assetId: draft.assetId, change: { kind: 'replace', operation } }]
+      : [
+          {
+            assetId: stored.assetId,
+            change: { kind: 'remove', operationId: operation.id },
+          },
+          { assetId: draft.assetId, change: { kind: 'add', operation } },
+        ];
+  return { operation, changes };
+}
 
 /**
  * RN07: the operation being saved is itself a sell above the position at its date. RN10: the change makes another
@@ -56,9 +120,7 @@ export class RuleViolationError extends DomainError {
 
   /** Null when the offending sell is the operation being created, which has no id (nothing was saved). */
   get operationId(): string | null {
-    return this.operation.id === UNSAVED_OPERATION_ID
-      ? null
-      : this.operation.id;
+    return savedIdOf(this.operation);
   }
 }
 

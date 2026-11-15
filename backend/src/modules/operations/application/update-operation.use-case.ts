@@ -2,13 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { GetOwnedPortfolio } from '../../portfolios/application/get-owned-portfolio.use-case';
 import { PortfolioNotFoundError } from '../../portfolios/domain/portfolio';
 import {
-  draftAsTimelineItem,
   OperationNotFoundError,
   parseOperationId,
   StoredOperation,
 } from '../domain/operation';
 import { OperationStore } from '../domain/operation-store';
-import { ChangeEvaluation, evaluateChange } from '../domain/timeline-change';
+import { editPlan, evaluateChange } from '../domain/timeline-change';
 import {
   OperationDetails,
   OperationView,
@@ -18,12 +17,6 @@ import { OperationDrafts, OperationPatch } from './operation-drafts';
 
 /** Each extra attempt means a concurrent edit moved the operation to another asset or broker in between. */
 const MAX_ATTEMPTS = 3;
-
-function accept(evaluation: ChangeEvaluation): void {
-  if (!evaluation.ok) {
-    throw evaluation.violation;
-  }
-}
 
 /** The catalog checks of an edit depend only on the asset and the broker of the operation. */
 function sameReferences(a: StoredOperation, b: StoredOperation): boolean {
@@ -83,32 +76,14 @@ export class UpdateOperation {
           }
           const draft = this.drafts.editDraft(locked, patch, assetType);
           await tx.lockTimelines(owned, [locked.assetId, draft.assetId]);
-
-          const edited = draftAsTimelineItem(
-            draft,
-            id,
-            locked.operation.sequence,
-          );
-          if (draft.assetId === locked.assetId) {
-            accept(
-              evaluateChange(await tx.timelineOf(owned, draft.assetId), {
-                kind: 'replace',
-                operation: edited,
-              }),
+          for (const { assetId, change } of editPlan(locked, draft).changes) {
+            const evaluation = evaluateChange(
+              await tx.timelineOf(owned, assetId),
+              change,
             );
-          } else {
-            accept(
-              evaluateChange(await tx.timelineOf(owned, locked.assetId), {
-                kind: 'remove',
-                operationId: id,
-              }),
-            );
-            accept(
-              evaluateChange(await tx.timelineOf(owned, draft.assetId), {
-                kind: 'add',
-                operation: edited,
-              }),
-            );
+            if (!evaluation.ok) {
+              throw evaluation.violation;
+            }
           }
           return tx.update(id, draft);
         }),
