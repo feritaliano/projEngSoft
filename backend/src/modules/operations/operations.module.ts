@@ -11,6 +11,7 @@ import { ListOperations } from './application/list-operations.use-case';
 import { ListPositions } from './application/list-positions.use-case';
 import { OperationDetails } from './application/operation-details';
 import { OperationDrafts } from './application/operation-drafts';
+import { PreviewOperation } from './application/preview-operation.use-case';
 import { UpdateOperation } from './application/update-operation.use-case';
 import { OperationHistory } from './domain/operation-history';
 import { OperationStore } from './domain/operation-store';
@@ -33,6 +34,7 @@ import { PositionsController } from './presentation/positions.controller';
     CreateOperation,
     UpdateOperation,
     DeleteOperation,
+    PreviewOperation,
     ListPositions,
     GetPortfolioSummary,
     OperationDetails,

@@ -1,13 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { GetOwnedPortfolio } from '../../portfolios/application/get-owned-portfolio.use-case';
 import { PortfolioNotFoundError } from '../../portfolios/domain/portfolio';
-import { draftAsTimelineItem, OperationInput } from '../domain/operation';
+import { OperationInput } from '../domain/operation';
 import { OperationStore } from '../domain/operation-store';
-import {
-  evaluateChange,
-  UNSAVED_OPERATION_ID,
-  UNSAVED_SEQUENCE,
-} from '../domain/timeline-change';
+import { createPlan, evaluateChange } from '../domain/timeline-change';
 import {
   OperationDetails,
   OperationView,
@@ -42,19 +38,14 @@ export class CreateOperation {
           throw new PortfolioNotFoundError();
         }
         await tx.lockTimelines(owned, [draft.assetId]);
-        const evaluation = evaluateChange(
-          await tx.timelineOf(owned, draft.assetId),
-          {
-            kind: 'add',
-            operation: draftAsTimelineItem(
-              draft,
-              UNSAVED_OPERATION_ID,
-              UNSAVED_SEQUENCE,
-            ),
-          },
-        );
-        if (!evaluation.ok) {
-          throw evaluation.violation;
+        for (const { assetId, change } of createPlan(draft).changes) {
+          const evaluation = evaluateChange(
+            await tx.timelineOf(owned, assetId),
+            change,
+          );
+          if (!evaluation.ok) {
+            throw evaluation.violation;
+          }
         }
         return tx.insert(owned, draft);
       }),

@@ -855,6 +855,96 @@
         ]
       }
     },
+    "/api/v1/portfolios/{id}/operations/preview": {
+      "post": {
+        "description": "Same body and validations as POST operations, plus `replacesOperationId` in edit mode. Calculated as saving would, and nothing is saved. A sell above the position (RN07, RN10) is answered 200 with `violation`, not 422.",
+        "operationId": "OperationsController_preview",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreviewOperationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationPreview"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body: errors[] names each field and why (D56). assetId, brokerId: REQUIRED, INVALID_FORMAT, NOT_FOUND. type: REQUIRED, INVALID_VALUE. tradeDate: REQUIRED, INVALID_FORMAT, FUTURE_DATE { today }. quantity: REQUIRED, NOT_POSITIVE, NOT_INTEGER (stock, FII, ETF, BDR), INVALID_STEP { step } (fixed income), TOO_MANY_DECIMALS { maxDecimals } (crypto), TOO_LARGE { maxIntegerDigits }. unitPrice: REQUIRED, NOT_POSITIVE, TOO_MANY_DECIMALS, TOO_LARGE. fees: REQUIRED, NEGATIVE, TOO_MANY_DECIMALS, TOO_LARGE. replacesOperationId: INVALID_FORMAT, NOT_FOUND (the operation does not exist or belongs to another portfolio).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Bad Request",
+                  "status": 400,
+                  "detail": "The request is invalid.",
+                  "instance": "/api/v1/portfolios/3f1c2b9e-8d4a-4c6f-9b1e-2a7d5c8e0f13/operations",
+                  "errors": [
+                    {
+                      "field": "quantity",
+                      "code": "INVALID_STEP",
+                      "message": "quantity 0.525 is not allowed for FIXED_INCOME: must be a multiple of 0.01",
+                      "params": {
+                        "step": "0.01"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed or expired access token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Portfolio not found, or it belongs to another user (RN02).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Preview an operation or an edit without saving (D42)",
+        "tags": [
+          "operations"
+        ]
+      }
+    },
     "/api/v1/portfolios/{id}/operations/{operationId}": {
       "get": {
         "operationId": "OperationsController_get",
@@ -1977,7 +2067,7 @@
           "fees"
         ]
       },
-      "UpdateOperationDto": {
+      "PreviewOperationDto": {
         "type": "object",
         "properties": {
           "assetId": {
@@ -2023,16 +2113,23 @@
             "example": "5.00",
             "pattern": "^-?\\d+(\\.\\d+)?$",
             "description": "Brokerage and fees of the note: zero or more, up to 2 decimal places."
+          },
+          "replacesOperationId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "9a4e1c27-6d3b-4f80-b5a2-1e7c9d0f3b64",
+            "description": "Edit mode: the operation that this body replaces in the simulation. An operation that does not exist or belongs to another portfolio is a 400 with code NOT_FOUND on this field."
           }
-        }
-      },
-      "PositionStatus": {
-        "type": "string",
-        "enum": [
-          "OPEN",
-          "CLOSED"
-        ],
-        "description": "OPEN: quantity > 0. CLOSED: quantity 0 and realized profit ≠ 0 (D41)."
+        },
+        "required": [
+          "assetId",
+          "brokerId",
+          "type",
+          "tradeDate",
+          "quantity",
+          "unitPrice",
+          "fees"
+        ]
       },
       "FormulaCode": {
         "type": "string",
@@ -2042,7 +2139,10 @@
           "REALIZED_PROFIT",
           "POSITION_REALIZED_PROFIT",
           "PORTFOLIO_TOTAL_COST",
-          "PORTFOLIO_REALIZED_PROFIT"
+          "PORTFOLIO_REALIZED_PROFIT",
+          "OPERATION_GROSS",
+          "OPERATION_TOTAL_BUY",
+          "OPERATION_NET_SELL"
         ]
       },
       "DerivedValueSource": {
@@ -2059,7 +2159,9 @@
         "properties": {
           "id": {
             "type": "string",
-            "format": "uuid"
+            "format": "uuid",
+            "nullable": true,
+            "description": "Null only for the operation of a preview, which is not saved yet (D42)."
           },
           "type": {
             "example": "SELL",
@@ -2078,6 +2180,14 @@
           "type",
           "broker"
         ]
+      },
+      "PositionStatus": {
+        "type": "string",
+        "enum": [
+          "OPEN",
+          "CLOSED"
+        ],
+        "description": "OPEN: quantity > 0. CLOSED: quantity 0 and realized profit ≠ 0 (D41)."
       },
       "AssetPositionRef": {
         "type": "object",
@@ -2208,6 +2318,135 @@
           "asOf",
           "inputs"
         ]
+      },
+      "OperationPreview": {
+        "type": "object",
+        "properties": {
+          "grossAmount": {
+            "description": "OPERATION_GROSS: quantity × unit price.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DerivedValue"
+              }
+            ]
+          },
+          "netAmount": {
+            "description": "OPERATION_TOTAL_BUY (gross + fees) on a buy; OPERATION_NET_SELL (gross − fees) on a sell.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DerivedValue"
+              }
+            ]
+          },
+          "positionBefore": {
+            "type": "string",
+            "nullable": true,
+            "example": "100",
+            "description": "Units held before the operation, at its date (decimal string, no trace). Null only when the change breaks the timeline at an earlier sell (RN10, an edit that moves a buy past a sell that needed it)."
+          },
+          "positionAfter": {
+            "type": "string",
+            "nullable": true,
+            "example": "150",
+            "description": "Units held after the operation, at its date. Null when the operation is itself the offending sell (RN07) or positionBefore is null."
+          },
+          "averagePriceBefore": {
+            "nullable": true,
+            "description": "AVG_PRICE_BUY before the operation; null without units (RN08) or when positionBefore is null.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DerivedValue"
+              }
+            ]
+          },
+          "averagePriceAfter": {
+            "nullable": true,
+            "description": "AVG_PRICE_BUY after the operation (a sell keeps it, RN06); null without units after it (RN08) or when positionAfter is null.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DerivedValue"
+              }
+            ]
+          },
+          "realizedProfit": {
+            "nullable": true,
+            "description": "REALIZED_PROFIT (estimated): present on a sell only; null when positionAfter is null.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DerivedValue"
+              }
+            ]
+          },
+          "violation": {
+            "description": "Present when saving would be rejected (RN07, RN10): the same object as the `violation` of the 422.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RuleViolation"
+              }
+            ]
+          }
+        },
+        "description": "Resumo da operação (D42, frame 5): calculated as saving would, nothing saved. Before and after are measured at the date of the operation.",
+        "required": [
+          "grossAmount",
+          "netAmount",
+          "positionBefore",
+          "positionAfter",
+          "averagePriceBefore",
+          "averagePriceAfter"
+        ]
+      },
+      "UpdateOperationDto": {
+        "type": "object",
+        "properties": {
+          "assetId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "6b0d3a52-1f5e-4f0a-9d7c-3e2b8a1c4d90",
+            "description": "An active asset of the catalog (C1)."
+          },
+          "brokerId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0c9e7f3a-5b2d-4e81-a6c4-9d1f2b3e4a57",
+            "description": "Broker or exchange (D9)."
+          },
+          "type": {
+            "example": "BUY",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OperationType"
+              }
+            ]
+          },
+          "tradeDate": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-10-28",
+            "description": "YYYY-MM-DD, not after today in São Paulo (RN04, D54)."
+          },
+          "quantity": {
+            "type": "string",
+            "example": "100",
+            "pattern": "^-?\\d+(\\.\\d+)?$",
+            "description": "Greater than zero (RN04): whole units for stocks, FIIs, ETFs and BDRs; multiples of 0.01 for fixed income; up to 8 decimal places for crypto; at most 12 digits before the point."
+          },
+          "unitPrice": {
+            "type": "string",
+            "example": "29.95",
+            "pattern": "^-?\\d+(\\.\\d+)?$",
+            "description": "Greater than zero, up to 8 decimal places, at most 12 digits before the point."
+          },
+          "fees": {
+            "type": "string",
+            "example": "5.00",
+            "pattern": "^-?\\d+(\\.\\d+)?$",
+            "description": "Brokerage and fees of the note: zero or more, up to 2 decimal places."
+          }
+        }
       },
       "Position": {
         "type": "object",

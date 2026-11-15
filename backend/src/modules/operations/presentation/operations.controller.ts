@@ -37,6 +37,7 @@ import { DeleteOperation } from '../application/delete-operation.use-case';
 import { GetOperation } from '../application/get-operation.use-case';
 import { ListOperations } from '../application/list-operations.use-case';
 import { OperationRejectedError } from '../application/operation-details';
+import { PreviewOperation } from '../application/preview-operation.use-case';
 import { UpdateOperation } from '../application/update-operation.use-case';
 import { DEFAULT_HISTORY_PAGE_SIZE } from '../domain/operation-history';
 import { OperationNotFoundError } from '../domain/operation';
@@ -48,6 +49,7 @@ import {
   RuleViolationProblemDto,
   UpdateOperationDto,
 } from './operation.dto';
+import { OperationPreviewDto, PreviewOperationDto } from './preview.dto';
 
 const VIOLATION_DETAIL = {
   RN07: 'The sell exceeds the position held at its date (RN07). Nothing was saved.',
@@ -111,6 +113,7 @@ export class OperationsController {
     private readonly createOperation: CreateOperation,
     private readonly updateOperation: UpdateOperation,
     private readonly deleteOperation: DeleteOperation,
+    private readonly previewOperation: PreviewOperation,
   ) {}
 
   @Get()
@@ -158,6 +161,33 @@ export class OperationsController {
   ): Promise<OperationDto> {
     return this.createOperation
       .execute(user.id, id, body)
+      .catch(rethrowAsProblem);
+  }
+
+  @Post('preview')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Preview an operation or an edit without saving (D42)',
+    description:
+      'Same body and validations as POST operations, plus `replacesOperationId` in edit mode. Calculated as saving would, and nothing is saved. A sell above the position (RN07, RN10) is answered 200 with `violation`, not 422.',
+  })
+  @Header('Cache-Control', 'no-store')
+  @ApiParam({ name: 'id', format: 'uuid' })
+  @ApiOkResponse({ type: OperationPreviewDto })
+  @ApiProblemResponse(
+    HttpStatus.BAD_REQUEST,
+    `${INVALID_BODY} replacesOperationId: INVALID_FORMAT, NOT_FOUND (the operation does not exist or belongs to another portfolio).`,
+    { example: INVALID_BODY_EXAMPLE },
+  )
+  @ApiProblemResponse(HttpStatus.NOT_FOUND, PORTFOLIO_NOT_FOUND)
+  async preview(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() body: PreviewOperationDto,
+  ): Promise<OperationPreviewDto> {
+    const { replacesOperationId, ...input } = body;
+    return this.previewOperation
+      .execute(user.id, id, input, replacesOperationId ?? null)
       .catch(rethrowAsProblem);
   }
 

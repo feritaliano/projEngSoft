@@ -108,28 +108,30 @@ export class OperationDetails {
     return view;
   }
 
-  /** The rejection of a change, with the asset and broker of the offending sell. */
-  async rejection(error: RuleViolationError): Promise<OperationRejectedError> {
+  /** The violation with the asset and broker of the offending sell: the 422 body and the preview `violation`. */
+  async violationView(error: RuleViolationError): Promise<RuleViolationView> {
     const { operation } = error;
     const refs = await this.refsOf([
       { assetId: error.assetId, brokerId: operation.brokerId },
     ]);
-    return new OperationRejectedError(
-      {
-        rule: error.rule,
-        operation: {
-          id: error.operationId,
-          type: operation.type,
-          tradeDate: operation.date.toString(),
-          quantity: operation.quantity.toString(),
-          asset: refs.asset(error.assetId),
-          broker: refs.broker(operation.brokerId),
-        },
-        availableQuantity: error.availableQuantity.toString(),
-        soldQuantity: error.soldQuantity.toString(),
+    return {
+      rule: error.rule,
+      operation: {
+        id: error.operationId,
+        type: operation.type,
+        tradeDate: operation.date.toString(),
+        quantity: operation.quantity.toString(),
+        asset: refs.asset(error.assetId),
+        broker: refs.broker(operation.brokerId),
       },
-      error,
-    );
+      availableQuantity: error.availableQuantity.toString(),
+      soldQuantity: error.soldQuantity.toString(),
+    };
+  }
+
+  /** The rejection of a change, with the asset and broker of the offending sell. */
+  async rejection(error: RuleViolationError): Promise<OperationRejectedError> {
+    return new OperationRejectedError(await this.violationView(error), error);
   }
 
   /** Lookups of the assets and brokers of the pairs; a missing one throws MissingReferenceError (500). */
