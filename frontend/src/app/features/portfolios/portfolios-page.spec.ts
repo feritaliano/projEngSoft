@@ -6,12 +6,8 @@ import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { provideApiConfiguration } from '../../api/api-configuration';
 import { PortfolioDto } from '../../api/models';
-import {
-  PortfoliosPage,
-  SKELETON_DELAY_MS,
-  deletionText,
-  portfolioSummary,
-} from './portfolios-page';
+import { SKELETON_DELAY_MS } from '../../shared/ui/load-error';
+import { PortfoliosPage, deletionText, portfolioSummary } from './portfolios-page';
 
 const API = 'http://api.test';
 const LIST_URL = `${API}/api/v1/portfolios`;
