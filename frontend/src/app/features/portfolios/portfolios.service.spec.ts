@@ -28,7 +28,7 @@ describe('PortfoliosService', () => {
 
   afterEach(() => http.verify());
 
-  it('lists, gets, creates and deletes through the generated client', () => {
+  it('lists, gets, creates, deletes and reads summary and positions through the generated client', () => {
     const seen: unknown[] = [];
     service.list().subscribe((list) => seen.push(list));
     http.expectOne({ method: 'GET', url: `${API}/api/v1/portfolios` }).flush([LONGO]);
@@ -46,6 +46,12 @@ describe('PortfoliosService', () => {
       .expectOne({ method: 'DELETE', url: `${API}/api/v1/portfolios/p1` })
       .flush(null, { status: 204, statusText: 'No Content' });
 
-    expect(seen).toEqual([[LONGO], LONGO, LONGO, 'deleted']);
+    service.summary('p1').subscribe((summary) => seen.push(summary));
+    http.expectOne({ method: 'GET', url: `${API}/api/v1/portfolios/p1/summary` }).flush('summary');
+
+    service.positions('p1').subscribe((positions) => seen.push(positions));
+    http.expectOne({ method: 'GET', url: `${API}/api/v1/portfolios/p1/positions` }).flush([]);
+
+    expect(seen).toEqual([[LONGO], LONGO, LONGO, 'deleted', 'summary', []]);
   });
 });
