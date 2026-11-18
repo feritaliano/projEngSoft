@@ -3,6 +3,7 @@ import {
   Component,
   DestroyRef,
   ElementRef,
+  ErrorHandler,
   Injector,
   afterNextRender,
   computed,
@@ -18,18 +19,16 @@ import { plural } from '../../shared/format/pt-br';
 import { AssetAvatar } from '../../shared/ui/asset-avatar';
 import { Badge } from '../../shared/ui/badge';
 import { Button } from '../../shared/ui/button';
-import { LoadError, SKELETON_DELAY_MS } from '../../shared/ui/load-error';
+import { LoadError, SKELETON_DELAY_MS, expectedFailure } from '../../shared/ui/load-error';
 import { TextField } from '../../shared/ui/text-field';
-import { AssetsService, CATALOG_PAGE_SIZE } from './assets.service';
+import { AssetsService, CATALOG_PAGE_SIZE, SEARCH_MAX_LENGTH } from './assets.service';
 
 /** Typing pause before searching (as the preview of the form, D42). */
 export const SEARCH_DEBOUNCE_MS = 300;
 
 /**
- * Frame 7, asset catalog (C1): search by ticker or issuer name; code, name (issuer), sector and class of each asset,
- * in ticker order, 20 per page. The type chips of the frame wait for a type filter in GET /assets, and the
- * "Lançar operação" (+) of each row comes in the W4b. States: loading (skeleton after 300 ms), error (the search
- * stays in the field), no result, with data.
+ * Frame 7, asset catalog (C1): search by ticker or issuer name; code, name (issuer), sector and class of each asset.
+ * shortcut: no type chips (GET /assets has no type filter); add them when the API has one.
  */
 @Component({
   selector: 'app-assets-page',
@@ -51,6 +50,7 @@ export const SEARCH_DEBOUNCE_MS = 300;
         fieldId="asset-search"
         type="search"
         autocomplete="off"
+        [maxLength]="searchMaxLength"
         [control]="search"
       />
 
@@ -126,7 +126,12 @@ export const SEARCH_DEBOUNCE_MS = 300;
                         {{ code(asset) }}
                       </span>
                     </th>
-                    <td class="px-4 py-3 text-body-md text-primary">{{ name(asset) }}</td>
+                    <td
+                      class="max-w-80 truncate px-4 py-3 text-body-md text-primary"
+                      [title]="name(asset)"
+                    >
+                      {{ name(asset) }}
+                    </td>
                     <td class="px-4 py-3 text-body-sm text-secondary">{{ sector(asset) }}</td>
                     <td class="px-5 py-3">
                       <app-badge>{{ type(asset) }}</app-badge>
@@ -144,7 +149,9 @@ export const SEARCH_DEBOUNCE_MS = 300;
                   {{ code(asset) }}
                   <app-badge>{{ type(asset) }}</app-badge>
                 </span>
-                <p class="text-body-md text-primary">{{ name(asset) }}</p>
+                <p class="truncate text-body-md text-primary" [title]="name(asset)">
+                  {{ name(asset) }}
+                </p>
                 <p class="text-caption text-secondary">{{ sector(asset) }}</p>
               </li>
             }
@@ -155,12 +162,12 @@ export const SEARCH_DEBOUNCE_MS = 300;
           >
             <span class="flex-1">Ordem alfabética · {{ pageSize }} por página</span>
             @if (page() > 1) {
-              <button appButton variant="ghost" type="button" (click)="goTo(page() - 1)">
+              <button appButton variant="ghost" type="button" (click)="turnPage(page() - 1)">
                 <span aria-hidden="true">←</span> Página anterior
               </button>
             }
             @if (hasNext()) {
-              <button appButton variant="ghost" type="button" (click)="goTo(page() + 1)">
+              <button appButton variant="ghost" type="button" (click)="turnPage(page() + 1)">
                 Próxima página <span aria-hidden="true">→</span>
               </button>
             }
@@ -174,8 +181,11 @@ export class AssetsPage {
   private readonly service = inject(AssetsService);
   private readonly host: HTMLElement = inject(ElementRef).nativeElement;
   private readonly injector = inject(Injector);
+  private readonly errors = inject(ErrorHandler);
   private request?: Subscription;
   private timer?: ReturnType<typeof setTimeout>;
+  /** The page buttons are destroyed while loading, so the focus goes to the title when the page arrives. */
+  private focusTitleOnLoad = false;
 
   protected readonly search = new FormControl('', { nonNullable: true });
   protected readonly term = signal('');
@@ -191,6 +201,7 @@ export class AssetsPage {
   protected readonly hasNext = computed(() => this.page() * CATALOG_PAGE_SIZE < this.total());
 
   protected readonly pageSize = CATALOG_PAGE_SIZE;
+  protected readonly searchMaxLength = SEARCH_MAX_LENGTH;
   protected readonly code = assetName;
   /** Issuer; crypto has none, so its name (D50). */
   protected readonly name = (asset: AssetDto) => asset.issuer ?? asset.displayName;
@@ -198,14 +209,23 @@ export class AssetsPage {
   protected readonly type = (asset: AssetDto) => ASSET_TYPE[asset.assetType].one;
 
   constructor() {
-    inject(DestroyRef).onDestroy(() => clearTimeout(this.timer));
+    inject(DestroyRef).onDestroy(() => {
+      clearTimeout(this.timer);
+      this.request?.unsubscribe();
+    });
     this.search.valueChanges
       .pipe(debounceTime(SEARCH_DEBOUNCE_MS), takeUntilDestroyed())
       .subscribe(() => this.goTo(1));
     this.load();
   }
 
-  protected goTo(page: number): void {
+  protected turnPage(page: number): void {
+    this.goTo(page);
+    this.focusTitleOnLoad = true;
+  }
+
+  private goTo(page: number): void {
+    this.focusTitleOnLoad = false;
     this.page.set(page);
     this.load();
   }
@@ -234,11 +254,14 @@ export class AssetsPage {
         this.items.set(items);
         this.total.set(total);
         this.status.set('ready');
+        if (this.focusTitleOnLoad) this.focus('h1');
+        this.focusTitleOnLoad = false;
       },
       // Any failure, connection included (the shell banner shows it too): the card lets the user search again.
-      error: () => {
+      error: (error: unknown) => {
         clearTimeout(this.timer);
         this.status.set('error');
+        if (!expectedFailure(error)) this.errors.handleError(error);
       },
     });
   }
