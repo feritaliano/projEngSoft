@@ -19,20 +19,17 @@ import {
   applyServerErrors,
   fieldErrorText,
 } from '../../shared/forms/field-errors.pt-BR';
+import { plural } from '../../shared/format/pt-br';
 import { Button } from '../../shared/ui/button';
 import { ConfirmDialog } from '../../shared/ui/confirm-dialog';
 import { Icon } from '../../shared/ui/icon';
 import { IconButton } from '../../shared/ui/icon-button';
+import { SKELETON_DELAY_MS } from '../../shared/ui/load-error';
 import { TextField } from '../../shared/ui/text-field';
 import { PortfoliosService } from './portfolios.service';
 
 /** Handoff U5: on submit with errors, the focus goes to the first invalid field. */
 const FIRST_INVALID = '[aria-invalid="true"]';
-
-/** Handoff U5/U7a: the skeleton only shows when the answer takes longer than this. */
-export const SKELETON_DELAY_MS = 300;
-
-const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
 
 /** Card line of claude/microcopy.md, section 11. */
 export function portfolioSummary({ assetCount, operationCount }: PortfolioDto): string {

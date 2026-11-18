@@ -33,6 +33,15 @@ export const routes: Routes = [
           import('./features/portfolios/portfolio-detail-page').then((m) => m.PortfolioDetailPage),
       },
       {
+        path: 'carteiras/:id/historico',
+        title: 'Histórico · Carteira B3',
+        canActivate: [authGuard],
+        loadComponent: () =>
+          import('./features/operations/operation-history-page').then(
+            (m) => m.OperationHistoryPage,
+          ),
+      },
+      {
         path: 'ativos',
         title: 'Ativos · Carteira B3',
         canActivate: [authGuard],

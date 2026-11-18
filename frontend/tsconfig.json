@@ -13,6 +13,8 @@
     "experimentalDecorators": true,
     "importHelpers": true,
     "target": "ES2022",
+    // es2023.intl types Intl.NumberFormat#format with a decimal string (RN11: money is never converted to number).
+    "lib": ["ES2022", "DOM", "ES2023.Intl"],
     "module": "preserve"
   },
   "angularCompilerOptions": {

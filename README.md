@@ -12,7 +12,7 @@ Projeto acadêmico (UNIFESP/ICT) que atende as disciplinas de Engenharia de Soft
 - Estrutura do repositório: `claude/estrutura-repositorio.md`
 
 ## Como rodar
-> **Telas em construção.** Por enquanto, o frontend tem a entrada (login e cadastro), a navegação e a lista de carteiras (criar e excluir); o detalhe da carteira e as operações ainda não existem na tela e, para eles, use a API pelo Swagger (passo 6). Esta seção é atualizada a cada tela entregue.
+> **Telas em construção.** Por enquanto, o frontend tem a entrada (login e cadastro), a navegação, a lista de carteiras (criar e excluir), o detalhe da carteira (Resumo e Histórico) e o catálogo de ativos; lançar, editar e excluir operações ainda não existem na tela e, para eles, use a API pelo Swagger (passo 6). Esta seção é atualizada a cada tela entregue.
 
 ### 1. Pré-requisitos
 - Docker Desktop (ou Docker Engine com o plugin Compose).
@@ -67,10 +67,14 @@ O seed cria um usuário de demonstração:
 
 **Criar uma carteira pela tela:** em "Suas carteiras", clique em "Nova carteira", digite o nome (ex.: "Minha carteira") e clique em "Criar carteira"; ela aparece no fim da lista com "Sem operações ainda". O usuário de demonstração já tem 3 carteiras ("Longo prazo", "Dividendos" e "Testes FII"); uma conta nova começa vazia e cria a primeira carteira no próprio aviso "Você ainda não tem carteiras". Para excluir, use a lixeira do cartão e digite o nome da carteira para confirmar: as operações dela são apagadas junto.
 
-**Pela API (operações e posições, até as telas ficarem prontas):** no Swagger UI, em `http://localhost:3000/api/docs`:
+**Ver uma carteira pela tela:** clique em "Longo prazo". A guia **Resumo** mostra custo total R$ 16.151,27, lucro realizado + R$ 693,87 e 6 ativos em carteira, com as posições agrupadas por classe (ações, ETFs, FIIs, renda fixa e cripto); em "Posições encerradas", clique em "Mostrar" para ver a WEGE3, vendida por completo. A guia **Histórico** lista as 11 operações, da mais recente para a mais antiga, com filtros por ativo, corretora e tipo de ativo (ex.: "FIIs" deixa as 2 operações de MXRF11). "Testes FII" mostra os estados de carteira sem operações.
+
+**Consultar o catálogo pela tela:** clique em "Ativos" no topo e busque por código ou pelo nome da empresa, sem diferenciar maiúsculas nem acentos (ex.: "itausa" encontra ITSA4; "tesouro" encontra os títulos do Tesouro).
+
+**Pela API (lançar, editar e excluir operações, até o formulário ficar pronto):** no Swagger UI, em `http://localhost:3000/api/docs`:
 1. Abra `POST /api/v1/auth/login`, clique em "Try it out", envie `{ "email": "demo@carteirab3.dev", "password": "demo-carteira-2026" }` e confira a resposta 200.
 2. Copie o `accessToken` da resposta, clique em "Authorize" e cole o token.
-3. Teste as rotas de carteiras, operações, posições e catálogo, como `GET /api/v1/portfolios`.
+3. Teste as rotas de operações, como `POST /api/v1/portfolios/{id}/operations` com o `id` de `GET /api/v1/portfolios`; o detalhe da carteira mostra o resultado ao recarregar.
 
 ### 7. Testes
 | Pacote | Onde | Comandos |
