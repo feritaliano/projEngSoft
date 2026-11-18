@@ -30,13 +30,27 @@ Contrato completo, com corpos, códigos de erro e exemplos: Swagger UI em `http:
 |---|---|---|
 | Saúde | `GET /health` | Pública. 200 com o PostgreSQL respondendo; 503 quando não responde. |
 | Autenticação (A1, A2) | `POST /auth/register`, `/auth/login`, `/auth/refresh`, `/auth/logout` | Cadastro e login são públicos, com limite por minuto e por IP (`AUTH_RATE_LIMIT_MAX`, padrão 5; no máximo 20 em produção) e devolvem o access token; o refresh token vai num cookie `httpOnly` (`refresh_token`, `Path=/api/v1/auth`), rotacionado no `refresh` (401 = entrar de novo). |
-| Catálogo (C1) | `GET /assets?search=&page=&pageSize=`, `GET /assets/:ticker`, `GET /brokers` | Só leitura; dados do seed. |
+| Catálogo (C1) | `GET /assets?search=&page=&pageSize=`, `GET /assets/:ticker`, `GET /brokers` | Só leitura; dados do seed e da carga do catálogo da B3 (abaixo). |
 | Carteiras (B1, RN02) | `GET /portfolios`, `GET /portfolios/:id`, `POST /portfolios`, `DELETE /portfolios/:id` | Cada carteira traz `operationCount`, `assetCount` e `lastTradeDate`; excluir apaga as operações (D41). |
 | Operações (B2–B5, RN04–RN12) | `GET`, `POST /portfolios/:id/operations` (filtros `assetId`, `brokerId`, `assetType`); `GET`, `PATCH`, `DELETE /portfolios/:id/operations/:operationId`; `POST /portfolios/:id/operations/preview` | Venda acima da posição ou alteração retroativa que a deixa negativa: 422 com a operação infratora (RN07, RN10). A prévia (D42) recebe o mesmo corpo, mais `replacesOperationId` no modo editar, e nunca grava. |
 | Posições e totais (B6, B7, B13) | `GET /portfolios/:id/positions`, `GET /portfolios/:id/summary` | Posições abertas e encerradas (`status`); valores derivados em `DerivedValue` (D26). |
 
 - Fora `health`, `register`, `login`, `refresh` e `logout`, toda rota exige `Authorization: Bearer <accessToken>` (401 sem token válido). Carteira de outro usuário responde 404.
 - Erros em RFC 7807 (`application/problem+json`); 400 e 409 de formulário trazem `errors[]` com `field` e `code` (D56).
+
+## Catálogo completo da B3 (K5, D59)
+Carga única, no ambiente do worker, dos emissores e ativos do mercado à vista (ações, units, FIIs, ETFs e BDRs) a partir do Cadastro de Instrumentos da B3, com o COTAHIST do mesmo dia para separar os FIIs dos outros fundos (F7). Rode, na raiz do repositório, depois do `npm run db:seed`:
+
+```
+npm --prefix backend run ingest:catalog -- --file data/raw/b3-instrumentos/InstrumentsConsolidatedFile_AAAAMMDD.csv --cotahist data/raw/b3-cotahist/COTAHIST_DDDMMAAAA.TXT
+```
+
+- Os caminhos são relativos ao diretório de onde o `npm` foi chamado (da pasta `backend`, `../data/raw/...`). Os dois arquivos ficam em `data/raw/` (fora do Git; URLs em `database/docs/fontes-poc.md`).
+- Só aceita o Cadastro com "Status do Arquivo: Final" (F5) e arquivos do mesmo dia. Os arquivos vêm em Latin-1 e são lidos assim (F9).
+- Upsert por chave natural, uma transação por lote de 500: emissor pelo nome (só criado, nunca alterado: CNPJ, código CVM e setor do seed ficam), ativo pelo ticker. Rodar de novo com os mesmos arquivos não muda nenhuma linha.
+- Linha inválida (campos faltando, classe fora de `share_class`, ticker ou ISIN fora do formato) é registrada no log e ignorada; ativo cujo ISIN já pertence a outro ticker é pulado e registrado.
+- Fora do K5 (S2): cotações, desativar ativos que saíram do arquivo, `ops.ingestion_runs` e agendamento. FII sem negócio no dia do COTAHIST fica fora.
+- Ordem: seed antes da carga. O seed depois da carga ainda falha (emissor do seed por UUID fixo); a correção é do agente de banco.
 
 ## Dados de demonstração
 `npm run db:seed` (na raiz) carrega o catálogo e usuários fictícios. Usuário `demo@carteirab3.dev`, senha `demo-carteira-2026` (só desenvolvimento), com as carteiras "Longo prazo", "Dividendos" e "Testes FII". O teste `test/seed.e2e-spec.ts` carrega o seed num banco do Testcontainers e confere essas carteiras pela API.

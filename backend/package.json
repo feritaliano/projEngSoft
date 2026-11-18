@@ -19,7 +19,8 @@
     "test:cov": "node --experimental-vm-modules --no-warnings=ExperimentalWarning node_modules/jest/bin/jest.js --coverage",
     "test:e2e": "node --experimental-vm-modules --no-warnings=ExperimentalWarning node_modules/jest/bin/jest.js --config test/jest-e2e.config.ts --runInBand",
     "openapi:generate": "nest build && node dist/openapi/export-openapi.js",
-    "openapi:lint": "redocly lint openapi/openapi.json"
+    "openapi:lint": "redocly lint openapi/openapi.json",
+    "ingest:catalog": "nest build && node dist/main.ingest-catalog"
   },
   "dependencies": {
     "@fastify/cookie": "11.1.5",
