@@ -6,7 +6,9 @@ import { portfoliosControllerCreate } from '../../api/fn/portfolios/portfolios-c
 import { portfoliosControllerDelete } from '../../api/fn/portfolios/portfolios-controller-delete';
 import { portfoliosControllerGet } from '../../api/fn/portfolios/portfolios-controller-get';
 import { portfoliosControllerList } from '../../api/fn/portfolios/portfolios-controller-list';
-import { PortfolioDto } from '../../api/models';
+import { positionsControllerPositions } from '../../api/fn/positions/positions-controller-positions';
+import { positionsControllerSummary } from '../../api/fn/positions/positions-controller-summary';
+import { PortfolioDto, PortfolioSummary, Position } from '../../api/models';
 
 /** Portfolios of the signed-in user (RN02): another user's portfolio answers 404. */
 @Injectable({ providedIn: 'root' })
@@ -21,6 +23,16 @@ export class PortfoliosService {
 
   get(id: string): Observable<PortfolioDto> {
     return portfoliosControllerGet(this.http, this.rootUrl, { id }).pipe(map((r) => r.body));
+  }
+
+  /** GET /portfolios/:id/summary (B7): totals as DerivedValue and the open positions count. */
+  summary(id: string): Observable<PortfolioSummary> {
+    return positionsControllerSummary(this.http, this.rootUrl, { id }).pipe(map((r) => r.body));
+  }
+
+  /** GET /portfolios/:id/positions: open and closed (D41), by asset class, brokers summed (RN12). */
+  positions(id: string): Observable<Position[]> {
+    return positionsControllerPositions(this.http, this.rootUrl, { id }).pipe(map((r) => r.body));
   }
 
   /** POST /portfolios: 400 (REQUIRED, TOO_LONG) and 409 (ALREADY_EXISTS) come with field "name". */
