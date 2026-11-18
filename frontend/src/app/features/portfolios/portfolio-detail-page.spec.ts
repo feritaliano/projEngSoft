@@ -1,5 +1,6 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { ErrorHandler } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
@@ -67,6 +68,7 @@ const POSITIONS: Position[] = [
 describe('PortfolioDetailPage (frame 4, B6, B7)', () => {
   let http: HttpTestingController;
   let harness: RouterTestingHarness;
+  let handleError: ReturnType<typeof vi.fn>;
 
   const open = async () => {
     harness = await RouterTestingHarness.create('/carteiras/p1');
@@ -93,6 +95,7 @@ describe('PortfolioDetailPage (frame 4, B6, B7)', () => {
   };
 
   beforeEach(() => {
+    handleError = vi.fn();
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(),
@@ -102,6 +105,7 @@ describe('PortfolioDetailPage (frame 4, B6, B7)', () => {
           { path: 'carteiras/:id', component: PortfolioDetailPage },
           { path: 'carteiras/:id/historico', children: [] },
         ]),
+        { provide: ErrorHandler, useValue: { handleError } },
       ],
     });
     http = TestBed.inject(HttpTestingController);
@@ -147,6 +151,33 @@ describe('PortfolioDetailPage (frame 4, B6, B7)', () => {
     ]);
     expect(text(table!.querySelector('tfoot'))).toBe('Total R$ 16.151,27');
     expect(element.querySelector('app-asset-avatar')?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  it('colors the realized profit by its sign: loss negative, zero neutral (handoff U5)', async () => {
+    await open();
+    const element = await answer(LONGO, { ...SUMMARY, realizedProfit: derived('-12.4') });
+    const profitOf = (name: string) =>
+      [...element.querySelectorAll('table tbody tr')]
+        .find((row) => row.textContent?.includes(name))!
+        .querySelector('td:last-child')!.className;
+
+    expect(profitOf('MXRF11')).toContain('text-negative');
+    expect(profitOf('ITSA4')).toContain('text-primary');
+    expect(profitOf('PETR4')).toContain('text-positive');
+    const kpi = element.querySelector('dl > div:nth-child(2) dd')!;
+    expect(text(kpi)).toBe('− R$ 12,40');
+    expect(kpi.className).toContain('text-negative');
+  });
+
+  it('shows the same values in the mobile cards, grouped by class with the count (handoff U5)', async () => {
+    await open();
+    const element = await answer();
+    const stocks = element.querySelector('section[aria-label="Ações"]')!;
+
+    expect(text(stocks.querySelector('p'))).toBe('Ações · 2 ativos');
+    expect(text(stocks.querySelector('li:nth-child(2)'))).toBe(
+      'PE PETR4 Ação Quantidade 100 Preço médio R$ 32,03 Custo total R$ 3.203,27 Lucro realizado + R$ 293,47',
+    );
   });
 
   it('keeps the closed positions collapsed until "Mostrar", with "—" for average price and cost (RN08, D41)', async () => {
@@ -201,12 +232,24 @@ describe('PortfolioDetailPage (frame 4, B6, B7)', () => {
     );
     expect(element.querySelector('h1')).toBeNull();
 
+    expect(handleError).not.toHaveBeenCalled();
+
     element.querySelector<HTMLButtonElement>('[role="alert"] button')!.click();
     await harness.fixture.whenStable();
     expect(document.activeElement?.id).toBe('detail-loading');
 
+    // The loading region goes away with the answer: the focus moves on to the title (U7a).
     await answer();
     expect(text(element.querySelector('h1'))).toBe('Longo prazo');
+    expect(document.activeElement?.tagName).toBe('H1');
+  });
+
+  it('also reports an answer the front did not expect (400), a bug of the front', async () => {
+    await open();
+    const element = await answer(LONGO, 400);
+
+    expect(element.querySelector('[role="alert"]')).not.toBeNull();
+    expect(handleError).toHaveBeenCalledTimes(1);
   });
 
   it('shows the skeleton only after 300 ms without an answer (U5)', async () => {
