@@ -18,10 +18,11 @@ test('shows the totals and the positions of "Longo prazo" as the API computes th
   const summaryResponse = page.waitForResponse((r) => r.url().endsWith('/summary'));
   await openLongoPrazo(page);
 
-  // The API and the screen agree: the screen only formats the decimal strings (RN11).
+  // The API and the screen agree: the API sends full precision (the fixed income cost is 1999.99999…) and the screen
+  // only rounds it to 2 places (RN11). Number() here is test code, not src/app.
   const summary = await (await summaryResponse).json();
-  expect(summary.totalCost.value).toMatch(/^16151\.27/);
-  expect(summary.realizedProfit.value).toMatch(/^693\.87/);
+  expect(Number(summary.totalCost.value).toFixed(2)).toBe('16151.27');
+  expect(Number(summary.realizedProfit.value).toFixed(2)).toBe('693.87');
   expect(summary.assetCount).toBe(6);
 
   await expect(page.getByText('11 operações · 6 ativos')).toBeVisible();
@@ -36,14 +37,15 @@ test('shows the totals and the positions of "Longo prazo" as the API computes th
   await expect(kpis.nth(2)).toContainText('1 posição encerrada');
 
   const open = page.getByRole('table', { name: 'Posições abertas, agrupadas por classe' });
-  const row = (name: string) => open.getByRole('row').filter({ hasText: name });
+  const row = (name: string | RegExp) => open.getByRole('row').filter({ hasText: name });
   await expect(row('PETR4')).toContainText(/100\s*R\$\s32,03\s*R\$\s3\.203,27\s*\+ R\$\s293,47/);
   await expect(row('ITSA4')).toContainText(/300\s*R\$\s9,87\s*R\$\s2\.961,00\s*R\$\s0,00/);
   await expect(row('BOVA11')).toContainText(/20\s*R\$\s118,45\s*R\$\s2\.369,00/);
   await expect(row('MXRF11')).toContainText(/150\s*R\$\s10,12\s*R\$\s1\.518,00\s*− R\$\s12,40/);
   await expect(row('Tesouro IPCA+ 2035')).toContainText(/0,52\s*R\$\s3\.846,15\s*R\$\s2\.000,00/);
   await expect(row('BTC')).toContainText(/0,0125\s*R\$\s328\.000,00\s*R\$\s4\.100,00/);
-  await expect(row('Total')).toContainText('R$ 16.151,27');
+  // /^Total/, not 'Total': the header row has "Custo total".
+  await expect(row(/^Total/)).toContainText('R$ 16.151,27');
   await expect(row('WEGE3')).toHaveCount(0);
   // Groups in the order of the frame; a class without positions (BDRs) does not show.
   await expect(open).toContainText(/Ações[\s\S]*ETFs[\s\S]*FIIs[\s\S]*Renda fixa[\s\S]*Cripto/);
