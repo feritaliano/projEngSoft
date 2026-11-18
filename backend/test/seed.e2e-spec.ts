@@ -1,7 +1,4 @@
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { Client } from 'pg';
 import request from 'supertest';
 import { Money } from '../src/shared/domain/money';
 import { PrismaService } from '../src/shared/infrastructure/prisma/prisma.service';
@@ -12,9 +9,9 @@ import {
 } from './factories/longo-prazo.factory';
 import { createApiApp } from './utils/api-app';
 import { truncateAllTables } from './utils/database';
+import { runSqlFile } from './utils/sql-file';
 import { signUp, TestSession } from './utils/session';
 
-const REPO_ROOT = resolve(__dirname, '..', '..');
 // Seed users' password (comment in inserts.sql); development data only, never in .env.
 const DEMO = { email: 'demo@carteirab3.dev', password: 'demo-carteira-2026' };
 const LONGO_PRAZO_ID = '00000000-0000-0000-0000-000000001101';
@@ -29,20 +26,6 @@ interface PositionBody {
   averagePrice: { value: string } | null;
   totalCost: { value: string } | null;
   realizedProfit: { value: string };
-}
-
-/**
- * The seed has several statements in one transaction and a temp view: it needs one session and the simple query
- * protocol, which pg uses for a query without parameters ($executeRawUnsafe uses the extended one and fails).
- */
-async function runSqlFile(relativePath: string): Promise<void> {
-  const client = new Client({ connectionString: process.env.DATABASE_URL });
-  await client.connect();
-  try {
-    await client.query(readFileSync(resolve(REPO_ROOT, relativePath), 'utf8'));
-  } finally {
-    await client.end();
-  }
 }
 
 const cents = (value: string | undefined) =>
