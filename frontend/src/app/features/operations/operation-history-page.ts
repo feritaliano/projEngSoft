@@ -38,17 +38,12 @@ export function noResultTitle(
   asset: AssetRef | undefined,
   broker: BrokerDto | undefined,
 ): string {
-  const what = asset
-    ? `de ${assetName(asset)}`
-    : filters.assetType
-      ? ASSET_TYPE[filters.assetType].of
-      : '';
+  let what = '';
+  if (asset) what = `de ${assetName(asset)}`;
+  else if (filters.assetType) what = ASSET_TYPE[filters.assetType].of;
   const where = broker ? `na ${broker.name}` : 'nesta carteira';
   return ['Nenhuma operação', what, where].filter(Boolean).join(' ');
 }
-
-const SELECT =
-  'h-11 w-full rounded-md border border-strong bg-surface px-3 py-2 text-body-md text-primary md:w-65';
 
 /**
  * Frame 6, tab Histórico of the Detail (B5, D45): operations of the portfolio, most recent first, filtered by asset,
@@ -313,7 +308,8 @@ export class OperationHistoryPage {
     { label: 'Todos', type: null },
     ...CHIP_ORDER.map((type) => ({ label: ASSET_TYPE[type].many, type })),
   ];
-  protected readonly select = SELECT;
+  protected readonly select =
+    'h-11 w-full rounded-md border border-strong bg-surface px-3 py-2 text-body-md text-primary md:w-65';
   protected readonly name = assetName;
   protected readonly date = formatDate;
   protected readonly money = formatMoney;
