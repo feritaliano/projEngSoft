@@ -6,7 +6,7 @@ const TONES = {
   warning: 'bg-warning-subtle text-warning',
 } as const;
 
-/** Badge of the design system: asset class (Neutral), Compra (Primary), Venda (Warning). Never the only cue. */
+/** Badge of the design system; the color is never the only cue, the text says it (WCAG 1.4.1). */
 @Component({
   selector: 'app-badge',
   changeDetection: ChangeDetectionStrategy.OnPush,
