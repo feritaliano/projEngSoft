@@ -51,8 +51,9 @@ test('shows the totals and the positions of "Longo prazo" as the API computes th
   await expect(row('MXRF11')).toContainText(/150\s*R\$\s10,12\s*R\$\s1\.518,00\s*− R\$\s12,40/);
   await expect(row('Tesouro IPCA+ 2035')).toContainText(/0,52\s*R\$\s3\.846,15\s*R\$\s2\.000,00/);
   await expect(row('BTC')).toContainText(/0,0125\s*R\$\s328\.000,00\s*R\$\s4\.100,00/);
-  // /^Total/: a string hasText ignores case and would also match "Custo total" in the header.
-  await expect(row(/^Total/)).toContainText('R$ 16.151,27');
+  // Regex, not 'Total': a string hasText ignores case and would also match "Custo total" in the header. The raw
+  // text of the row starts with the template's whitespace, hence \s*.
+  await expect(row(/^\s*Total/)).toContainText('R$ 16.151,27');
   await expect(row('WEGE3')).toHaveCount(0);
   // Groups in the order of frame 4 (ETFs before FIIs); a class without positions (BDRs) does not show.
   await expect(open).toContainText(/Ações[\s\S]*ETFs[\s\S]*FIIs[\s\S]*Renda fixa[\s\S]*Cripto/);
