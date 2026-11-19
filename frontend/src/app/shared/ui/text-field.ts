@@ -17,6 +17,7 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
       [type]="type()"
       [attr.autocomplete]="autocomplete()"
       [attr.placeholder]="placeholder()"
+      [attr.maxlength]="maxLength()"
       [formControl]="control()"
       [attr.aria-invalid]="error() ? 'true' : null"
       [attr.aria-describedby]="hint() ? hintId() : null"
@@ -41,6 +42,8 @@ export class TextField {
   readonly type = input('text');
   readonly autocomplete = input<string | null>(null);
   readonly placeholder = input<string | null>(null);
+  /** Limit of the API for the field, so the browser stops the typing instead of a 400. */
+  readonly maxLength = input<number | null>(null);
   readonly helper = input<string | null>(null);
   readonly error = input<string | null>(null);
 

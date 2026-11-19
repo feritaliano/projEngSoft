@@ -12,6 +12,13 @@ const openLongoPrazo = async (page: Page) => {
 
 const tabs = (page: Page) => page.getByRole('navigation', { name: 'Seções da carteira' });
 
+/** Value of an indicator: the dd after its visible label (the dt of the hidden mobile cards are not visible). */
+const kpi = (page: Page, label: string) =>
+  page
+    .getByRole('term')
+    .filter({ hasText: new RegExp(`^${label}$`) })
+    .locator('xpath=following-sibling::dd[1]');
+
 test('shows the totals and the positions of "Longo prazo" as the API computes them (B6, B7)', async ({
   page,
 }) => {
@@ -30,13 +37,13 @@ test('shows the totals and the positions of "Longo prazo" as the API computes th
     'aria-current',
     'page',
   );
-  const kpis = page.getByRole('definition');
-  await expect(kpis.nth(0)).toHaveText('R$ 16.151,27');
-  await expect(kpis.nth(1)).toHaveText('+ R$ 693,87');
-  await expect(kpis.nth(2)).toContainText('6');
-  await expect(kpis.nth(2)).toContainText('1 posição encerrada');
+  await expect(kpi(page, 'Custo total')).toHaveText('R$ 16.151,27');
+  await expect(kpi(page, 'Lucro realizado')).toHaveText('+ R$ 693,87');
+  await expect(kpi(page, 'Ativos em carteira')).toHaveText(/^6\s*1 posição encerrada$/);
 
   const open = page.getByRole('table', { name: 'Posições abertas, agrupadas por classe' });
+  // Header + 5 class groups + 6 assets + Total: no asset more, none less.
+  await expect(open.getByRole('row')).toHaveCount(13);
   const row = (name: string | RegExp) => open.getByRole('row').filter({ hasText: name });
   await expect(row('PETR4')).toContainText(/100\s*R\$\s32,03\s*R\$\s3\.203,27\s*\+ R\$\s293,47/);
   await expect(row('ITSA4')).toContainText(/300\s*R\$\s9,87\s*R\$\s2\.961,00\s*R\$\s0,00/);
@@ -44,10 +51,11 @@ test('shows the totals and the positions of "Longo prazo" as the API computes th
   await expect(row('MXRF11')).toContainText(/150\s*R\$\s10,12\s*R\$\s1\.518,00\s*− R\$\s12,40/);
   await expect(row('Tesouro IPCA+ 2035')).toContainText(/0,52\s*R\$\s3\.846,15\s*R\$\s2\.000,00/);
   await expect(row('BTC')).toContainText(/0,0125\s*R\$\s328\.000,00\s*R\$\s4\.100,00/);
-  // /^Total/, not 'Total': the header row has "Custo total".
-  await expect(row(/^Total/)).toContainText('R$ 16.151,27');
+  // Regex, not 'Total': a string hasText ignores case and would also match "Custo total" in the header. The raw
+  // text of the row starts with the template's whitespace, hence \s*.
+  await expect(row(/^\s*Total/)).toContainText('R$ 16.151,27');
   await expect(row('WEGE3')).toHaveCount(0);
-  // Groups in the order of the frame; a class without positions (BDRs) does not show.
+  // Groups in the order of frame 4 (ETFs before FIIs); a class without positions (BDRs) does not show.
   await expect(open).toContainText(/Ações[\s\S]*ETFs[\s\S]*FIIs[\s\S]*Renda fixa[\s\S]*Cripto/);
   await expect(open.getByText('BDRs')).toHaveCount(0);
   // Stages after the S1 stay out of the DOM (D48).
@@ -77,7 +85,7 @@ test('a portfolio without operations shows the empty Resumo and History', async 
   await expect(
     page.getByRole('heading', { name: 'Esta carteira ainda não tem operações' }),
   ).toBeVisible();
-  await expect(page.getByRole('definition').nth(0)).toHaveText('R$ 0,00');
+  await expect(kpi(page, 'Custo total')).toHaveText('R$ 0,00');
 
   await tabs(page).getByRole('link', { name: 'Histórico' }).click();
   await expect(
@@ -125,15 +133,17 @@ test('the History lists the operations and filters them by class and broker on t
   await expect(rows.nth(1)).toContainText(/22\/05\/2026\s*Venda.*MXRF11/);
 
   await chips.getByRole('button', { name: 'BDRs' }).click();
-  await expect(
-    page.getByRole('heading', { name: 'Nenhuma operação de BDRs nesta carteira' }),
-  ).toBeVisible();
-  await page.getByRole('button', { name: 'Limpar filtros' }).last().click();
+  const noResult = page.getByRole('heading', { name: 'Nenhuma operação de BDRs nesta carteira' });
+  await expect(noResult).toBeVisible();
+  // The button of the "filtro sem resultado" block (the one next to the count does the same).
+  await noResult.locator('..').getByRole('button', { name: 'Limpar filtros' }).click();
   await expect(rows).toHaveCount(12);
   await expect(page.getByText('11 operações', { exact: true })).toBeVisible();
 
   await page.getByLabel('Corretora').selectOption({ label: 'Rico' });
   await expect(page.getByText('2 de 11 operações')).toBeVisible();
+  // Header + the 2 operations at Rico: the list was replaced, not added to.
+  await expect(rows).toHaveCount(3);
   await expect(rows.filter({ hasText: 'ITSA4' })).toHaveCount(1);
   await expect(rows.filter({ hasText: 'BOVA11' })).toHaveCount(1);
 });

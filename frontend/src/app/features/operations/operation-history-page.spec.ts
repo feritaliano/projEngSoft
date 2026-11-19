@@ -4,6 +4,7 @@ import {
   TestRequest,
   provideHttpClientTesting,
 } from '@angular/common/http/testing';
+import { ErrorHandler } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
@@ -68,6 +69,7 @@ describe('OperationHistoryPage (frame 6, B5, D45)', () => {
   let http: HttpTestingController;
   let harness: RouterTestingHarness;
   let element: HTMLElement;
+  let handleError: ReturnType<typeof vi.fn>;
 
   const operations = () => http.expectOne((r) => r.url === OPERATIONS_URL);
   const settle = async () => {
@@ -100,6 +102,7 @@ describe('OperationHistoryPage (frame 6, B5, D45)', () => {
     expect(http.match(() => true).every((request) => request.cancelled)).toBe(true);
 
   beforeEach(() => {
+    handleError = vi.fn();
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(),
@@ -109,6 +112,7 @@ describe('OperationHistoryPage (frame 6, B5, D45)', () => {
           { path: 'carteiras/:id', children: [] },
           { path: 'carteiras/:id/historico', component: OperationHistoryPage },
         ]),
+        { provide: ErrorHandler, useValue: { handleError } },
       ],
     });
     http = TestBed.inject(HttpTestingController);
@@ -212,6 +216,49 @@ describe('OperationHistoryPage (frame 6, B5, D45)', () => {
       'Nenhuma operação de BOVA11 na XP Investimentos',
     );
     expect(text(element.querySelector('[aria-live="polite"]'))).toBe('0 de 11 operações');
+
+    // The selects show the cleared filters too.
+    button('Limpar filtros').click();
+    await settle();
+    operations().flush({ items: OPERATIONS, total: 11 });
+    await settle();
+    expect(element.querySelector<HTMLSelectElement>('#filter-asset')!.value).toBe('');
+    expect(element.querySelector<HTMLSelectElement>('#filter-broker')!.value).toBe('');
+  });
+
+  it('a filter changed before the answer cancels the previous list, so a late answer cannot replace it', async () => {
+    await open();
+
+    button('FIIs').click();
+    await settle();
+    button('Ações').click();
+    await settle();
+    const [fiis, stocks] = http.match((r) => r.url === OPERATIONS_URL);
+    expect(fiis.cancelled).toBe(true);
+    expect(stocks.request.params.get('assetType')).toBe('STOCK');
+    stocks.flush({ items: [], total: 0 });
+    await settle();
+
+    expect(button('Ações').getAttribute('aria-pressed')).toBe('true');
+    expect(text(element.querySelector('section h2'))).toBe(
+      'Nenhuma operação de ações nesta carteira',
+    );
+  });
+
+  it('a filter changed while "Carregar mais" waits leaves the button usable for the new list', async () => {
+    await open(LONGO, OPERATIONS.slice(0, 2), 60);
+
+    button('Carregar mais').click();
+    await settle();
+    button('FIIs').click();
+    await settle();
+    const [more, fiis] = http.match((r) => r.url === OPERATIONS_URL);
+    expect(more.cancelled).toBe(true);
+    fiis.flush({ items: OPERATIONS.slice(0, 2), total: 60 });
+    await settle();
+
+    expect(button('Carregar mais').disabled).toBe(false);
+    expect(button('Carregar mais').getAttribute('aria-busy')).toBeNull();
   });
 
   it('loads the next 50 with "Carregar mais", keeping the filters', async () => {
@@ -276,6 +323,21 @@ describe('OperationHistoryPage (frame 6, B5, D45)', () => {
     operations().flush({ items: OPERATIONS, total: 11 });
     await settle();
     expect(text(element.querySelector('h1'))).toBe('Longo prazo');
+    // The loading region goes away with the answer: the focus moves on to the title (U7a).
+    expect(document.activeElement?.tagName).toBe('H1');
+    expect(handleError).not.toHaveBeenCalled();
+  });
+
+  it('also reports an answer the front did not expect (400), a bug of the front', async () => {
+    await open();
+
+    button('ETFs').click();
+    await settle();
+    fail(operations(), 400);
+    await settle();
+
+    expect(element.querySelector('[role="alert"]')).not.toBeNull();
+    expect(handleError).toHaveBeenCalledTimes(1);
   });
 
   it('shows the 404 page for a portfolio of another user (RN02)', async () => {

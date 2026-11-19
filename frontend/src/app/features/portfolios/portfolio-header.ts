@@ -14,9 +14,14 @@ import { PortfolioDto } from '../../api/models';
   host: { class: 'flex flex-col gap-6' },
   template: `
     <nav aria-label="Trilha de navegação">
-      <ol class="flex gap-2 text-body-sm text-secondary">
+      <ol class="flex items-center gap-2 text-body-sm text-secondary">
         <li>
-          <a routerLink="/carteiras" class="text-label-md text-link hover:underline">Carteiras</a>
+          <!-- Handoff U5: touch area of 44 px on mobile and 24 px on desktop, without changing the look. -->
+          <a
+            routerLink="/carteiras"
+            class="inline-flex min-h-11 items-center text-label-md text-link hover:underline md:min-h-6"
+            >Carteiras</a
+          >
         </li>
         @if (portfolio(); as p) {
           <li aria-hidden="true">/</li>

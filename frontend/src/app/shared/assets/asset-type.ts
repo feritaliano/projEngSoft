@@ -1,6 +1,9 @@
 import { AssetType } from '../../api/models';
 
-/** Order of the class groups in the Detail (frame 4) and of the type chips in the History (handoff, frame 6). */
+/**
+ * Class groups of the Detail as in frame 4 and the frontend prompt: ETFs before FIIs, unlike the order of the API
+ * and of the chips (the text of the handoff, "O que aparece no S1", lists FIIs first; the frame wins).
+ */
 export const GROUP_ORDER: readonly AssetType[] = [
   'STOCK',
   'ETF',
@@ -9,6 +12,7 @@ export const GROUP_ORDER: readonly AssetType[] = [
   'FIXED_INCOME',
   'CRYPTO',
 ];
+/** Type chips of the History (handoff, frame 6): FIIs before ETFs. */
 export const CHIP_ORDER: readonly AssetType[] = [
   'STOCK',
   'FII',
@@ -49,6 +53,6 @@ export const ASSET_TYPE: Record<
   },
 };
 
-/** The asset as the screens name it (D50): the ticker, or the display name when there is none (fixed income). */
+/** The asset as the screens name it (D50, D55): the ticker, or the display name when there is none (fixed income). */
 export const assetName = (asset: { ticker: string | null; displayName: string }): string =>
   asset.ticker ?? asset.displayName;

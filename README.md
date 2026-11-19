@@ -69,7 +69,7 @@ O seed cria um usuário de demonstração:
 
 **Ver uma carteira pela tela:** clique em "Longo prazo". A guia **Resumo** mostra custo total R$ 16.151,27, lucro realizado + R$ 693,87 e 6 ativos em carteira, com as posições agrupadas por classe (ações, ETFs, FIIs, renda fixa e cripto); em "Posições encerradas", clique em "Mostrar" para ver a WEGE3, vendida por completo. A guia **Histórico** lista as 11 operações, da mais recente para a mais antiga, com filtros por ativo, corretora e tipo de ativo (ex.: "FIIs" deixa as 2 operações de MXRF11). "Testes FII" mostra os estados de carteira sem operações.
 
-**Consultar o catálogo pela tela:** clique em "Ativos" no topo e busque por código ou pelo nome da empresa, sem diferenciar maiúsculas nem acentos (ex.: "itausa" encontra ITSA4; "tesouro" encontra os títulos do Tesouro).
+**Consultar o catálogo pela tela:** clique em "Ativos" no topo e busque por código ou pelo nome da empresa, sem diferenciar maiúsculas nem acentos (ex.: "telefonica" encontra VIVT3, da Telefônica; "tesouro" encontra os títulos do Tesouro).
 
 **Pela API (lançar, editar e excluir operações, até o formulário ficar pronto):** no Swagger UI, em `http://localhost:3000/api/docs`:
 1. Abra `POST /api/v1/auth/login`, clique em "Try it out", envie `{ "email": "demo@carteirab3.dev", "password": "demo-carteira-2026" }` e confira a resposta 200.

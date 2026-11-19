@@ -2,7 +2,9 @@ import { HttpErrorResponse } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   ElementRef,
+  ErrorHandler,
   Injector,
   afterNextRender,
   computed,
@@ -11,8 +13,8 @@ import {
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
-import { forkJoin } from 'rxjs';
-import { PortfolioDto, PortfolioSummary, Position } from '../../api/models';
+import { Subscription, forkJoin } from 'rxjs';
+import { AssetType, PortfolioDto, PortfolioSummary, Position } from '../../api/models';
 import { NotFoundPage } from '../../core/layout/not-found-page';
 import { ASSET_TYPE, GROUP_ORDER, assetName } from '../../shared/assets/asset-type';
 import {
@@ -25,7 +27,7 @@ import {
 import { AssetAvatar } from '../../shared/ui/asset-avatar';
 import { Badge } from '../../shared/ui/badge';
 import { Icon } from '../../shared/ui/icon';
-import { LoadError, SKELETON_DELAY_MS } from '../../shared/ui/load-error';
+import { LoadError, SKELETON_DELAY_MS, expectedFailure } from '../../shared/ui/load-error';
 import { PortfolioHeader } from './portfolio-header';
 import { PortfoliosService } from './portfolios.service';
 
@@ -52,8 +54,8 @@ interface Detail {
 
 /**
  * Frame 4, tab Resumo (B6, B7), single version (D48): only what has data in the S1. Market value, returns, charts,
- * allocation, "Carteira ideal" and the Proventos/Metas tabs stay out of the DOM until their stage. Every number
- * comes formatted from the API strings (RN11); the "como foi calculado" and "Lançar operação" come in the W4b.
+ * allocation and "Carteira ideal" stay out of the DOM until their stage. Every number comes formatted from the API
+ * strings (RN11).
  */
 @Component({
   selector: 'app-portfolio-detail-page',
@@ -185,7 +187,9 @@ interface Detail {
                       }
                       <tfoot>
                         <tr class="border-t border-default bg-canvas text-label-md text-primary">
-                          <th scope="row" class="px-5 py-3 text-left">Total</th>
+                          <th scope="row" class="sticky left-0 bg-canvas px-5 py-3 text-left">
+                            Total
+                          </th>
                           <td></td>
                           <td></td>
                           <td class="px-4 py-3 text-right">
@@ -289,7 +293,7 @@ interface Detail {
     <ng-template #columns>
       <thead class="bg-subtle text-label-sm text-secondary">
         <tr class="border-y border-default">
-          <th scope="col" class="px-5 py-3 text-left">Ativo</th>
+          <th scope="col" class="sticky left-0 bg-subtle px-5 py-3 text-left">Ativo</th>
           <th scope="col" class="px-4 py-3 text-right">Quantidade</th>
           <th scope="col" class="px-4 py-3 text-right">Preço médio</th>
           <th scope="col" class="px-4 py-3 text-right">Custo total</th>
@@ -303,7 +307,8 @@ interface Detail {
       @let profit = signed(position.realizedProfit.value);
       <!-- Top borders only: the table collapses them, and the last row meets the border of the card. -->
       <tr class="border-t border-default text-numeric-md text-primary">
-        <th scope="row" class="px-5 py-3 text-left font-normal">
+        <!-- Handoff U5, 768–1023 px: the table scrolls inside the card with the Ativo column fixed. -->
+        <th scope="row" class="sticky left-0 bg-surface px-5 py-3 text-left font-normal">
           <ng-container
             [ngTemplateOutlet]="asset"
             [ngTemplateOutletContext]="{ $implicit: position }"
@@ -364,6 +369,11 @@ export class PortfolioDetailPage {
   private readonly id = inject(ActivatedRoute).snapshot.paramMap.get('id') ?? '';
   private readonly host: HTMLElement = inject(ElementRef).nativeElement;
   private readonly injector = inject(Injector);
+  private readonly errors = inject(ErrorHandler);
+  private request?: Subscription;
+  private timer?: ReturnType<typeof setTimeout>;
+  /** No h1 while the name is unknown (U7a): after a retry, the title gets the focus when it comes. */
+  private focusTitleOnLoad = false;
 
   protected readonly detail = signal<Detail | null>(null);
   protected readonly status = signal<'loading' | 'error' | 'not-found' | 'ready'>('loading');
@@ -395,7 +405,7 @@ export class PortfolioDetailPage {
   protected readonly money = formatMoney;
   protected readonly signed = formatSignedMoney;
   protected readonly plural = plural;
-  protected readonly classOf = (type: Position['asset']['assetType']) => ASSET_TYPE[type];
+  protected readonly classOf = (type: AssetType) => ASSET_TYPE[type];
   protected readonly asPosition = (row: Position) => row;
   protected readonly name = (row: Position) => assetName(row.asset);
   protected readonly quantity = (row: Position) =>
@@ -404,37 +414,50 @@ export class PortfolioDetailPage {
   protected readonly moneyOrDash = (value?: string) => (value ? formatMoney(value) : '—');
 
   constructor() {
+    inject(DestroyRef).onDestroy(() => {
+      clearTimeout(this.timer);
+      this.request?.unsubscribe();
+    });
     this.load();
   }
 
   protected retry(): void {
     this.load();
-    afterNextRender(() => this.host.querySelector<HTMLElement>('#detail-loading')?.focus(), {
-      injector: this.injector,
-    });
+    this.focus('#detail-loading');
+    this.focusTitleOnLoad = true;
   }
 
   /** The three calls together: any failure shows the whole error, without the name (U7a). */
   private load(): void {
     this.status.set('loading');
     this.slow.set(false);
-    const timer = setTimeout(() => this.slow.set(true), SKELETON_DELAY_MS);
-    forkJoin({
+    this.timer = setTimeout(() => this.slow.set(true), SKELETON_DELAY_MS);
+    this.request = forkJoin({
       portfolio: this.service.get(this.id),
       summary: this.service.summary(this.id),
       positions: this.service.positions(this.id),
     }).subscribe({
       next: (detail) => {
-        clearTimeout(timer);
+        clearTimeout(this.timer);
         this.detail.set(detail);
         this.status.set('ready');
+        if (this.focusTitleOnLoad) this.focus('h1');
+        this.focusTitleOnLoad = false;
       },
       error: (error: unknown) => {
-        clearTimeout(timer);
+        clearTimeout(this.timer);
+        this.focusTitleOnLoad = false;
         // 404 also for another user's portfolio or a malformed id (RN02).
         const notFound = error instanceof HttpErrorResponse && error.status === 404;
         this.status.set(notFound ? 'not-found' : 'error');
+        if (!notFound && !expectedFailure(error)) this.errors.handleError(error);
       },
+    });
+  }
+
+  private focus(selector: string): void {
+    afterNextRender(() => this.host.querySelector<HTMLElement>(selector)?.focus(), {
+      injector: this.injector,
     });
   }
 }

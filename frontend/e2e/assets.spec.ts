@@ -15,15 +15,15 @@ test('searches the catalog by issuer or ticker and clears the search (C1)', asyn
   const table = page.getByRole('table', { name: /Ativos do catálogo/ });
   await expect(table.getByRole('row').nth(1)).toBeVisible();
 
-  // Issuer name without accents or case (the API ignores both).
+  // Issuer name without its accent and in lower case (the API ignores both): "TELEFÔNICA BRASIL S.A" in the seed.
   const search = page.getByLabel('Buscar ativo');
-  await search.fill('itausa');
-  await expect(page.getByText(/ativos? encontrados? para “itausa”/)).toBeVisible();
-  await expect(table.getByRole('row').filter({ hasText: 'ITSA4' })).toContainText(
-    /ITAUSA S\.A\..*Ação/,
+  await search.fill('telefonica');
+  await expect(page.getByText(/ativos? encontrados? para “telefonica”/)).toBeVisible();
+  await expect(table.getByRole('row').filter({ hasText: 'VIVT3' })).toContainText(
+    /TELEFÔNICA BRASIL S\.A.*Ação/,
   );
 
-  // Fixed income has no ticker: the code is its display name (D50).
+  // Fixed income has no ticker: the code is its display name (D50, D55).
   await search.fill('tesouro');
   await expect(
     table.getByRole('row').filter({ hasText: 'Tesouro IPCA+ 2035' }).first(),

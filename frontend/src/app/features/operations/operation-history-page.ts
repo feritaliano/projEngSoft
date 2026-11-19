@@ -4,6 +4,7 @@ import {
   Component,
   DestroyRef,
   ElementRef,
+  ErrorHandler,
   Injector,
   afterNextRender,
   computed,
@@ -19,7 +20,7 @@ import { formatDate, formatMoney, formatQuantity, plural } from '../../shared/fo
 import { AssetAvatar } from '../../shared/ui/asset-avatar';
 import { Badge } from '../../shared/ui/badge';
 import { Button } from '../../shared/ui/button';
-import { LoadError, SKELETON_DELAY_MS } from '../../shared/ui/load-error';
+import { LoadError, SKELETON_DELAY_MS, expectedFailure } from '../../shared/ui/load-error';
 import { PortfolioHeader } from '../portfolios/portfolio-header';
 import { PortfoliosService } from '../portfolios/portfolios.service';
 import { OperationFilters, OperationsService } from './operations.service';
@@ -38,22 +39,16 @@ export function noResultTitle(
   asset: AssetRef | undefined,
   broker: BrokerDto | undefined,
 ): string {
-  const what = asset
-    ? `de ${assetName(asset)}`
-    : filters.assetType
-      ? ASSET_TYPE[filters.assetType].of
-      : '';
+  let what = '';
+  if (asset) what = `de ${assetName(asset)}`;
+  else if (filters.assetType) what = ASSET_TYPE[filters.assetType].of;
   const where = broker ? `na ${broker.name}` : 'nesta carteira';
   return ['Nenhuma operação', what, where].filter(Boolean).join(' ');
 }
 
-const SELECT =
-  'h-11 w-full rounded-md border border-strong bg-surface px-3 py-2 text-body-md text-primary md:w-65';
-
 /**
  * Frame 6, tab Histórico of the Detail (B5, D45): operations of the portfolio, most recent first, filtered by asset,
- * broker and asset class (7 fixed chips), 50 per page with "Carregar mais". The backend filters every page. Edit and
- * delete per row (icons) come in the W4b. States: loading (skeleton after 300 ms), error, empty, no result, with data.
+ * broker and asset class (7 fixed chips), a page at a time with "Carregar mais".
  */
 @Component({
   selector: 'app-operation-history-page',
@@ -272,8 +267,11 @@ export class OperationHistoryPage {
   private readonly id = inject(ActivatedRoute).snapshot.paramMap.get('id') ?? '';
   private readonly host: HTMLElement = inject(ElementRef).nativeElement;
   private readonly injector = inject(Injector);
+  private readonly errors = inject(ErrorHandler);
   private request?: Subscription;
   private timer?: ReturnType<typeof setTimeout>;
+  /** No h1 while the name is unknown (U7a): after a retry of the whole screen, the title gets the focus when it comes. */
+  private focusTitleOnLoad = false;
 
   protected readonly portfolio = signal<PortfolioDto | null>(null);
   protected readonly assets = signal<AssetRef[]>([]);
@@ -313,7 +311,8 @@ export class OperationHistoryPage {
     { label: 'Todos', type: null },
     ...CHIP_ORDER.map((type) => ({ label: ASSET_TYPE[type].many, type })),
   ];
-  protected readonly select = SELECT;
+  protected readonly select =
+    'h-11 w-full rounded-md border border-strong bg-surface px-3 py-2 text-body-md text-primary md:w-65';
   protected readonly name = assetName;
   protected readonly date = formatDate;
   protected readonly money = formatMoney;
@@ -323,7 +322,10 @@ export class OperationHistoryPage {
     operation.type === 'BUY' ? 'Compra' : 'Venda';
 
   constructor() {
-    inject(DestroyRef).onDestroy(() => clearTimeout(this.timer));
+    inject(DestroyRef).onDestroy(() => {
+      clearTimeout(this.timer);
+      this.request?.unsubscribe();
+    });
     this.load();
   }
 
@@ -364,6 +366,7 @@ export class OperationHistoryPage {
     if (header) this.loadOperations();
     else this.load();
     this.focus(header ? 'h1' : '#history-loading');
+    this.focusTitleOnLoad = !header;
   }
 
   /** Header, filter options and the first page together; the filters change only the list. */
@@ -372,7 +375,8 @@ export class OperationHistoryPage {
     this.request = forkJoin({
       portfolio: this.portfoliosService.get(this.id),
       // shortcut: the asset filter lists the assets of GET positions, which leaves out one sold at exactly zero
-      // profit (D41); an endpoint of the portfolio's assets would cover it, if that case comes up.
+      // profit (D41) and takes the History down when positions fails (500 on a corporate event, from the S2); an
+      // endpoint of the portfolio's assets would fix both, if either comes up.
       positions: this.portfoliosService.positions(this.id),
       brokers: this.service.brokers(),
       page: this.service.list(this.id, this.filters(), 1),
@@ -400,7 +404,9 @@ export class OperationHistoryPage {
   }
 
   private start(): void {
+    // Cancels a pending "Carregar mais" too, which then never answers: its flag has to go down here.
     this.request?.unsubscribe();
+    this.loadingMore.set(false);
     clearTimeout(this.timer);
     this.status.set('loading');
     this.slow.set(false);
@@ -413,13 +419,17 @@ export class OperationHistoryPage {
     this.items.set(items);
     this.total.set(total);
     this.status.set('ready');
+    if (this.focusTitleOnLoad) this.focus('h1');
+    this.focusTitleOnLoad = false;
   }
 
   /** 404: the portfolio does not exist or is another user's (RN02); anything else, the error card (U7a). */
   private fail(error: unknown): void {
     clearTimeout(this.timer);
+    this.focusTitleOnLoad = false;
     const notFound = error instanceof HttpErrorResponse && error.status === 404;
     this.status.set(notFound ? 'not-found' : 'error');
+    if (!notFound && !expectedFailure(error)) this.errors.handleError(error);
   }
 
   private focus(selector: string): void {

@@ -7,6 +7,7 @@ describe('TextField', () => {
     helper?: string | null;
     error?: string | null;
     placeholder?: string | null;
+    maxLength?: number | null;
   }) => {
     const fixture = TestBed.createComponent(TextField);
     fixture.componentRef.setInput('label', 'Senha');
@@ -59,5 +60,10 @@ describe('TextField', () => {
 
     expect(input.placeholder).toBe('Ex.: Longo prazo');
     expect(label.textContent?.trim()).toBe('Senha');
+  });
+
+  it('limits the typing to the maximum of the API when given', async () => {
+    expect((await render({})).input.getAttribute('maxlength')).toBeNull();
+    expect((await render({ maxLength: 100 })).input.maxLength).toBe(100);
   });
 });
