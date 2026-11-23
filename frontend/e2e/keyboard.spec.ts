@@ -3,32 +3,34 @@ import { DEMO, kpi, summary, tabs } from './support';
 
 // R1, handoff U5: the main flow of the S1 with the keyboard only (Tab, Shift+Tab, Enter, Space, arrows and Escape; no
 // click and no fill). Against the real API and the seed; the operation goes to a portfolio of its own and is deleted
-// at the end, so "Longo prazo" stays as the other files check it.
+// at the end, so "Longo prazo" stays as the other files check it (the empty "Teclado …" portfolio stays, like the
+// portfolios of operations.spec.ts).
 
-/** The element has the keyboard focus and its ring shows (handoff U5, 2.4.7). */
+/** The element has the keyboard focus and its ring shows: a solid, non-transparent outline (handoff U5, 2.4.7). */
 const expectRing = async (target: Locator) => {
   await expect(target).toBeFocused();
-  const outline = await target.evaluate((element) => {
+  const ring = await target.evaluate((element) => {
     if (!element.matches(':focus-visible')) return 'no :focus-visible';
     // The ring of a visually hidden radio is on its label and the one of a card link on the card (D51).
-    for (let node: Element | null = element; node; node = node.parentElement) {
-      const style = getComputedStyle(node);
-      const visible = node.getBoundingClientRect().width > 1;
-      if (visible && style.outlineStyle !== 'none' && parseFloat(style.outlineWidth) > 0) {
-        return style.outlineStyle;
-      }
-    }
-    return 'none';
+    const owner = element.matches('input[type=radio]')
+      ? element.closest('label')
+      : element.matches('a') && getComputedStyle(element).outlineStyle === 'none'
+        ? element.closest('li')
+        : element;
+    if (!owner) return 'no ring owner';
+    const { outlineStyle, outlineWidth, outlineColor } = getComputedStyle(owner);
+    const transparent = outlineColor === 'transparent' || /, 0\)$/.test(outlineColor);
+    return `${outlineStyle} ${parseFloat(outlineWidth) > 0 ? 'wide' : 'thin'} ${transparent ? 'transparent' : 'colored'}`;
   });
-  expect(outline).toBe('solid');
+  expect(ring).toBe('solid wide colored');
 };
 
-/** Presses `key` until `target` has the focus, then checks its ring. */
-const pressUntil = async (page: Page, target: Locator, key = 'Tab', max = 60) => {
+/** Presses Tab until `target` has the focus (at most 60 times), then checks its ring. */
+const tabTo = async (page: Page, target: Locator) => {
   await expect(target).toBeVisible();
-  for (let i = 0; i < max; i++) {
+  for (let i = 0; i < 60; i++) {
     if (await target.evaluate((element) => element === document.activeElement)) break;
-    await page.keyboard.press(key);
+    await page.keyboard.press('Tab');
   }
   await expectRing(target);
 };
@@ -41,30 +43,39 @@ test('the main flow works with the keyboard only, with visible focus and the foc
 
   // Sign in: Tab to each field, Enter sends.
   await page.goto('/entrar');
-  await pressUntil(page, page.getByLabel('E-mail'));
+  await tabTo(page, page.getByLabel('E-mail'));
   await page.keyboard.type(DEMO.email);
-  await pressUntil(page, page.getByLabel('Senha'));
+  await tabTo(page, page.getByLabel('Senha'));
   await page.keyboard.type(DEMO.password);
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL('/carteiras');
 
   // A portfolio of its own, opened from its card link.
-  await pressUntil(page, page.getByRole('button', { name: 'Nova carteira' }));
+  await tabTo(page, page.getByRole('button', { name: 'Nova carteira' }));
   await page.keyboard.press('Enter');
   await expect(page.getByLabel('Nome da carteira')).toBeFocused();
   await page.keyboard.type(name);
   await page.keyboard.press('Enter');
   const link = page.getByRole('link', { name, exact: true });
-  await pressUntil(page, link);
+  await tabTo(page, link);
   await page.keyboard.press('Enter');
   await expect(page.getByRole('heading', { name, level: 1 })).toBeVisible();
 
-  // The form: the asset through the combobox (type, ArrowDown, Enter), the broker with the arrows.
-  await pressUntil(page, page.getByRole('link', { name: 'Lançar operação' }));
+  // The form: the type with the arrows (and back to Compra), the asset through the combobox (type, ArrowDown, Enter),
+  // the broker with the arrows.
+  await tabTo(page, page.getByRole('link', { name: 'Lançar operação' }));
   await page.keyboard.press('Enter');
   await expect(page.getByRole('heading', { name: 'Lançar operação', level: 1 })).toBeVisible();
+  const buy = page.getByRole('radio', { name: 'Compra' });
+  await tabTo(page, buy);
+  await page.keyboard.press('ArrowRight');
+  await expectRing(page.getByRole('radio', { name: 'Venda' }));
+  await expect(page.getByRole('button', { name: 'Lançar venda' })).toBeVisible();
+  await page.keyboard.press('ArrowLeft');
+  await expectRing(buy);
+  await expect(buy).toBeChecked();
   const asset = page.getByRole('combobox', { name: 'Ativo' });
-  await pressUntil(page, asset);
+  await tabTo(page, asset);
   await page.keyboard.type('PETR4');
   const option = page.getByRole('option', { name: /^PETR4 / });
   await expect(option).toBeVisible();
@@ -76,12 +87,12 @@ test('the main flow works with the keyboard only, with visible focus and the foc
   await expect(page.getByRole('listbox')).toHaveCount(0);
 
   const broker = page.getByLabel('Corretora');
-  await pressUntil(page, broker);
+  await tabTo(page, broker);
   await page.keyboard.press('ArrowDown');
   await expect(broker).not.toHaveValue('');
 
   const quantity = page.getByLabel('Quantidade', { exact: true });
-  await pressUntil(page, quantity);
+  await tabTo(page, quantity);
   await page.keyboard.type('10');
   await page.keyboard.press('Tab');
   await expectRing(page.getByLabel('Preço unitário (R$)'));
@@ -93,11 +104,11 @@ test('the main flow works with the keyboard only, with visible focus and the foc
   await expect(summary(page)).toContainText(/Total com custos\s*R\$\s300,00/);
 
   // Space presses the button; the notice takes the focus and "Ver carteira" comes next.
-  await pressUntil(page, page.getByRole('button', { name: 'Lançar compra' }));
+  await tabTo(page, page.getByRole('button', { name: 'Lançar compra' }));
   await page.keyboard.press(' ');
   const saved = page.getByRole('status').filter({ hasText: 'Compra de 10 PETR4' });
   await expect(saved).toBeFocused();
-  await pressUntil(page, page.getByRole('link', { name: 'Ver carteira' }));
+  await tabTo(page, page.getByRole('link', { name: 'Ver carteira' }));
   await page.keyboard.press('Enter');
 
   await expect(kpi(page, 'Custo total')).toHaveText('R$ 300,00');
@@ -108,10 +119,10 @@ test('the main flow works with the keyboard only, with visible focus and the foc
       .filter({ hasText: 'PETR4' }),
   ).toContainText(/10\s*R\$\s30,00\s*ⓘ\s*R\$\s300,00/);
 
-  // "Como foi calculado": Enter opens, the focus goes to the title, Tab stays in the panel, Esc closes and the focus
-  // goes back to the trigger.
+  // "Como foi calculado": Enter opens, the focus goes to the title, Tab goes to "Fechar" in the panel (a modal
+  // <dialog>: the page behind is inert), Esc closes and the focus goes back to the trigger.
   const info = page.getByRole('button', { name: 'Como foi calculado: Custo total da carteira' });
-  await pressUntil(page, info);
+  await tabTo(page, info);
   await page.keyboard.press('Enter');
   const panel = page.getByRole('dialog', { name: 'Como foi calculado' });
   await expect(panel.getByRole('heading', { name: 'Como foi calculado' })).toBeFocused();
@@ -123,10 +134,10 @@ test('the main flow works with the keyboard only, with visible focus and the foc
 
   // Delete the operation with the ConfirmDialog: the first focus is "Cancelar", Esc cancels back to the trash, and
   // Tab + Enter on "Excluir compra" confirms.
-  await pressUntil(page, tabs(page).getByRole('link', { name: 'Histórico' }));
+  await tabTo(page, tabs(page).getByRole('link', { name: 'Histórico' }));
   await page.keyboard.press('Enter');
   const trash = page.getByRole('button', { name: /^Excluir operação de .+, PETR4$/ });
-  await pressUntil(page, trash);
+  await tabTo(page, trash);
   await page.keyboard.press('Enter');
   const dialog = page.getByRole('alertdialog', { name: /^Excluir a compra de / });
   await expectRing(dialog.getByRole('button', { name: 'Cancelar' }));
