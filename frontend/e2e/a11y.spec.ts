@@ -46,7 +46,11 @@ for (const colorScheme of ['light', 'dark'] as const) {
       .getByRole('button', { name: /^Como foi calculado/ })
       .first()
       .click();
-    await expect(page.getByRole('dialog', { name: 'Como foi calculado' })).toBeVisible();
+    // The panel fades in (200 ms): axe would measure the contrast of a half-transparent text.
+    await expect(page.getByRole('dialog', { name: 'Como foi calculado' })).toHaveCSS(
+      'opacity',
+      '1',
+    );
     expect(await seriousViolations(page)).toEqual([]);
     await page.keyboard.press('Escape');
 
@@ -78,7 +82,6 @@ for (const colorScheme of ['light', 'dark'] as const) {
 
     // ConfirmDialog of an edit, cancelled.
     await quantity.fill('200');
-    await expect(page.getByRole('button', { name: 'Salvar alteração' })).toBeEnabled();
     await page.getByRole('button', { name: 'Salvar alteração' }).click();
     await expect(
       page.getByRole('alertdialog', { name: 'Salvar a alteração na compra de 08/01/2026?' }),
@@ -86,5 +89,6 @@ for (const colorScheme of ['light', 'dark'] as const) {
     expect(await seriousViolations(page)).toEqual([]);
     await page.keyboard.press('Escape');
     await expect(page.getByRole('alertdialog')).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'Editar operação', level: 1 })).toBeVisible();
   });
 }

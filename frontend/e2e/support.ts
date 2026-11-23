@@ -2,7 +2,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { Page, expect } from '@playwright/test';
 
 // Demo user of the seed (database/sql/inserts.sql). Each test signs in on its own (rotating refresh, D39).
-const DEMO = { email: 'demo@carteirab3.dev', password: 'demo-carteira-2026' };
+export const DEMO = { email: 'demo@carteirab3.dev', password: 'demo-carteira-2026' };
 
 export const signIn = async (page: Page, { email, password } = DEMO) => {
   await page.goto('/entrar');
