@@ -88,6 +88,14 @@ describe('problemOf', () => {
     expect(problemOf(new Error('boom'))).toBeNull();
   });
 
+  it('reads the body of a call with responseType text, such as the 422 of a DELETE (RN10)', () => {
+    const body = { type: 'about:blank', title: 'Unprocessable Entity', status: 422 };
+
+    expect(problemOf(new HttpErrorResponse({ status: 422, error: JSON.stringify(body) }))).toEqual(
+      body,
+    );
+  });
+
   it('returns the field errors of a 400 (D56)', () => {
     const body = {
       type: 'about:blank',
