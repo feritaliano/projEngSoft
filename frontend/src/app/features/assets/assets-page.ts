@@ -261,7 +261,8 @@ export class AssetsPage {
 
   /**
    * "Lançar operação" (C1): straight to the form with the asset chosen when there is one portfolio; with more, the
-   * dialog asks which. shortcut: without portfolios the list opens, where the empty state creates the first one.
+   * dialog asks which. shortcut: without portfolios the list opens, where the empty state creates the first one; ask in the dialog
+   * when a frame has that state.
    */
   protected launch(asset: AssetDto): void {
     this.portfolios.list().subscribe({

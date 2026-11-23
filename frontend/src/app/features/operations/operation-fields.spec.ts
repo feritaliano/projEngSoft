@@ -18,6 +18,10 @@ describe('operation fields (RN04, D55, D56)', () => {
     expect(toApiDecimal('1.234,56')).toBe('1234.56');
     expect(toApiDecimal(' 36,00 ')).toBe('36.00');
     expect(toApiDecimal('0.5')).toBe('0.5');
+    expect(toApiDecimal('36.10')).toBe('36.10');
+    // Thousands as the screens show them, not 1,5 (a price of R$ 1.500 typed without cents).
+    expect(toApiDecimal('1.500')).toBe('1500');
+    expect(toApiDecimal('12.345.678')).toBe('12345678');
     expect(toApiDecimal('50')).toBe('50');
   });
 
@@ -45,6 +49,14 @@ describe('operation fields (RN04, D55, D56)', () => {
     expect(code('0,52', QUANTITY_RULES.FIXED_INCOME)).toBeUndefined();
     expect(code('0,00000001', QUANTITY_RULES.CRYPTO)).toBeUndefined();
     expect(code('0,000000001', QUANTITY_RULES.CRYPTO)?.code).toBe('TOO_MANY_DECIMALS');
+  });
+
+  it('fees hold 16 digits before the comma, as their column (NUMERIC(18,2))', () => {
+    expect(code('1234567890123456', FEES_RULE)).toBeUndefined();
+    expect(code('12345678901234567', FEES_RULE)).toEqual({
+      code: 'TOO_LARGE',
+      params: { maxIntegerDigits: 16 },
+    });
   });
 
   it('fees may be zero but not negative nor with more than 2 places', () => {

@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  ErrorHandler,
   inject,
   input,
   linkedSignal,
@@ -9,10 +10,11 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl } from '@angular/forms';
-import { EMPTY, Subject, catchError, debounceTime, map, of, switchMap } from 'rxjs';
+import { EMPTY, Subject, catchError, debounceTime, map, switchMap } from 'rxjs';
 import { AssetDto, AssetType } from '../../api/models';
 import { ASSET_TYPE, assetName } from '../../shared/assets/asset-type';
 import { Badge } from '../../shared/ui/badge';
+import { expectedFailure } from '../../shared/ui/load-error';
 import { AssetsService, SEARCH_DEBOUNCE_MS } from '../assets/assets.service';
 
 /** The asset of the form: from the search, the catalog (with issuer) or the operation being edited (without). */
@@ -142,16 +144,21 @@ export class AssetCombobox {
 
   constructor() {
     const service = inject(AssetsService);
+    const errors = inject(ErrorHandler);
     this.searches
       .pipe(
         debounceTime(SEARCH_DEBOUNCE_MS),
-        // An empty field only cancels the pending search; a failed search lists nothing (the form still says what is
-        // missing when saved).
+        // An empty field only cancels the pending search. A failed search closes the list instead of saying "nenhum
+        // ativo" for an asset that exists; the shell banner shows a lost connection, and a bug goes to the handler.
         switchMap((term) =>
           term
             ? service.search(term, 1).pipe(
                 map(({ items }) => ({ term, items })),
-                catchError(() => of({ term, items: [] as AssetDto[] })),
+                catchError((error: unknown) => {
+                  this.open.set(false);
+                  if (!expectedFailure(error)) errors.handleError(error);
+                  return EMPTY;
+                }),
               )
             : EMPTY,
         ),

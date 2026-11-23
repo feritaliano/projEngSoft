@@ -361,7 +361,6 @@ interface Saved {
       <ng-template #summaryBlock>
         <app-operation-summary
           [state]="summary()"
-          [operation]="previewed()"
           [portfolioName]="portfolio()?.name ?? ''"
           [editing]="editing"
           (retry)="recalculate.next()"
@@ -406,8 +405,6 @@ export class OperationFormPage {
     (this.router.currentNavigation()?.extras.state as FormState | undefined)?.asset ?? null,
   );
   protected readonly summary = signal<SummaryState>({ kind: 'waiting' });
-  /** The operation of the last preview asked: the Resumo describes it, not the fields being typed. */
-  protected readonly previewed = signal<SummaryOperation | null>(null);
   protected readonly savedViolation = signal<RuleViolation | null>(null);
   protected readonly saving = signal(false);
   protected readonly saved = signal<Saved | null>(null);
@@ -584,11 +581,9 @@ export class OperationFormPage {
         this.saving.set(false);
         this.confirming.set(false);
         if (this.editing) {
-          this.router.navigate(['/carteiras', this.portfolioId, 'historico'], {
-            queryParams: { operacao: operation.id },
-          });
+          this.router.navigate(['/carteiras', this.portfolioId, 'historico']);
         } else {
-          this.created(operation, asset);
+          this.created(operation, asset, body);
         }
       },
       error: (error: unknown) => {
@@ -600,15 +595,20 @@ export class OperationFormPage {
   }
 
   /** Frame "sucesso": the notice, and the form again with the type and broker kept. */
-  private created(operation: OperationDto, asset: AssetChoice): void {
+  private created(operation: OperationDto, asset: AssetChoice, body: CreateOperationDto): void {
     const summary = this.summary();
     const name = assetName(asset);
     const buy = operation.type === 'BUY';
+    // The PM of the preview explains the saved buy only when it was asked for the same values.
+    const previewOfSaved =
+      summary.kind === 'ready' && sameOperation(summary.operation, body) ? summary.preview : null;
     this.saved.set({
       text: `${buy ? 'Compra' : 'Venda'} de ${formatQuantity(operation.quantity, asset.assetType)} ${name} lançada na carteira ${this.portfolio()?.name}.`,
       detail: `Posição, preço médio e custo total de ${name} foram recalculados.`,
       averagePrice:
-        buy && summary.kind === 'ready' ? (summary.preview.averagePriceAfter ?? null) : null,
+        buy && previewOfSaved?.averagePriceAfter
+          ? withSavedId(previewOfSaved.averagePriceAfter, operation.id)
+          : null,
       asset,
     });
     const { type, brokerId } = this.form.getRawValue();
@@ -641,8 +641,8 @@ export class OperationFormPage {
       else this.status.set('not-found');
       return;
     }
-    // shortcut: a 5xx or no network on save shows nothing besides the shell banner (no text in the microcopy yet);
-    // the values stay in the form for another try.
+    // shortcut: a 5xx on save shows nothing (no network: only the shell banner) and the values stay for another
+    // try; add a message when the microcopy has one.
     if (!expectedFailure(error)) this.errors.handleError(error);
   }
 
@@ -681,25 +681,22 @@ export class OperationFormPage {
     };
   }
 
-  /** D42: the preview of the valid form; "calculating" only when it takes longer than 300 ms. */
+  /** D42: the preview of the valid form; "calculating" only when it takes longer than SKELETON_DELAY_MS. */
   private preview(): Observable<SummaryState> {
     if (this.gone()) return of({ kind: 'gone' });
     const body = this.body();
     const asset = this.asset();
-    if (!body || !asset) {
-      this.previewed.set(null);
-      return of({ kind: 'waiting' });
-    }
-    this.previewed.set({ ...body, asset });
+    if (!body || !asset) return of({ kind: 'waiting' });
+    const operation: SummaryOperation = { ...body, asset };
     const replaces = this.operationId ? { replacesOperationId: this.operationId } : {};
     const result = this.service.preview(this.portfolioId, { ...body, ...replaces }).pipe(
-      map((preview): SummaryState => ({ kind: 'ready', preview })),
+      map((preview): SummaryState => ({ kind: 'ready', operation, preview })),
       catchError((error: unknown) => of(this.previewFailed(error))),
       share(),
     );
     return merge(
       timer(SKELETON_DELAY_MS).pipe(
-        map((): SummaryState => ({ kind: 'calculating' })),
+        map((): SummaryState => ({ kind: 'calculating', operation })),
         takeUntil(result),
       ),
       result,
@@ -707,8 +704,9 @@ export class OperationFormPage {
   }
 
   /**
-   * 400 NOT_FOUND on replacesOperationId: the operation was deleted elsewhere. Any other 400 means the fields: the
-   * save shows them. Network or 5xx: "prévia indisponível", and the save still works (handoff, D42).
+   * 400 NOT_FOUND on replacesOperationId: the operation was deleted elsewhere. Any other 400 is a field the server
+   * refused (an asset no longer in the catalog, say): shown under it. Network or 5xx: "prévia indisponível", and the
+   * save still works (handoff, D42).
    */
   private previewFailed(error: unknown): SummaryState {
     const errors = problemOf(error)?.errors ?? [];
@@ -716,7 +714,10 @@ export class OperationFormPage {
       this.gone.set(true);
       return { kind: 'gone' };
     }
-    if (error instanceof HttpErrorResponse && error.status === 400) return { kind: 'waiting' };
+    if (error instanceof HttpErrorResponse && error.status === 400) {
+      applyServerErrors(this.form, problemOf(error));
+      return { kind: 'waiting' };
+    }
     if (!expectedFailure(error)) this.errors.handleError(error);
     return { kind: 'unavailable' };
   }
@@ -730,4 +731,22 @@ export class OperationFormPage {
       injector: this.injector,
     });
   }
+}
+
+const SAVED_FIELDS = ['type', 'tradeDate', 'quantity', 'unitPrice', 'fees'] as const;
+
+/** Same operation as the body sent: the same strings, nothing compared as a number. */
+const sameOperation = (previewed: SummaryOperation, body: CreateOperationDto) =>
+  previewed.asset.id === body.assetId && SAVED_FIELDS.every((key) => previewed[key] === body[key]);
+
+/** The trace of the preview with the saved id in place of null, so it reads as saved ("Compra de …"), not as the form. */
+function withSavedId(value: DerivedValue, id: string): DerivedValue {
+  return {
+    ...value,
+    inputs: value.inputs.map((input) => ({
+      ...input,
+      ...(input.operation?.id === null && { operation: { ...input.operation, id } }),
+      ...(input.derived && { derived: withSavedId(input.derived, id) }),
+    })),
+  };
 }

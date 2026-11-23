@@ -16,6 +16,7 @@ import {
 import { AVG_PRICE, GROSS, PETR4, TOTAL_BUY } from '../../../testing/derived-values';
 import { text } from '../../../testing/text';
 import { SKELETON_DELAY_MS } from '../../shared/ui/load-error';
+import { SEARCH_DEBOUNCE_MS } from '../assets/assets.service';
 import { FormState, OperationFormPage, PREVIEW_DEBOUNCE_MS } from './operation-form-page';
 
 // jsdom has no modal <dialog>; the browser behavior is covered by the E2E.
@@ -368,7 +369,7 @@ describe('OperationFormPage (frame 5, B2–B4, D42)', () => {
     patch.flush({ ...MXRF_BUY, quantity: '220' });
     await settle();
 
-    expect(TestBed.inject(Router).url).toBe('/carteiras/p1/historico?operacao=o3');
+    expect(TestBed.inject(Router).url).toBe('/carteiras/p1/historico');
   });
 
   it('edits to 40 units: the RN10 of the preview names the edit and blocks the save', async () => {
@@ -397,7 +398,7 @@ describe('OperationFormPage (frame 5, B2–B4, D42)', () => {
     await settle();
     // Another asset from the search; the violation is still about MXRF11, which the buy left.
     await type('operation-asset', 'PETR');
-    await wait(PREVIEW_DEBOUNCE_MS + 20);
+    await wait(SEARCH_DEBOUNCE_MS + 20);
     http
       .expectOne((r) => r.url === `${API}/api/v1/assets`)
       .flush({ items: [{ ...PETR4, issuer: 'Petrobras', sector: null }], total: 1 });
@@ -464,5 +465,151 @@ describe('OperationFormPage (frame 5, B2–B4, D42)', () => {
     button('Tentar de novo').click();
     await load();
     expect(field('operation-broker')).not.toBeNull();
+  });
+
+  describe('review cases', () => {
+    const patchBack = (status: number, body: object = {}) =>
+      http
+        .expectOne({ method: 'PATCH', url: `${OPERATIONS_URL}/o3` })
+        .flush({ status, title: 'x', ...body }, { status, statusText: 'x' });
+    const confirmEdit = async () => {
+      button('Salvar alteração').click();
+      await settle();
+      const dialog = element().querySelector('app-confirm-dialog')!;
+      return dialog;
+    };
+    const confirmIn = (dialog: Element) =>
+      [...dialog.querySelectorAll('button')].find((b) => text(b) === 'Salvar alteração')!.click();
+
+    it('recalculates from the earlier of the two dates when the edit moves it back (RN09)', async () => {
+      await open('/carteiras/p1/operacoes/o3/editar');
+      await load(MXRF_BUY);
+      (await previewRequest()).flush(PREVIEW);
+      await type('operation-date', '2026-01-05');
+      (await previewRequest()).flush(PREVIEW);
+      await settle();
+
+      const dialog = await confirmEdit();
+      expect(text(dialog)).toContain('recalculados a partir de 05/01/2026.');
+      dialog.querySelector<HTMLButtonElement>('button')!.click(); // Cancelar
+      await settle();
+    });
+
+    it('PATCH 404: the operation no longer exists; PATCH 422: the RN10 of the edit as an alert', async () => {
+      await open('/carteiras/p1/operacoes/o3/editar');
+      await load(MXRF_BUY);
+      (await previewRequest()).flush({}, { status: 503, statusText: 'x' });
+      await settle();
+
+      confirmIn(await confirmEdit());
+      patchBack(422, { violation: sale('RN10', MXRF11) });
+      await settle();
+      const error = element().querySelector('app-business-rule-error section')!;
+      expect(error.getAttribute('role')).toBe('alert');
+      expect(text(error)).toContain('Com esta alteração na compra de 08/01/2026');
+
+      confirmIn(await confirmEdit());
+      patchBack(404);
+      await settle();
+      expect(shown()).toContain('Esta operação não existe mais');
+      expect(button('Salvar alteração').disabled).toBe(true);
+    });
+
+    it('drops the 422 of the save as soon as a field changes', async () => {
+      await open('/carteiras/p1/operacoes/nova', { asset: PETR4 });
+      await load();
+      await fillBuy();
+      (await previewRequest()).flush({}, { status: 503, statusText: 'x' });
+      await settle();
+      button('Lançar compra').click();
+      http
+        .expectOne({ method: 'POST', url: OPERATIONS_URL })
+        .flush(
+          { status: 422, title: 'x', violation: sale('RN07') },
+          { status: 422, statusText: 'x' },
+        );
+      await settle();
+      expect(element().querySelector('app-business-rule-error')).not.toBeNull();
+
+      await type('operation-quantity', '60');
+      expect(element().querySelector('app-business-rule-error')).toBeNull();
+      (await previewRequest()).flush(PREVIEW);
+    });
+
+    it('cancels a preview that a newer one replaces (switchMap): the old answer never shows', async () => {
+      await open('/carteiras/p1/operacoes/nova', { asset: PETR4 });
+      await load();
+      await fillBuy();
+      const first = await previewRequest();
+      await type('operation-quantity', '60');
+      const second = await previewRequest();
+
+      expect(first.cancelled).toBe(true);
+      expect(second.request.body.quantity).toBe('60');
+    });
+
+    it('checks the quantity again by the class of the new asset (RN04, D55)', async () => {
+      const btc = {
+        id: 'a-btc',
+        ticker: 'BTC',
+        displayName: 'Bitcoin',
+        assetType: 'CRYPTO' as const,
+      };
+      await open('/carteiras/p1/operacoes/nova', { asset: btc });
+      await load();
+      await type('operation-quantity', '1,5');
+      expect(field('operation-quantity').getAttribute('aria-invalid')).toBeNull();
+
+      await type('operation-asset', 'PETR');
+      await wait(SEARCH_DEBOUNCE_MS + 20);
+      http
+        .expectOne((r) => r.url === `${API}/api/v1/assets`)
+        .flush({ items: [{ ...PETR4, issuer: 'Petrobras', sector: null }], total: 1 });
+      await settle();
+      element().querySelector<HTMLElement>('[role="option"]')!.click();
+      await settle();
+
+      expect(shown()).toContain('Use um número inteiro maior que zero.');
+    });
+
+    it('explains the PM of the saved buy as saved, and only when the preview was of the same values', async () => {
+      const formAverage = {
+        ...AVG_PRICE,
+        inputs: AVG_PRICE.inputs.map((input) =>
+          input.operation ? { ...input, operation: { ...input.operation, id: null } } : input,
+        ),
+      };
+      await open('/carteiras/p1/operacoes/nova', { asset: PETR4 });
+      await load();
+      await fillBuy();
+      (await previewRequest()).flush({ ...PREVIEW, averagePriceAfter: formAverage });
+      await settle();
+      button('Lançar compra').click();
+      http
+        .expectOne({ method: 'POST', url: OPERATIONS_URL })
+        .flush({ ...MXRF_BUY, id: 'o12', asset: PETR4 });
+      await settle();
+
+      const link = element().querySelector<HTMLButtonElement>('#operation-saved button')!;
+      link.click();
+      await settle();
+      const panel = text(element().querySelector('#operation-saved dialog'));
+      expect(panel).toContain('Compra de 14/03/2026 · XP Investimentos');
+      expect(panel).not.toContain('Do formulário, ainda não salvo');
+      await wait(PREVIEW_DEBOUNCE_MS + 20);
+    });
+
+    it('offers no PM link when the last preview was of other values (sent before the debounce)', async () => {
+      await open('/carteiras/p1/operacoes/nova', { asset: PETR4 });
+      await load();
+      await fillBuy();
+      (await previewRequest()).flush(PREVIEW);
+      await type('operation-quantity', '60');
+      button('Lançar compra').click();
+      http.expectOne({ method: 'POST', url: OPERATIONS_URL }).flush({ ...MXRF_BUY, asset: PETR4 });
+      await settle();
+      expect(element().querySelector('#operation-saved button')).toBeNull();
+      await wait(PREVIEW_DEBOUNCE_MS + 20);
+    });
   });
 });

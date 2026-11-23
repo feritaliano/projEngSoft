@@ -1,9 +1,9 @@
 import { FormulaCode } from '../../api/models';
 
-/**
- * Texts of "como foi calculado" from claude/microcopy.md (U4, U7a): section 2 (fixed texts), 3 (by formulaCode and
- * input `name`) and 9 (Resumo da operação). The only place these texts live: templates never write them (D26).
- */
+// Texts of "como foi calculado" from claude/microcopy.md (U4, U7a): sections 2 (fixed texts), 3 (by formulaCode and
+// input `name`), 4 (edge cases) and 9 (Resumo da operação). The only place these texts live: templates never write
+// them (D26).
+
 export interface FormulaText {
   /** Rótulo, next to the number and in the aria-label of the ⓘ. */
   label: string;
@@ -21,7 +21,7 @@ export const FORMULA_TEXTS: Record<FormulaCode, FormulaText> = {
     of: 'preço médio',
     formula:
       'PM = (qtd. anterior × PM anterior + qtd. comprada × preço + custos) ÷ (qtd. anterior + qtd. comprada)',
-    // shortcut: the microcopy divides by {quantityBefore + quantityBought}; the front does no sums (D5), so the two
+    // shortcut: the microcopy divides by {quantityBefore + quantityBought}; the front does no sums (D28), so the two
     // terms are shown. Change when the API sends the quantity after the buy as an input.
     account:
       '({quantityBefore} × {avgPriceBefore} + {quantityBought} × {unitPrice} + {fees}) ÷ ({quantityBefore} + {quantityBought}) = {value}',

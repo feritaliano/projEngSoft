@@ -48,7 +48,6 @@ const RN07: RuleViolation = {
   imports: [OperationSummary],
   template: `<app-operation-summary
     [state]="state()"
-    [operation]="operation()"
     portfolioName="Longo prazo"
     [editing]="editing()"
     (retry)="retries.set(retries() + 1)"
@@ -56,21 +55,28 @@ const RN07: RuleViolation = {
 })
 class Host {
   readonly state = signal<SummaryState>({ kind: 'waiting' });
-  readonly operation = signal<SummaryOperation | null>(null);
   readonly editing = signal(false);
   readonly retries = signal(0);
 }
 
 describe('OperationSummary (frame 5, D42)', () => {
   const NBSP = String.fromCharCode(0xa0);
+  /** The state as the form builds it: "calculating" and "ready" carry the operation they describe. */
+  type Shown =
+    | Exclude<SummaryState, { kind: 'calculating' | 'ready' }>
+    | { kind: 'calculating' }
+    | { kind: 'ready'; preview: OperationPreview };
   const render = async (
-    state: SummaryState,
+    shown: Shown,
     operation: SummaryOperation | null = BUY,
     editing = false,
   ) => {
     const fixture = TestBed.createComponent(Host);
+    const state =
+      shown.kind === 'ready' || shown.kind === 'calculating'
+        ? ({ ...shown, operation: operation ?? BUY } as SummaryState)
+        : shown;
     fixture.componentInstance.state.set(state);
-    fixture.componentInstance.operation.set(operation);
     fixture.componentInstance.editing.set(editing);
     await fixture.whenStable();
     const section = (fixture.nativeElement as HTMLElement).querySelector('section')!;
@@ -115,7 +121,7 @@ describe('OperationSummary (frame 5, D42)', () => {
     expect(section.className).toContain('border-default');
   });
 
-  it('shows the sell: net value, PM that does not change and the estimated profit', async () => {
+  it('shows the sell: net value, PM that does not change and the estimated profit (RN06)', async () => {
     const { section, shown } = await render({ kind: 'ready', preview: SOLD }, SELL);
 
     expect(shown()).toContain('Valor líquido R$ 1.920,10');
@@ -138,9 +144,9 @@ describe('OperationSummary (frame 5, D42)', () => {
     expect(section.className).toContain('border-negative');
     expect(shown()).toContain('Posição de PETR4 100 → —');
     expect(shown()).not.toContain('Preço médio');
-    expect(shown()).toContain('Lucro realizado estimado —');
+    // Microcopy, section 9: the note takes the place of the value of the estimated profit.
     expect(shown()).toMatch(
-      /Venda maior que a posição em 28\/10\/2026: 100 disponíveis, 150 na venda\.$/,
+      /Lucro realizado estimado Venda maior que a posição em 28\/10\/2026: 100 disponíveis, 150 na venda\.$/,
     );
   });
 
@@ -156,8 +162,9 @@ describe('OperationSummary (frame 5, D42)', () => {
 
     expect(shown()).toContain('PETR4 em 28/10/2026, com a alteração');
     expect(shown()).toContain('Preço médio R$ 32,03 → R$ 33,39');
+    // Handoff U5: the note goes right below the average price.
     expect(shown()).toMatch(
-      /Deixa a venda de 22\/05\/2026 maior que a posição: 40 disponíveis, 50 vendidas\.$/,
+      /R\$ 33,39 ⓘ Deixa a venda de 22\/05\/2026 maior que a posição: 40 disponíveis, 50 vendidas\.$/,
     );
   });
 

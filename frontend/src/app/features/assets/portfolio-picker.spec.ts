@@ -3,7 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { PortfolioDto } from '../../api/models';
 import { PortfolioPicker } from './portfolio-picker';
 
-// jsdom has no modal <dialog>; the browser behavior (focus trap, inert page) is covered by the E2E.
+// jsdom has no modal <dialog>; the E2E opens it in the browser.
 beforeAll(() => {
   HTMLDialogElement.prototype.showModal ??= function (this: HTMLDialogElement) {
     this.open = true;

@@ -13,10 +13,9 @@ interface DecimalRule {
   /** The code of too many decimal places, with its params for the text. */
   decimals: FieldErrorCode;
   params: FieldErrorParams;
+  /** Digits before the point the column holds: NUMERIC(20,8) for quantity and price, 12 by default. */
+  integerDigits?: number;
 }
-
-/** At most 12 digits before the point (NUMERIC of the schema). */
-const MAX_INTEGER_DIGITS = 12;
 
 const WHOLE: DecimalRule = { zero: false, maxDecimals: 0, decimals: 'NOT_INTEGER', params: {} };
 export const QUANTITY_RULES: Record<AssetType, DecimalRule> = {
@@ -43,15 +42,20 @@ export const FEES_RULE: DecimalRule = {
   maxDecimals: 2,
   decimals: 'TOO_MANY_DECIMALS',
   params: { maxDecimals: 2 },
+  integerDigits: 16, // NUMERIC(18,2)
 };
 
 /**
- * What the user typed, in pt-BR, as the decimal string of the API: "1.234,56" → "1234.56". Without a comma, the dot is
- * the decimal point ("0.5"), so a value pasted from elsewhere still works.
+ * What the user typed, in pt-BR, as the decimal string of the API: "1.234,56" → "1234.56" and "1.500" → "1500"
+ * (thousands, as the screens show numbers). Any other dot without a comma is the decimal point ("0.5", "36.10"), so a
+ * value pasted from elsewhere still works.
  */
 export const toApiDecimal = (typed: string): string => {
   const text = typed.trim().replaceAll(' ', '');
-  return text.includes(',') ? text.replaceAll('.', '').replace(',', '.') : text;
+  if (text.includes(',') || /^-?[1-9]\d{0,2}(\.\d{3})+$/.test(text)) {
+    return text.replaceAll('.', '').replace(',', '.');
+  }
+  return text;
 };
 
 const API_DECIMAL = /^-?\d+(\.\d+)?$/;
@@ -64,8 +68,9 @@ export function decimalError(typed: string, rule: DecimalRule): ValidationErrors
   if (value.startsWith('-')) return coded(rule.zero ? 'NEGATIVE' : 'NOT_POSITIVE', rule.params);
   if (!rule.zero && !/[1-9]/.test(value)) return coded('NOT_POSITIVE', rule.params);
   const [whole, fraction = ''] = value.split('.');
-  if (whole.replace(/^0+/, '').length > MAX_INTEGER_DIGITS) {
-    return coded('TOO_LARGE', { maxIntegerDigits: MAX_INTEGER_DIGITS });
+  const maxIntegerDigits = rule.integerDigits ?? 12;
+  if (whole.replace(/^0+/, '').length > maxIntegerDigits) {
+    return coded('TOO_LARGE', { maxIntegerDigits });
   }
   if (fraction.replace(/0+$/, '').length > rule.maxDecimals)
     return coded(rule.decimals, rule.params);
@@ -106,7 +111,7 @@ const QUANTITY_FIELD: Record<AssetType, Intl.NumberFormat> = {
 const field = (format: Intl.NumberFormat, value: string) =>
   format.format(value as Intl.StringNumericLiteral);
 
-/** An API decimal as the form shows it in the edit mode (handoff U5: quantity by class, money with 2 places). */
+/** An API decimal as the edit mode shows it (handoff U5): quantity by class, price with 2 to 8 places, fees with 2. */
 export const quantityField = (value: string, assetType: AssetType) =>
   field(QUANTITY_FIELD[assetType], value);
 export const priceField = (value: string) => field(MONEY_FIELD, value);

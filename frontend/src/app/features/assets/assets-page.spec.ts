@@ -252,7 +252,7 @@ describe('AssetsPage (frame 7, C1)', () => {
     searches().flush({ items: [], total: 0 });
   });
 
-  describe('"Lançar operação" (C1, D51)', () => {
+  describe('"Lançar operação" (frame 7, D51)', () => {
     // jsdom has no modal <dialog>; the browser behavior is covered by the E2E.
     beforeAll(() => {
       HTMLDialogElement.prototype.showModal ??= function (this: HTMLDialogElement) {

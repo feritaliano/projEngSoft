@@ -126,7 +126,7 @@ describe('PortfolioDetailPage (frame 4, B6, B7)', () => {
       'Ativos em carteira 6 1 posição encerrada',
     ]);
     expect(element.querySelector('dl > div:nth-child(2) dd')?.className).toContain('text-positive');
-    // B13: each total explains itself; the link is named by the number (two links with the same text).
+    // B13: each total explains itself; each link is named by the label of its total (two links with the same text).
     const links = [...element.querySelector('dl')!.querySelectorAll('button')].map((b) =>
       b.getAttribute('aria-label'),
     );

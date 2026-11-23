@@ -463,6 +463,16 @@ describe('OperationHistoryPage (frame 6, B5, D45)', () => {
       expect(rows[2].className).not.toContain('bg-negative-subtle');
     });
 
+    it('sends nothing when the confirmation is cancelled (C3)', async () => {
+      await open();
+      const { dialog } = await confirmDeletion('Excluir operação de 22/05/2026, MXRF11');
+      [...dialog.querySelectorAll('button')].find((b) => text(b) === 'Cancelar')!.click();
+      await settle();
+
+      expect(element.querySelector('app-confirm-dialog')).toBeNull();
+      http.expectNone({ method: 'DELETE' });
+    });
+
     it('says the operation was already deleted on a 404 and loads the list again', async () => {
       await open();
       const { confirm } = await confirmDeletion('Excluir operação de 22/05/2026, MXRF11');

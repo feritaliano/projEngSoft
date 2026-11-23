@@ -35,7 +35,12 @@ interface Operation {
 
 /** Fills the form as a user does: the asset through the search, the rest field by field. */
 const fill = async (page: Page, operation: Operation) => {
-  if (operation.type) await page.getByText(operation.type, { exact: true }).click();
+  if (operation.type) {
+    await page
+      .getByRole('group', { name: 'Tipo de operação' })
+      .getByText(operation.type, { exact: true })
+      .click();
+  }
   if (operation.asset) {
     await page.getByRole('combobox', { name: 'Ativo' }).fill(operation.asset);
     await page.getByRole('option', { name: new RegExp(`^${operation.asset} `) }).click();
@@ -54,7 +59,7 @@ const kpi = (page: Page, label: string) =>
     .filter({ hasText: new RegExp(`^${label}$`) })
     .locator('xpath=following-sibling::dd[1]');
 
-test('launches a buy and a sell with profit through the form and sees the position (B2, B3, D42)', async ({
+test('launches a buy and a sell with profit through the form and sees the position (RN05, RN06, D42)', async ({
   page,
 }) => {
   await newPortfolio(page);
@@ -78,6 +83,8 @@ test('launches a buy and a sell with profit through the form and sees the positi
   await expect(saved).toContainText('lançada na carteira');
   await expect(page.getByRole('combobox', { name: 'Ativo' })).toHaveValue('');
 
+  // The new form keeps type and broker (frame "sucesso").
+  await expect(page.getByLabel('Corretora')).toHaveValue(/.+/);
   await fill(page, {
     type: 'Venda',
     asset: 'PETR4',
@@ -115,7 +122,9 @@ test('launches a buy and a sell with profit through the form and sees the positi
   await expect(petr4).toContainText(/50\s*R\$\s30,05\s*ⓘ\s*R\$\s1\.502,50/);
 });
 
-test('deletes an operation after the confirmation (B4, C3)', async ({ page }) => {
+test('refuses to delete a buy a later sell needs (RN10) and deletes after the confirmation (C3)', async ({
+  page,
+}) => {
   const name = await newPortfolio(page);
   await page.getByRole('link', { name: 'Lançar operação' }).click();
   await fill(page, {
@@ -129,20 +138,47 @@ test('deletes an operation after the confirmation (B4, C3)', async ({ page }) =>
   await expect(summary(page)).toContainText(/Total com custos\s*R\$\s98,50/);
   await page.getByRole('button', { name: 'Lançar compra' }).click();
   await expect(page.getByRole('status').filter({ hasText: 'Compra de 10 ITSA4' })).toBeVisible();
+  await fill(page, {
+    type: 'Venda',
+    asset: 'ITSA4',
+    date: '2026-09-02',
+    quantity: '10',
+    price: '10,00',
+    fees: '0',
+  });
+  await expect(summary(page)).toContainText(/Posição de ITSA4\s*10 → 0/);
+  await page.getByRole('button', { name: 'Lançar venda' }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'Venda de 10 ITSA4' })).toBeVisible();
 
   await page.getByRole('link', { name, exact: true }).click();
   await page
     .getByRole('navigation', { name: 'Seções da carteira' })
     .getByRole('link', { name: 'Histórico' })
     .click();
-  const trash = page.getByRole('button', { name: 'Excluir operação de 01/09/2026, ITSA4' });
-  await trash.click();
-  const dialog = page.getByRole('alertdialog', { name: 'Excluir a compra de 01/09/2026?' });
-  await expect(dialog).toContainText('A compra de 10 ITSA4 será apagada.');
-  await expect(dialog.getByRole('button', { name: 'Cancelar' })).toBeFocused();
-  await dialog.getByRole('button', { name: 'Excluir compra' }).click();
+  const deleteBuy = page.getByRole('button', { name: 'Excluir operação de 01/09/2026, ITSA4' });
+  await deleteBuy.click();
+  const buyDialog = page.getByRole('alertdialog', { name: 'Excluir a compra de 01/09/2026?' });
+  await expect(buyDialog).toContainText('A compra de 10 ITSA4 será apagada.');
+  await expect(buyDialog.getByRole('button', { name: 'Cancelar' })).toBeFocused();
+  await buyDialog.getByRole('button', { name: 'Excluir compra' }).click();
 
-  await expect(dialog).toBeHidden();
+  // RN10: the sale of 02/09 would pass the position; nothing deleted.
+  const alert = page
+    .getByRole('alert')
+    .filter({ hasText: 'Esta exclusão deixaria uma venda maior' });
+  await expect(alert).toContainText('Excluir a compra de 01/09/2026 faz a venda de 02/09/2026');
+  await expect(alert).toContainText('Nada foi apagado.');
+  await expect(page.getByText('2 operações · última em 02/09/2026')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Excluir operação de 02/09/2026, ITSA4' }).click();
+  await page
+    .getByRole('alertdialog', { name: 'Excluir a venda de 02/09/2026?' })
+    .getByRole('button', { name: 'Excluir venda' })
+    .click();
+  await expect(page.getByText('1 operação · última em 01/09/2026')).toBeVisible();
+  await deleteBuy.click();
+  await buyDialog.getByRole('button', { name: 'Excluir compra' }).click();
+
   await expect(
     page.getByRole('heading', { name: 'Nenhuma operação nesta carteira' }),
   ).toBeVisible();
@@ -199,33 +235,15 @@ test('editing the MXRF11 buy of 08/01 to 40 units shows the RN10 and saves nothi
   );
   await expect(page.getByRole('button', { name: 'Salvar alteração' })).toBeDisabled();
 
-  // The link goes to the History with that sale in evidence.
+  // The link goes to the History with that sale in evidence; nothing was saved.
   await page.getByRole('link', { name: 'Ver venda de 22/05/2026' }).click();
   await expect(page).toHaveURL(/\/historico\?operacao=/);
   await expect(page.getByText('11 operações · última em')).toBeVisible();
 });
 
-test('deleting the MXRF11 buy is refused with the sale it would break (RN10)', async ({ page }) => {
-  await openLongoPrazo(page);
-  await page
-    .getByRole('navigation', { name: 'Seções da carteira' })
-    .getByRole('link', { name: 'Histórico' })
-    .click();
-  await page.getByRole('button', { name: 'Excluir operação de 08/01/2026, MXRF11' }).click();
-  await page
-    .getByRole('alertdialog', { name: 'Excluir a compra de 08/01/2026?' })
-    .getByRole('button', { name: 'Excluir compra' })
-    .click();
-
-  const alert = page
-    .getByRole('alert')
-    .filter({ hasText: 'Esta exclusão deixaria uma venda maior' });
-  await expect(alert).toContainText('Excluir a compra de 08/01/2026 faz a venda de 22/05/2026');
-  await expect(alert).toContainText('Nada foi apagado.');
-  await expect(page.getByText('11 operações · última em')).toBeVisible();
-});
-
-test('the catalog opens the form with the asset, asking the portfolio (C1)', async ({ page }) => {
+test('the catalog opens the form with the asset, asking the portfolio (frame 7, D51)', async ({
+  page,
+}) => {
   await signIn(page);
   await page.getByRole('link', { name: 'Ativos' }).click();
   await page.getByLabel('Buscar ativo').fill('ITSA4');
@@ -236,6 +254,8 @@ test('the catalog opens the form with the asset, asking the portfolio (C1)', asy
   await expect(page.getByRole('tooltip')).toHaveText('Lançar operação');
   await add.click();
   const dialog = page.getByRole('dialog', { name: 'Em qual carteira lançar ITSA4?' });
+  await expect(dialog).toBeVisible();
+  expect(await seriousViolations(page)).toEqual([]);
   await dialog.getByLabel(/^Dividendos/).check();
   await dialog.getByRole('button', { name: 'Continuar' }).click();
 

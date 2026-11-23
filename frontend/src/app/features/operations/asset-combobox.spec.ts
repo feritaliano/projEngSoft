@@ -146,7 +146,7 @@ describe('AssetCombobox (frame 5, field Ativo)', () => {
     );
   });
 
-  it('does not search an empty field and lists nothing when the search fails', async () => {
+  it('does not search an empty field and closes the list when the search fails', async () => {
     const { fixture, element, type } = await render();
     await type('   ');
     http.expectNone(() => true);
@@ -154,7 +154,8 @@ describe('AssetCombobox (frame 5, field Ativo)', () => {
     await type('petro');
     http.expectOne(() => true).flush(null, { status: 500, statusText: 'Error' });
     await fixture.whenStable();
-    expect(element.querySelectorAll('[role="option"]').length).toBe(1); // "Nenhum ativo encontrado"
+    // Not "Nenhum ativo encontrado": the asset may exist.
+    expect(element.querySelector('[role="listbox"]')).toBeNull();
   });
 
   it('names an asset without issuer by its name alone (fixed income has no ticker, D50)', () => {

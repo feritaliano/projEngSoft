@@ -17,11 +17,14 @@ import {
 import { Button } from '../../shared/ui/button';
 import { AssetChoice } from './asset-combobox';
 
-/** States of the Resumo da operação (D42, handoff U5/U7a); "calculating" only after 300 ms without the answer. */
+/**
+ * States of the Resumo da operação (D42, handoff U5/U7a); "calculating" only after SKELETON_DELAY_MS without the
+ * answer. The operation travels with its preview, so the lines never mix one operation with another's values.
+ */
 export type SummaryState =
   | { kind: 'waiting' }
-  | { kind: 'calculating' }
-  | { kind: 'ready'; preview: OperationPreview }
+  | { kind: 'calculating'; operation: SummaryOperation }
+  | { kind: 'ready'; operation: SummaryOperation; preview: OperationPreview }
   | { kind: 'unavailable' }
   | { kind: 'gone' };
 
@@ -71,7 +74,7 @@ const TONES = { positive: 'text-positive', negative: 'text-negative', neutral: '
         }
         @default {
           @let p = s.kind === 'ready' ? s.preview : null;
-          @let o = operation();
+          @let o = s.operation;
           <p class="text-caption text-secondary">
             {{ p ? texts.header : texts.calculating }}
           </p>
@@ -79,16 +82,14 @@ const TONES = { positive: 'text-positive', negative: 'text-negative', neutral: '
             <div class="flex items-start gap-3">
               <dt class="flex flex-1 flex-col gap-1">
                 <span class="text-body-sm text-secondary">{{ grossLabel }}</span>
-                @if (o) {
-                  <span class="text-caption text-secondary">{{ caption() }}</span>
-                }
+                <span class="text-caption text-secondary">{{ caption() }}</span>
               </dt>
               <dd class="flex items-center gap-1 text-numeric-md text-primary">
                 @if (p) {
                   {{ money(p.grossAmount.value) }}
                   <app-derived-value-explainer
                     [value]="p.grossAmount"
-                    [asset]="o?.asset ?? null"
+                    [asset]="o.asset"
                     [preview]="true"
                   />
                 } @else {
@@ -99,7 +100,7 @@ const TONES = { positive: 'text-positive', negative: 'text-negative', neutral: '
             <div class="flex items-start gap-3">
               <dt class="flex-1 text-body-sm text-secondary">{{ texts.fees }}</dt>
               <dd class="text-numeric-md text-primary">
-                @if (p && o) {
+                @if (p) {
                   {{ money(o.fees) }}
                 } @else {
                   <ng-container [ngTemplateOutlet]="skeleton" />
@@ -113,7 +114,7 @@ const TONES = { positive: 'text-positive', negative: 'text-negative', neutral: '
                   {{ money(p.netAmount.value) }}
                   <app-derived-value-explainer
                     [value]="p.netAmount"
-                    [asset]="o?.asset ?? null"
+                    [asset]="o.asset"
                     [preview]="true"
                   />
                 } @else {
@@ -123,9 +124,7 @@ const TONES = { positive: 'text-positive', negative: 'text-negative', neutral: '
             </div>
           </dl>
           <hr class="border-default" />
-          @if (o) {
-            <p class="text-label-sm uppercase text-secondary">{{ heading() }}</p>
-          }
+          <p class="text-label-sm uppercase text-secondary">{{ heading() }}</p>
           <dl class="flex flex-col gap-3 tabular-nums">
             <div class="flex items-start gap-3">
               <dt class="flex-1 text-body-sm text-secondary">{{ positionLabel() }}</dt>
@@ -142,7 +141,7 @@ const TONES = { positive: 'text-positive', negative: 'text-negative', neutral: '
                 <dt class="flex-1 text-body-sm text-secondary">{{ texts.averagePrice }}</dt>
                 <dd class="flex items-center gap-1 text-numeric-md text-primary">
                   @if (p) {
-                    @if (o?.type === 'SELL') {
+                    @if (o.type === 'SELL') {
                       {{ sellAverage(p) }}
                     } @else {
                       {{ moneyOrDash(p.averagePriceBefore?.value) }} →
@@ -150,7 +149,7 @@ const TONES = { positive: 'text-positive', negative: 'text-negative', neutral: '
                       @if (p.averagePriceAfter; as after) {
                         <app-derived-value-explainer
                           [value]="after"
-                          [asset]="o?.asset ?? null"
+                          [asset]="o.asset"
                           [preview]="true"
                         />
                       }
@@ -160,8 +159,11 @@ const TONES = { positive: 'text-positive', negative: 'text-negative', neutral: '
                   }
                 </dd>
               </div>
+              @if (note(); as text) {
+                <p class="text-body-sm text-negative">{{ text }}</p>
+              }
             }
-            @if (o?.type === 'SELL') {
+            @if (o.type === 'SELL') {
               <div class="flex items-start gap-3">
                 <dt class="flex-1 text-body-sm text-secondary">{{ profitLabel }}</dt>
                 <dd class="flex items-center gap-1 text-numeric-md">
@@ -174,6 +176,8 @@ const TONES = { positive: 'text-positive', negative: 'text-negative', neutral: '
                         [asset]="o.asset"
                         [preview]="true"
                       />
+                    } @else if (violation()?.rule === 'RN07') {
+                      <span class="text-body-sm text-negative">{{ note() }}</span>
                     } @else {
                       <span class="text-primary">—</span>
                     }
@@ -184,9 +188,6 @@ const TONES = { positive: 'text-positive', negative: 'text-negative', neutral: '
               </div>
             }
           </dl>
-          @if (note(); as text) {
-            <p class="text-body-sm text-negative">{{ text }}</p>
-          }
         }
       }
     </section>
@@ -198,8 +199,6 @@ const TONES = { positive: 'text-positive', negative: 'text-negative', neutral: '
 })
 export class OperationSummary {
   readonly state = input.required<SummaryState>();
-  /** The operation of the last preview asked; null while the form is not valid. */
-  readonly operation = input<SummaryOperation | null>(null);
   /** For the line "Na carteira {nome}, …" of a new operation; the edit mode names the asset instead. */
   readonly portfolioName = input('');
   readonly editing = input(false);
@@ -213,6 +212,10 @@ export class OperationSummary {
   protected readonly signedMoney = formatSignedMoney;
   protected readonly moneyOrDash = (value?: string | null) => (value ? formatMoney(value) : '—');
 
+  protected readonly operation = computed(() => {
+    const state = this.state();
+    return state.kind === 'ready' || state.kind === 'calculating' ? state.operation : null;
+  });
   protected readonly violation = computed(() => {
     const state = this.state();
     return state.kind === 'ready' ? (state.preview.violation ?? null) : null;

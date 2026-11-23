@@ -452,7 +452,7 @@ export class OperationHistoryPage {
 
   /**
    * ConfirmDialog "Excluir operação" (C3). shortcut: the frame also says how much realized profit leaves the total and
-   * the position after it; the front does not compute them (D5), so the text says what is recalculated instead. Add
+   * the position after it; the front does not compute them (D28), so the text says what is recalculated instead. Add
    * the numbers when the API previews a deletion.
    */
   protected deletionText(operation: OperationDto): string {
