@@ -1,5 +1,14 @@
 import { Page, expect, test } from '@playwright/test';
-import { fill, kpi, openLongoPrazo, seriousViolations, signIn, summary } from './support';
+import {
+  fill,
+  kpi,
+  launch,
+  openLongoPrazo,
+  positionRow,
+  seriousViolations,
+  signIn,
+  summary,
+} from './support';
 
 // Against the real API and the seed (job e2e). A test that saves works on a portfolio of its own, so the totals of
 // "Longo prazo" stay as the other files check them; the rule violations of "Longo prazo" are refused, nothing saved.
@@ -34,10 +43,7 @@ test('launches a buy and a sell with profit through the form and sees the positi
   // The Resumo comes from the preview of the backend, nothing saved yet.
   await expect(summary(page)).toContainText(/Total com custos\s*R\$\s3\.005,00/);
   await expect(summary(page)).toContainText(/Posição de PETR4\s*0 → 100/);
-  await page.getByRole('button', { name: 'Lançar compra' }).click();
-  const saved = page.getByRole('status').filter({ hasText: 'Compra de 100 PETR4' });
-  await expect(saved).toContainText('lançada na carteira');
-  await expect(page.getByRole('combobox', { name: 'Ativo' })).toHaveValue('');
+  await launch(page, 'Lançar compra', 'Compra de 100 PETR4 lançada na carteira');
 
   // The new form keeps type and broker (frame "sucesso").
   await expect(page.getByLabel('Corretora')).toHaveValue(/.+/);
@@ -66,16 +72,13 @@ test('launches a buy and a sell with profit through the form and sees the positi
   await expect(panel).toBeHidden();
   await expect(info).toBeFocused();
 
-  await page.getByRole('button', { name: 'Lançar venda' }).click();
-  await expect(page.getByRole('status').filter({ hasText: 'Venda de 50 PETR4' })).toBeVisible();
+  await launch(page, 'Lançar venda', 'Venda de 50 PETR4');
 
   await page.getByRole('link', { name: 'Ver carteira' }).click();
   await expect(kpi(page, 'Lucro realizado')).toHaveText('+ R$ 492,50');
-  const petr4 = page
-    .getByRole('table', { name: 'Posições abertas, agrupadas por classe' })
-    .getByRole('row')
-    .filter({ hasText: 'PETR4' });
-  await expect(petr4).toContainText(/50\s*R\$\s30,05\s*ⓘ\s*R\$\s1\.502,50/);
+  await expect(positionRow(page, 'Posições abertas, agrupadas por classe', 'PETR4')).toContainText(
+    /50\s*R\$\s30,05\s*ⓘ\s*R\$\s1\.502,50/,
+  );
 });
 
 test('refuses to delete a buy a later sell needs (RN10) and deletes after the confirmation (C3)', async ({
@@ -92,8 +95,7 @@ test('refuses to delete a buy a later sell needs (RN10) and deletes after the co
     fees: '0',
   });
   await expect(summary(page)).toContainText(/Total com custos\s*R\$\s98,50/);
-  await page.getByRole('button', { name: 'Lançar compra' }).click();
-  await expect(page.getByRole('status').filter({ hasText: 'Compra de 10 ITSA4' })).toBeVisible();
+  await launch(page, 'Lançar compra', 'Compra de 10 ITSA4');
   await fill(page, {
     type: 'Venda',
     asset: 'ITSA4',
@@ -103,8 +105,7 @@ test('refuses to delete a buy a later sell needs (RN10) and deletes after the co
     fees: '0',
   });
   await expect(summary(page)).toContainText(/Posição de ITSA4\s*10 → 0/);
-  await page.getByRole('button', { name: 'Lançar venda' }).click();
-  await expect(page.getByRole('status').filter({ hasText: 'Venda de 10 ITSA4' })).toBeVisible();
+  await launch(page, 'Lançar venda', 'Venda de 10 ITSA4');
 
   await page.getByRole('link', { name, exact: true }).click();
   await page
