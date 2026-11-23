@@ -35,6 +35,20 @@ export const kpi = (page: Page, label: string) =>
     .filter({ hasText: new RegExp(`^${label}$`) })
     .locator('xpath=following-sibling::dd[1]');
 
+/** Saves the form and waits for its reset: both buys show the same notice, so the notice alone could be the old one. */
+export const launch = async (
+  page: Page,
+  button: 'Lançar compra' | 'Lançar venda',
+  notice: string,
+) => {
+  await page.getByRole('button', { name: button }).click();
+  await expect(page.getByRole('status').filter({ hasText: notice })).toBeVisible();
+  await expect(page.getByRole('combobox', { name: 'Ativo' })).toHaveValue('');
+};
+
+export const positionRow = (page: Page, table: string, asset: string) =>
+  page.getByRole('table', { name: table }).getByRole('row').filter({ hasText: asset });
+
 export const summary = (page: Page) => page.getByRole('region', { name: 'Resumo da operação' });
 
 export interface Operation {

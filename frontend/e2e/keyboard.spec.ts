@@ -1,5 +1,5 @@
 import { Locator, Page, expect, test } from '@playwright/test';
-import { DEMO, kpi, summary, tabs } from './support';
+import { DEMO, kpi, positionRow, summary, tabs } from './support';
 
 // R1, handoff U5: the main flow of the S1 with the keyboard only (Tab, Shift+Tab, Enter, Space, arrows and Escape; no
 // click and no fill). Against the real API and the seed; the operation goes to a portfolio of its own and is deleted
@@ -12,15 +12,15 @@ const expectRing = async (target: Locator) => {
   const ring = await target.evaluate((element) => {
     if (!element.matches(':focus-visible')) return 'no :focus-visible';
     // The ring of a visually hidden radio is on its label and the one of a card link on the card (D51).
-    const owner = element.matches('input[type=radio]')
-      ? element.closest('label')
-      : element.matches('a') && getComputedStyle(element).outlineStyle === 'none'
-        ? element.closest('li')
-        : element;
+    let owner: Element | null = element;
+    if (element.matches('input[type=radio]')) owner = element.closest('label');
+    else if (element.matches('a') && getComputedStyle(element).outlineStyle === 'none') {
+      owner = element.closest('li');
+    }
     if (!owner) return 'no ring owner';
     const { outlineStyle, outlineWidth, outlineColor } = getComputedStyle(owner);
     const transparent = outlineColor === 'transparent' || /, 0\)$/.test(outlineColor);
-    return `${outlineStyle} ${parseFloat(outlineWidth) > 0 ? 'wide' : 'thin'} ${transparent ? 'transparent' : 'colored'}`;
+    return `${outlineStyle} ${parseFloat(outlineWidth) > 0 ? 'wide' : 'none'} ${transparent ? 'transparent' : 'colored'}`;
   });
   expect(ring).toBe('solid wide colored');
 };
@@ -112,12 +112,9 @@ test('the main flow works with the keyboard only, with visible focus and the foc
   await page.keyboard.press('Enter');
 
   await expect(kpi(page, 'Custo total')).toHaveText('R$ 300,00');
-  await expect(
-    page
-      .getByRole('table', { name: 'Posições abertas, agrupadas por classe' })
-      .getByRole('row')
-      .filter({ hasText: 'PETR4' }),
-  ).toContainText(/10\s*R\$\s30,00\s*ⓘ\s*R\$\s300,00/);
+  await expect(positionRow(page, 'Posições abertas, agrupadas por classe', 'PETR4')).toContainText(
+    /10\s*R\$\s30,00\s*ⓘ\s*R\$\s300,00/,
+  );
 
   // "Como foi calculado": Enter opens, the focus goes to the title, Tab goes to "Fechar" in the panel (a modal
   // <dialog>: the page behind is inert), Esc closes and the focus goes back to the trigger.
