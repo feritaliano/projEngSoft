@@ -1,18 +1,8 @@
 import { Page, expect, test } from '@playwright/test';
-import { fill, kpi, openLongoPrazo, signIn, summary, tabs } from './support';
+import { fill, kpi, launch, openLongoPrazo, positionRow, signIn, summary, tabs } from './support';
 
 // R1: the S1 from end to end against the real API and the seed (job e2e), no mock. The first test starts from a new
 // account, so it depends on nothing of the seed but the catalog and the brokers.
-
-/** Saves the form and waits for its reset: both buys show the same notice, so the notice alone could be the old one. */
-const launch = async (page: Page, button: 'Lançar compra' | 'Lançar venda', notice: string) => {
-  await page.getByRole('button', { name: button }).click();
-  await expect(page.getByRole('status').filter({ hasText: notice })).toBeVisible();
-  await expect(page.getByRole('combobox', { name: 'Ativo' })).toHaveValue('');
-};
-
-const positionRow = (page: Page, table: string, asset: string) =>
-  page.getByRole('table', { name: table }).getByRole('row').filter({ hasText: asset });
 
 const openTab = async (page: Page, name: 'Resumo' | 'Histórico') => {
   await tabs(page).getByRole('link', { name }).click();
