@@ -1190,7 +1190,7 @@
     },
     "/api/v1/portfolios/{id}/positions": {
       "get": {
-        "description": "Open (quantity > 0) and closed (quantity 0, realized profit ≠ 0) positions; a closed one with realized profit exactly 0 is not listed. Ordered by asset class, then display name. 500 while the portfolio has a corporate event (traced from S2 on).",
+        "description": "Open (quantity > 0) and closed (quantity 0, realized profit ≠ 0) positions; a closed one with realized profit exactly 0 is not listed. Open positions first, their asset classes by total cost descending (market value from S2 on), a tie by the fixed order of AssetType; then closed positions by that fixed order; display name within a class (D63). 500 while the portfolio has a corporate event (traced from S2 on).",
         "operationId": "PositionsController_positions",
         "parameters": [
           {

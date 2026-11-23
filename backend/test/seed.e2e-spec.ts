@@ -213,6 +213,18 @@ describe('Seed loaded through the API (integration, BK-3, A1, P1-2)', () => {
         realizedProfit: '412.80',
       }),
     });
+    // D63: stocks 6164.27, crypto 4100, ETFs 2369, fixed income 2000, FIIs 1518; the closed one last.
+    expect(
+      positions.map((line) => line.asset.ticker ?? line.asset.displayName),
+    ).toEqual([
+      'ITSA4',
+      'PETR4',
+      'BTC',
+      'BOVA11',
+      'Tesouro IPCA+ 2035',
+      'MXRF11',
+      'WEGE3',
+    ]);
   });
 
   it('accepts the seed fixed ids, which are not RFC 4122 versions, in the history filter and the preview (BK-3, D42, D45)', async () => {

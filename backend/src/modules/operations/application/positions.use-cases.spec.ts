@@ -30,6 +30,7 @@ const ASSETS: AssetSummary[] = [
   ['Bitcoin', 'CRYPTO'],
   ['Tesouro IPCA+ 2035', 'FIXED_INCOME'],
   ['WEGE3', 'STOCK'],
+  ['Ethereum', 'CRYPTO'],
 ].map(([displayName, assetType], index) => ({
   id: ID(index),
   ticker: assetType === 'FIXED_INCOME' ? null : displayName,
@@ -103,7 +104,7 @@ describe('ListPositions (B6, D41, RN09, RN12)', () => {
     expect(reader.timelinesOf).not.toHaveBeenCalled();
   });
 
-  it('lists open and closed positions by asset class, then display name, leaving out closed with profit 0 (D41, D55)', async () => {
+  it('lists open positions by class cost, then display name, and closed after, leaving out closed with profit 0 (D41, D55, D63)', async () => {
     const { list } = setup([
       [3, [buy('2026-01-05', '0.0125', '350000', '0', at)]],
       [0, [buy('2026-01-05', '10', '60', '0', at)]],
@@ -130,17 +131,73 @@ describe('ListPositions (B6, D41, RN09, RN12)', () => {
     expect(
       lines.map((line) => [line.asset.displayName, line.status, line.quantity]),
     ).toEqual([
-      ['PETR4', 'CLOSED', '0'],
-      ['VALE3', 'OPEN', '10'],
-      ['MXRF11', 'OPEN', '100'],
-      ['Tesouro IPCA+ 2035', 'OPEN', '0.52'],
       ['Bitcoin', 'OPEN', '0.0125'],
+      ['Tesouro IPCA+ 2035', 'OPEN', '0.52'],
+      ['MXRF11', 'OPEN', '100'],
+      ['VALE3', 'OPEN', '10'],
+      ['PETR4', 'CLOSED', '0'],
     ]);
-    expect(lines[3].asset).toEqual({
+    expect(lines[1].asset).toEqual({
       id: ID(4),
       ticker: null,
       displayName: 'Tesouro IPCA+ 2035',
       assetType: 'FIXED_INCOME',
+    });
+  });
+
+  describe('order of the classes by their cost (D63)', () => {
+    const order = async (timelines: [number, TimelineItem[]][]) =>
+      (await setup(timelines).list.execute(ANA, P1)).map(
+        (line) => line.asset.displayName,
+      );
+    const holding = (quantity: string, price: string) => [
+      buy('2026-01-05', quantity, price, '0', at),
+    ];
+    const closed = (sellPrice: string) => [
+      buy('2026-01-05', '10', '10', '0', at),
+      sell('2026-02-05', '10', sellPrice, '0', at),
+    ];
+
+    it('puts the class with more cost first, even if it comes later in the fixed order', async () => {
+      expect(
+        await order([
+          [0, holding('10', '60')],
+          [3, holding('0.01', '100000')],
+        ]),
+      ).toEqual(['Bitcoin', 'VALE3']);
+    });
+
+    it('breaks a tie of the class sums, in Decimal, by the fixed order of the classes (D5)', async () => {
+      expect(
+        await order([
+          [0, holding('1', '0.01')],
+          [3, holding('1', '0.1')],
+          [6, holding('1', '0.2')],
+          [2, holding('1', '0.3')],
+        ]),
+      ).toEqual(['MXRF11', 'Bitcoin', 'Ethereum', 'VALE3']);
+    });
+
+    it('ranks a class by the sum of its positions, not by its largest one', async () => {
+      expect(
+        await order([
+          [0, holding('10', '100')],
+          [6, holding('1', '600')],
+          [3, holding('1', '600')],
+        ]),
+      ).toEqual(['Bitcoin', 'Ethereum', 'VALE3']);
+    });
+
+    it('lists closed positions after every open one, by class, then display name', async () => {
+      expect(
+        await order([
+          [2, closed('12')],
+          [5, closed('8')],
+          [3, holding('0.0001', '100000')],
+          [1, closed('15')],
+          [0, holding('10', '60')],
+        ]),
+      ).toEqual(['VALE3', 'Bitcoin', 'PETR4', 'WEGE3', 'MXRF11']);
     });
   });
 

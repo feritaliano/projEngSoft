@@ -223,9 +223,9 @@ describe('Positions and summary (E2E, B6, B7, D41, D55, RN05–RN12)', () => {
     ).toEqual([
       ['ITSA4', 'OPEN', '300'],
       ['PETR4', 'OPEN', '100'],
-      ['WEGE3', 'CLOSED', '0'],
-      ['MXRF11', 'OPEN', '150'],
       ['BOVA11', 'OPEN', '20'],
+      ['MXRF11', 'OPEN', '150'],
+      ['WEGE3', 'CLOSED', '0'],
     ]);
     expect(toCents(totals.totalCost.value)).toBe('10051.27');
     expect(toCents(totals.realizedProfit.value)).toBe('693.87');
@@ -244,12 +244,12 @@ describe('Positions and summary (E2E, B6, B7, D41, D55, RN05–RN12)', () => {
       ]),
     ).toEqual([
       ['positions', 'ASSET_POSITION', 'PETR4', 'OPEN'],
-      ['positions', 'ASSET_POSITION', 'WEGE3', 'CLOSED'],
       ['positions', 'ASSET_POSITION', 'MXRF11', 'OPEN'],
+      ['positions', 'ASSET_POSITION', 'WEGE3', 'CLOSED'],
     ]);
   });
 
-  it('lists fixed income and crypto by display name and asset class, quantities as decimal strings (D55)', async () => {
+  it('lists fixed income and crypto by class cost, quantities as decimal strings (D55, D63)', async () => {
     const btc = await createCryptoAsset(prisma, {
       ticker: 'BTC',
       name: 'Bitcoin',
@@ -285,11 +285,11 @@ describe('Positions and summary (E2E, B6, B7, D41, D55, RN05–RN12)', () => {
         line.quantity,
       ]),
     ).toEqual([
-      ['STOCK', 'PETR4', 'PETR4', '10'],
       ['FIXED_INCOME', null, 'Tesouro IPCA+ 2035', '0.52'],
+      ['STOCK', 'PETR4', 'PETR4', '10'],
       ['CRYPTO', 'BTC', 'Bitcoin', '0.00000001'],
     ]);
-    expect(lines[1].totalCost?.value).toBe('1560.052');
+    expect(lines[0].totalCost?.value).toBe('1560.052');
     expect(lines[2].totalCost?.value).toBe('0.0035');
     expect((await summary()).assetCount).toBe(3);
   });
