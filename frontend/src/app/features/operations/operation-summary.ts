@@ -137,7 +137,7 @@ const TONES = { positive: 'text-positive', negative: 'text-negative', neutral: '
               </dd>
             </div>
             @if (violation()?.rule !== 'RN07') {
-              <div class="flex items-start gap-3">
+              <div class="flex flex-wrap items-start gap-3">
                 <dt class="flex-1 text-body-sm text-secondary">{{ texts.averagePrice }}</dt>
                 <dd class="flex items-center gap-1 text-numeric-md text-primary">
                   @if (p) {
@@ -158,10 +158,11 @@ const TONES = { positive: 'text-positive', negative: 'text-negative', neutral: '
                     <ng-container [ngTemplateOutlet]="skeleton" />
                   }
                 </dd>
+                <!-- A dd of the PM, on its own line: a <p> straight in the <dl> is invalid (axe only-dlitems). -->
+                @if (note(); as text) {
+                  <dd class="basis-full text-body-sm text-negative">{{ text }}</dd>
+                }
               </div>
-              @if (note(); as text) {
-                <p class="text-body-sm text-negative">{{ text }}</p>
-              }
             }
             @if (o.type === 'SELL') {
               <div class="flex items-start gap-3">

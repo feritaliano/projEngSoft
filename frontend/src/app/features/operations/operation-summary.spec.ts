@@ -158,9 +158,15 @@ describe('OperationSummary (frame 5, D42)', () => {
       availableQuantity: '40',
       soldQuantity: '50',
     };
-    const { shown } = await render({ kind: 'ready', preview: { ...BOUGHT, violation } }, BUY, true);
+    const { section, shown } = await render(
+      { kind: 'ready', preview: { ...BOUGHT, violation } },
+      BUY,
+      true,
+    );
 
     expect(shown()).toContain('PETR4 em 28/10/2026, com a alteração');
+    // The note is a dd of the PM: a <dl> holds only dt/dd groups (axe only-dlitems, WCAG 1.3.1).
+    expect(section.querySelectorAll('dl > :not(div), dl > div > :not(dt, dd)')).toHaveLength(0);
     expect(shown()).toContain('Preço médio R$ 32,03 → R$ 33,39');
     // Handoff U5: the note goes right below the average price.
     expect(shown()).toMatch(
