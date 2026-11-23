@@ -79,6 +79,8 @@ carteira-b3/
 │   └── postgres/
 │       └── init/
 │           └── 01-create-test-db.sql   [ok] cria carteira_test e carteira_shadow na primeira subida
+├── docs/
+│   └── roteiro-demonstracao.md      [R1] roteiro da apresentação do S1 (09/12/2026), com plano B
 ├── docker-compose.yml               [ok] serviço postgres; perfil `app` com migrate, api e worker (chore/K1-backend-docker)
 ├── .dockerignore                    contexto de build das imagens: exclui .env, node_modules, builds e pastas que não entram na imagem
 │
