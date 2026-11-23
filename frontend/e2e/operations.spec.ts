@@ -230,7 +230,10 @@ for (const colorScheme of ['light', 'dark'] as const) {
     await page
       .getByRole('button', { name: 'Como foi calculado: Lucro realizado da carteira' })
       .click();
-    await expect(page.getByRole('dialog', { name: 'Como foi calculado' })).toContainText('WEGE3');
+    const panel = page.getByRole('dialog', { name: 'Como foi calculado' });
+    await expect(panel).toContainText('WEGE3');
+    // After the 200 ms fade-in: mid-fade, axe measures blended colors (4.4:1 seen in CI on #52).
+    await expect(panel).toHaveCSS('opacity', '1');
     expect(await seriousViolations(page)).toEqual([]);
     await page.keyboard.press('Escape');
 
