@@ -1,6 +1,8 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { PortfolioDto } from '../../api/models';
+import { Button } from '../../shared/ui/button';
+import { Icon } from '../../shared/ui/icon';
 
 /**
  * Header of the Detail and of the History (frames 4 and 6): breadcrumb, name, line below it and PortfolioTabs (D45).
@@ -9,7 +11,7 @@ import { PortfolioDto } from '../../api/models';
  */
 @Component({
   selector: 'app-portfolio-header',
-  imports: [RouterLink, RouterLinkActive],
+  imports: [RouterLink, RouterLinkActive, Button, Icon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex flex-col gap-6' },
   template: `
@@ -30,11 +32,17 @@ import { PortfolioDto } from '../../api/models';
       </ol>
     </nav>
     @if (portfolio(); as p) {
-      <div class="flex flex-col gap-1">
-        <h1 tabindex="-1" class="break-words text-heading-lg text-primary md:text-heading-xl">
-          {{ p.name }}
-        </h1>
-        <p class="text-body-sm text-secondary">{{ subtitle() }}</p>
+      <div class="flex flex-col gap-4 md:flex-row md:items-start">
+        <div class="flex min-w-0 flex-1 flex-col gap-1">
+          <h1 tabindex="-1" class="break-words text-heading-lg text-primary md:text-heading-xl">
+            {{ p.name }}
+          </h1>
+          <p class="text-body-sm text-secondary">{{ subtitle() }}</p>
+        </div>
+        <a appButton [routerLink]="['/carteiras', p.id, 'operacoes', 'nova']">
+          <app-icon name="plus" />
+          Lançar operação
+        </a>
       </div>
       <nav aria-label="Seções da carteira" class="flex gap-6 border-b border-default">
         @for (tab of tabs; track tab.path) {

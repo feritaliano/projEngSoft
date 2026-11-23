@@ -52,6 +52,10 @@ describe('PortfolioHeader (D45)', () => {
     ]);
     expect(tabs.map((a) => a.getAttribute('aria-current'))).toEqual([null, 'page']);
     expect(element.querySelector('[role="tablist"]')).toBeNull();
+    const launch = [...element.querySelectorAll('a')].find(
+      (link) => link.textContent?.trim() === 'Lançar operação',
+    );
+    expect(launch?.getAttribute('href')).toBe('/carteiras/p1/operacoes/nova');
   });
 
   it('marks Resumo only on the exact route of the portfolio', async () => {

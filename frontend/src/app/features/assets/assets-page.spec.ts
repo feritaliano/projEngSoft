@@ -2,11 +2,13 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ErrorHandler } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { Router, provideRouter } from '@angular/router';
 import { text } from '../../../testing/text';
 import { provideApiConfiguration } from '../../api/api-configuration';
-import { AssetDto } from '../../api/models';
+import { AssetDto, PortfolioDto } from '../../api/models';
 import { SKELETON_DELAY_MS } from '../../shared/ui/load-error';
-import { AssetsPage, SEARCH_DEBOUNCE_MS } from './assets-page';
+import { AssetsPage } from './assets-page';
+import { SEARCH_DEBOUNCE_MS } from './assets.service';
 
 const API = 'http://api.test';
 const ASSETS_URL = `${API}/api/v1/assets`;
@@ -72,6 +74,7 @@ describe('AssetsPage (frame 7, C1)', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         provideApiConfiguration(API),
+        provideRouter([]),
         { provide: ErrorHandler, useValue: { handleError } },
       ],
     });
@@ -247,5 +250,93 @@ describe('AssetsPage (frame 7, C1)', () => {
     expect(text(element.querySelector('[aria-busy="true"]'))).toBe('Carregando…');
 
     searches().flush({ items: [], total: 0 });
+  });
+
+  describe('"Lançar operação" (C1, D51)', () => {
+    // jsdom has no modal <dialog>; the browser behavior is covered by the E2E.
+    beforeAll(() => {
+      HTMLDialogElement.prototype.showModal ??= function (this: HTMLDialogElement) {
+        this.open = true;
+      };
+      HTMLDialogElement.prototype.close ??= function (this: HTMLDialogElement) {
+        this.open = false;
+      };
+    });
+
+    const portfolio = (id: string, name: string, operationCount: number): PortfolioDto => ({
+      id,
+      name,
+      operationCount,
+      assetCount: operationCount ? 4 : 0,
+      lastTradeDate: null,
+    });
+    const launch = async (label: string, portfolios: PortfolioDto[]) => {
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      element.querySelector<HTMLButtonElement>(`table button[aria-label="${label}"]`)!.click();
+      http.expectOne(`${API}/api/v1/portfolios`).flush(portfolios);
+      await settle();
+      return navigate;
+    };
+
+    it('has the + of each row named by the asset, and the text button on the mobile cards', async () => {
+      await open();
+
+      expect(text(element.querySelector('thead th:last-child'))).toBe('Ações');
+      expect(
+        [...element.querySelectorAll('table button')].map((b) => b.getAttribute('aria-label')),
+      ).toEqual([
+        'Lançar operação de ITSA4',
+        'Lançar operação de Tesouro IPCA+ 2035',
+        'Lançar operação de BTC',
+      ]);
+      expect(text(element.querySelector('ul button'))).toBe('Lançar operação');
+    });
+
+    it('opens the form with the asset when there is one portfolio', async () => {
+      await open();
+      const navigate = await launch('Lançar operação de ITSA4', [
+        portfolio('p1', 'Longo prazo', 9),
+      ]);
+
+      expect(navigate).toHaveBeenCalledWith(['/carteiras', 'p1', 'operacoes', 'nova'], {
+        state: { asset: ITSA4 },
+      });
+    });
+
+    it('asks which portfolio when there are more, the first one chosen', async () => {
+      await open();
+      const navigate = await launch('Lançar operação de Tesouro IPCA+ 2035', [
+        portfolio('p1', 'Longo prazo', 9),
+        portfolio('p3', 'Testes FII', 0),
+      ]);
+      const dialog = element.querySelector('app-portfolio-picker')!;
+
+      expect(text(dialog.querySelector('h2'))).toBe('Em qual carteira lançar Tesouro IPCA+ 2035?');
+      expect([...dialog.querySelectorAll('label')].map(text)).toEqual([
+        'Longo prazo 4 ativos · 9 operações',
+        'Testes FII Sem operações ainda',
+      ]);
+      expect(dialog.querySelector<HTMLInputElement>('input:checked')?.value).toBe('p1');
+
+      dialog.querySelectorAll<HTMLInputElement>('input')[1].click();
+      [...dialog.querySelectorAll('button')].find((b) => text(b) === 'Continuar')!.click();
+      await settle();
+
+      expect(navigate).toHaveBeenCalledWith(['/carteiras', 'p3', 'operacoes', 'nova'], {
+        state: { asset: TESOURO },
+      });
+      expect(element.querySelector('app-portfolio-picker')).toBeNull();
+    });
+
+    it('closes the dialog on Cancelar and goes to the list without portfolios', async () => {
+      await open();
+      await launch('Lançar operação de BTC', [portfolio('p1', 'A', 1), portfolio('p2', 'B', 1)]);
+      button('Cancelar')!.click();
+      await settle();
+      expect(element.querySelector('app-portfolio-picker')).toBeNull();
+
+      const navigate = await launch('Lançar operação de BTC', []);
+      expect(navigate).toHaveBeenCalledWith(['/carteiras']);
+    });
   });
 });
