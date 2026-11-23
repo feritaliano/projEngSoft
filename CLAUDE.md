@@ -103,6 +103,7 @@ database/
   results/        resultados das consultas e listagens das tabelas
 data/raw/         arquivos brutos das fontes externas (fora do Git)
 docker/           scripts de inicialização do PostgreSQL
+docs/             roteiro de demonstração do S1 (R1)
 backend/          NestJS (criado pelo Nest CLI no K1)
 frontend/         Angular (criado pelo Angular CLI no W1)
 graphify-out/     grafo do código do Graphify (gerado, fora do Git, D53)
