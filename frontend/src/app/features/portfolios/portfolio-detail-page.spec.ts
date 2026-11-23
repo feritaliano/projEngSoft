@@ -42,7 +42,9 @@ const position = (
   realizedProfit: derived(realizedProfit),
 });
 
-// Seed of the demo user (handoff, "Massa das telas 3 e 4"), in the order of the API (by class, then name).
+// Seed of the demo user (handoff, "Massa das telas 3 e 4"), in the order of the API (D63): open positions by the
+// cost of their class, highest first (Ações 6.164,27, Cripto 4.100, ETFs 2.369, Renda fixa 2.000, FIIs 1.518), then by
+// name; closed positions last.
 const LONGO: PortfolioDto = {
   id: 'p1',
   name: 'Longo prazo',
@@ -58,11 +60,11 @@ const SUMMARY: PortfolioSummary = {
 const POSITIONS: Position[] = [
   position('ITSA4', 'ITSA4', 'STOCK', '300', '9.87', '2961', '0'),
   position('PETR4', 'PETR4', 'STOCK', '100', '32.0326666666666666667', '3203.27', '293.47'),
-  position('WEGE3', 'WEGE3', 'STOCK', '0', null, null, '412.8'),
-  position('MXRF11', 'MXRF11', 'FII', '150', '10.12', '1518', '-12.4'),
+  position('BTC', 'Bitcoin', 'CRYPTO', '0.0125', '328000', '4100', '0'),
   position('BOVA11', 'BOVA11', 'ETF', '20', '118.45', '2369', '0'),
   position(null, 'Tesouro IPCA+ 2035', 'FIXED_INCOME', '0.52', '3846.15384615', '2000', '0'),
-  position('BTC', 'Bitcoin', 'CRYPTO', '0.0125', '328000', '4100', '0'),
+  position('MXRF11', 'MXRF11', 'FII', '150', '10.12', '1518', '-12.4'),
+  position('WEGE3', 'WEGE3', 'STOCK', '0', null, null, '412.8'),
 ];
 
 describe('PortfolioDetailPage (frame 4, B6, B7)', () => {
@@ -136,26 +138,26 @@ describe('PortfolioDetailPage (frame 4, B6, B7)', () => {
     ]);
   });
 
-  it('groups the open positions by class in the order of the frame, with the quantity of each class', async () => {
+  it('groups the open positions by class in the order the API sends, the class with more holdings first (D63)', async () => {
     await open();
     const element = await answer();
     const table = element.querySelector('table');
 
     expect([...table!.querySelectorAll('th[scope="rowgroup"]')].map(text)).toEqual([
       'Ações',
-      'ETFs',
-      'FIIs',
-      'Renda fixa',
       'Cripto',
+      'ETFs',
+      'Renda fixa',
+      'FIIs',
     ]);
     const rows = [...table!.querySelectorAll('tbody tr:not(:first-child)')].map(text);
     expect(rows).toEqual([
       'IT ITSA4 Ação 300 R$ 9,87 ⓘ R$ 2.961,00 ⓘ R$ 0,00 ⓘ',
       'PE PETR4 Ação 100 R$ 32,03 ⓘ R$ 3.203,27 ⓘ + R$ 293,47 ⓘ',
-      'BO BOVA11 ETF 20 R$ 118,45 ⓘ R$ 2.369,00 ⓘ R$ 0,00 ⓘ',
-      'MX MXRF11 FII 150 R$ 10,12 ⓘ R$ 1.518,00 ⓘ − R$ 12,40 ⓘ',
-      'TE Tesouro IPCA+ 2035 Renda fixa 0,52 R$ 3.846,15 ⓘ R$ 2.000,00 ⓘ R$ 0,00 ⓘ',
       'BT BTC Cripto 0,0125 R$ 328.000,00 ⓘ R$ 4.100,00 ⓘ R$ 0,00 ⓘ',
+      'BO BOVA11 ETF 20 R$ 118,45 ⓘ R$ 2.369,00 ⓘ R$ 0,00 ⓘ',
+      'TE Tesouro IPCA+ 2035 Renda fixa 0,52 R$ 3.846,15 ⓘ R$ 2.000,00 ⓘ R$ 0,00 ⓘ',
+      'MX MXRF11 FII 150 R$ 10,12 ⓘ R$ 1.518,00 ⓘ − R$ 12,40 ⓘ',
     ]);
     // B13: the ⓘ of each value is named by its label (microcopy, section 1).
     const petr4 = table!.querySelectorAll('tbody tr')[2];

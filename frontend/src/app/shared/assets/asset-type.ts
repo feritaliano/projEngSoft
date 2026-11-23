@@ -1,17 +1,5 @@
 import { AssetType } from '../../api/models';
 
-/**
- * Class groups of the Detail as in frame 4 and the frontend prompt: ETFs before FIIs, unlike the order of the API
- * and of the chips (the text of the handoff, "O que aparece no S1", lists FIIs first; the frame wins).
- */
-export const GROUP_ORDER: readonly AssetType[] = [
-  'STOCK',
-  'ETF',
-  'FII',
-  'BDR',
-  'FIXED_INCOME',
-  'CRYPTO',
-];
 /** Type chips of the History (handoff, frame 6): FIIs before ETFs. */
 export const CHIP_ORDER: readonly AssetType[] = [
   'STOCK',
