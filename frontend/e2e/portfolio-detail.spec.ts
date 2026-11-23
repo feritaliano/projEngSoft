@@ -45,12 +45,18 @@ test('shows the totals and the positions of "Longo prazo" as the API computes th
   // Header + 5 class groups + 6 assets + Total: no asset more, none less.
   await expect(open.getByRole('row')).toHaveCount(13);
   const row = (name: string | RegExp) => open.getByRole('row').filter({ hasText: name });
-  await expect(row('PETR4')).toContainText(/100\s*R\$\s32,03\s*R\$\s3\.203,27\s*\+ R\$\s293,47/);
-  await expect(row('ITSA4')).toContainText(/300\s*R\$\s9,87\s*R\$\s2\.961,00\s*R\$\s0,00/);
-  await expect(row('BOVA11')).toContainText(/20\s*R\$\s118,45\s*R\$\s2\.369,00/);
-  await expect(row('MXRF11')).toContainText(/150\s*R\$\s10,12\s*R\$\s1\.518,00\s*− R\$\s12,40/);
-  await expect(row('Tesouro IPCA+ 2035')).toContainText(/0,52\s*R\$\s3\.846,15\s*R\$\s2\.000,00/);
-  await expect(row('BTC')).toContainText(/0,0125\s*R\$\s328\.000,00\s*R\$\s4\.100,00/);
+  await expect(row('PETR4')).toContainText(
+    /100\s*R\$\s32,03\s*ⓘ\s*R\$\s3\.203,27\s*ⓘ\s*\+ R\$\s293,47/,
+  );
+  await expect(row('ITSA4')).toContainText(/300\s*R\$\s9,87\s*ⓘ\s*R\$\s2\.961,00\s*ⓘ\s*R\$\s0,00/);
+  await expect(row('BOVA11')).toContainText(/20\s*R\$\s118,45\s*ⓘ\s*R\$\s2\.369,00/);
+  await expect(row('MXRF11')).toContainText(
+    /150\s*R\$\s10,12\s*ⓘ\s*R\$\s1\.518,00\s*ⓘ\s*− R\$\s12,40/,
+  );
+  await expect(row('Tesouro IPCA+ 2035')).toContainText(
+    /0,52\s*R\$\s3\.846,15\s*ⓘ\s*R\$\s2\.000,00/,
+  );
+  await expect(row('BTC')).toContainText(/0,0125\s*R\$\s328\.000,00\s*ⓘ\s*R\$\s4\.100,00/);
   // Regex, not 'Total': a string hasText ignores case and would also match "Custo total" in the header. The raw
   // text of the row starts with the template's whitespace, hence \s*.
   await expect(row(/^\s*Total/)).toContainText('R$ 16.151,27');
