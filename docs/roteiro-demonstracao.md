@@ -5,22 +5,22 @@ Tempo total: **9 min 30 s**, com 30 s de folga para os 10 min. Tudo roda na máq
 ## Antes da apresentação
 
 **Na véspera** (cerca de 15 min), seguindo o "Como rodar" do `README.md`:
-1. Banco do zero, para a carteira de demonstração estar igual ao seed (apaga os dados locais; os testes e o ensaio criam carteiras no usuário de demonstração):
+1. Banco do zero, para a carteira de demonstração estar igual ao seed (apaga os dados locais, inclusive o que foi lançado no dia a dia e no ensaio):
    ```bash
    docker compose --profile app down -v
    docker compose --profile app up -d --build
    npm run db:seed
    ```
-2. Catálogo completo (K5), com os arquivos de 30/10/2026 que já estão em `data/raw/`. O COTAHIST está só no ZIP: antes, extraia o `COTAHIST_D30102026.TXT` de `data/raw/b3-cotahist/COTAHIST_D30102026.ZIP` para `data/raw/b3-cotahist/`.
+2. Catálogo completo (K5), com os arquivos de 30/10/2026 que já estão em `data/raw/`. O COTAHIST está só no ZIP: antes, extraia o `COTAHIST_D30102026.TXT` de `data/raw/b3-cotahist/COTAHIST_D30102026.ZIP` direto em `data/raw/b3-cotahist/` (o "Extrair tudo" do Windows cria uma subpasta; o caminho tem de ser `data/raw/b3-cotahist/COTAHIST_D30102026.TXT`).
    ```bash
    npm run db:generate
    npm --prefix backend ci
    npm --prefix backend run ingest:catalog -- --file data/raw/b3-instrumentos/InstrumentsConsolidatedFile_20261030.csv --cotahist data/raw/b3-cotahist/COTAHIST_D30102026.TXT
    ```
-3. Ensaio completo com cronômetro, gravando a tela (OBS ou Win + Alt + R). A gravação é o plano B. Depois do ensaio, repita os passos 1 e 2: o ensaio deixa a carteira "Apresentação" e a compra de MGLU3.
+3. Ensaio completo com cronômetro, gravando a tela (OBS ou Win + Alt + R). A gravação é o plano B. A parte 7 apaga a carteira "Apresentação" e a compra de MGLU3; se o ensaio parar antes dela, repita os passos 1 e 2.
 
 **30 min antes:**
-- `docker compose --profile app ps`: migrate "Exited (0)", api "healthy", worker "Up", postgres "healthy".
+- `docker compose --profile app ps -a`: migrate "Exited (0)", api "healthy", worker "Up", postgres "healthy".
 - `http://localhost:3000/api/v1/health` responde 200.
 - `cd frontend && npm start`, e abra `http://localhost:4200`.
 - Navegador em janela anônima (sem extensões), largura ≥ 1024 px (layout desktop), zoom 125% para o projetor, tema claro.
@@ -48,7 +48,7 @@ Tempo total: **9 min 30 s**, com 30 s de folga para os 10 min. Tudo roda na máq
 
 ### 3. Histórico e filtros (2:45–3:30)
 - **Clicar:** na guia **Histórico**. São 11 operações, da mais recente para a mais antiga.
-- **Clicar:** no filtro **FIIs**, que mostra "2 de 11 operações" (MXRF11). Na **Corretora**, escolha "Rico". Clique em **Limpar filtros**.
+- **Clicar:** no filtro **FIIs**, que mostra "2 de 11 operações" (MXRF11). Volte a **Todos** e, na **Corretora**, escolha "Rico": "2 de 11 operações" (ITSA4 e BOVA11). Clique em **Limpar filtros**.
 - **Falar:** o filtro é feito no backend e vale para todas as páginas, de 50 em 50.
 
 ### 4. Prévia com violação da RN07 (3:30–5:00)
@@ -85,8 +85,8 @@ Tempo total: **9 min 30 s**, com 30 s de folga para os 10 min. Tudo roda na máq
 
 | Falha | O que fazer | Tempo |
 |---|---|---|
-| A tela mostra "Sem conexão com o servidor." | `docker compose --profile app restart api`, espere `http://localhost:3000/api/v1/health` responder 200 e clique em **Tentar de novo** | 30 s |
-| PostgreSQL fora do ar (a API não fica "healthy") | `docker compose --profile app up -d` e confira com `docker compose --profile app ps` | 1 min |
+| A tela mostra "Sem conexão com o servidor." | `docker compose --profile app restart api`, espere `http://localhost:3000/api/v1/health` responder 200 e clique em **Tentar agora** (a tela também tenta sozinha a cada 10 s) | 30 s |
+| PostgreSQL fora do ar (a API não fica "healthy") | `docker compose --profile app up -d` e confira com `docker compose --profile app ps -a` | 1 min |
 | Carteira de demonstração com dados diferentes (outra carteira, totais mudados) | Siga mesmo assim: fale dos valores que aparecem. Na próxima vez, repita o passo 1 da véspera | — |
 | MGLU3 não aparece (a carga do K5 não foi feita) | Na parte 6, use a **RENT3** (do seed, fora das carteiras de demonstração) e diga que o catálogo completo vem da carga do K5 | — |
 | "Muitas tentativas seguidas." no login | Espere 1 minuto: o limite é de 5 logins por minuto. Enquanto isso, mostre o GitHub Actions (parte 8) | 1 min |
