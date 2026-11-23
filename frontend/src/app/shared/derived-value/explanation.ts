@@ -113,11 +113,12 @@ function row(
 ): ExplanationRow {
   const date = formatDate(input.referenceDate);
   const operation = input.operation;
-  const operationLine = operation
-    ? operation.id === null
-      ? EXPLAINER_TEXTS.form // the form's own operation in a preview, not saved yet (D42, U7a)
-      : EXPLAINER_TEXTS.operation(operation.type, date, operation.broker.name)
-    : null;
+  let operationLine: string | null = null;
+  if (operation?.id === null) {
+    operationLine = EXPLAINER_TEXTS.form; // the form's own operation in a preview, not saved yet (D42, U7a)
+  } else if (operation) {
+    operationLine = EXPLAINER_TEXTS.operation(operation.type, date, operation.broker.name);
+  }
   const linkTo = (target: DerivedValue | undefined, of: ExplainedAsset | null) =>
     target ? { value: target, asset: of } : null;
 

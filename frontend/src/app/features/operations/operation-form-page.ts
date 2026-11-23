@@ -329,7 +329,7 @@ interface Saved {
                   >
                     {{ submitLabel() }}
                   </button>
-                  <a appButton variant="ghost" [routerLink]="back()">
+                  <a appButton variant="ghost" [routerLink]="back">
                     {{ saved() ? 'Voltar para a carteira' : 'Cancelar' }}
                   </a>
                 </div>
@@ -448,9 +448,9 @@ export class OperationFormPage {
     if (this.editing) return 'Salvar alteração';
     return this.type() === 'SELL' ? 'Lançar venda' : 'Lançar compra';
   });
-  protected readonly back = computed(() =>
-    this.editing ? ['/carteiras', this.portfolioId, 'historico'] : ['/carteiras', this.portfolioId],
-  );
+  protected readonly back = this.editing
+    ? ['/carteiras', this.portfolioId, 'historico']
+    : ['/carteiras', this.portfolioId];
 
   /** Below 768 px the Resumo goes inside the form, before the buttons (frame 5, mobile). */
   protected readonly wide = signal(true);

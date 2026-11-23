@@ -472,18 +472,15 @@ export class OperationHistoryPage {
       error: (error: unknown) => {
         const status = error instanceof HttpErrorResponse ? error.status : null;
         const violation = (problemOf(error) as Partial<RuleViolationProblem> | null)?.violation;
-        if (status === 422 && violation) {
-          this.deleting.set(false);
-          this.toDelete.set(null);
-          this.rejected.set({ operation, violation });
-        } else if (status === 404) {
+        if (status === 404) {
           this.alreadyDeleted.set(true);
           this.removed();
-        } else {
-          this.deleting.set(false);
-          this.toDelete.set(null);
-          if (!expectedFailure(error)) this.errors.handleError(error);
+          return;
         }
+        this.deleting.set(false);
+        this.toDelete.set(null);
+        if (status === 422 && violation) this.rejected.set({ operation, violation });
+        else if (!expectedFailure(error)) this.errors.handleError(error);
       },
     });
   }

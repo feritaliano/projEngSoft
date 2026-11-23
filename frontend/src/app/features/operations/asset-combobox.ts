@@ -9,7 +9,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl } from '@angular/forms';
-import { Subject, catchError, debounceTime, map, of, switchMap } from 'rxjs';
+import { EMPTY, Subject, catchError, debounceTime, map, of, switchMap } from 'rxjs';
 import { AssetDto, AssetType } from '../../api/models';
 import { ASSET_TYPE, assetName } from '../../shared/assets/asset-type';
 import { Badge } from '../../shared/ui/badge';
@@ -153,13 +153,11 @@ export class AssetCombobox {
                 map(({ items }) => ({ term, items })),
                 catchError(() => of({ term, items: [] as AssetDto[] })),
               )
-            : of(null),
+            : EMPTY,
         ),
         takeUntilDestroyed(),
       )
-      .subscribe((found) => {
-        if (!found) return;
-        const { term, items } = found;
+      .subscribe(({ term, items }) => {
         this.term.set(term);
         this.results.set(items);
         this.active.set(-1);
@@ -180,8 +178,9 @@ export class AssetCombobox {
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       if (!this.open() || !count) return;
       event.preventDefault();
-      const step = event.key === 'ArrowDown' ? 1 : count - 1;
-      this.active.set(this.active() < 0 && step !== 1 ? count - 1 : (this.active() + step) % count);
+      const current = this.active();
+      if (event.key === 'ArrowDown') this.active.set((current + 1) % count);
+      else this.active.set(current <= 0 ? count - 1 : current - 1);
     } else if (event.key === 'Enter' && this.open() && this.active() >= 0) {
       event.preventDefault(); // Enter picks the suggestion; it does not send the form
       this.pick(this.results()[this.active()]);
