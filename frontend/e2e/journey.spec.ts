@@ -4,7 +4,12 @@ import { fill, kpi, openLongoPrazo, signIn, summary, tabs } from './support';
 // R1: the S1 from end to end against the real API and the seed (job e2e), no mock. The first test starts from a new
 // account, so it depends on nothing of the seed but the catalog and the brokers.
 
-const saved = (page: Page, text: string) => page.getByRole('status').filter({ hasText: text });
+/** Saves the form and waits for its reset: both buys show the same notice, so the notice alone could be the old one. */
+const launch = async (page: Page, button: 'Lançar compra' | 'Lançar venda', notice: string) => {
+  await page.getByRole('button', { name: button }).click();
+  await expect(page.getByRole('status').filter({ hasText: notice })).toBeVisible();
+  await expect(page.getByRole('combobox', { name: 'Ativo' })).toHaveValue('');
+};
 
 const positionRow = (page: Page, table: string, asset: string) =>
   page.getByRole('table', { name: table }).getByRole('row').filter({ hasText: asset });
@@ -49,8 +54,7 @@ test('a new user registers, trades PETR4, edits and deletes an operation, closes
   await expect(summary(page)).toContainText(/Total com custos\s*R\$\s3\.005,00/);
   await expect(summary(page)).toContainText(/Posição de PETR4\s*0 → 100/);
   await expect(summary(page)).toContainText(/Preço médio\s*—\s*→\s*R\$\s30,05/);
-  await page.getByRole('button', { name: 'Lançar compra' }).click();
-  await expect(saved(page, 'Compra de 100 PETR4')).toBeVisible();
+  await launch(page, 'Lançar compra', 'Compra de 100 PETR4');
 
   // Second buy: 100 × 34,00 + 5,00 = 3.405,00; PM (3.005,00 + 3.405,00) / 200 = 32,05.
   await fill(page, {
@@ -63,8 +67,7 @@ test('a new user registers, trades PETR4, edits and deletes an operation, closes
   await expect(summary(page)).toContainText(/Total com custos\s*R\$\s3\.405,00/);
   await expect(summary(page)).toContainText(/Posição de PETR4\s*100 → 200/);
   await expect(summary(page)).toContainText(/Preço médio\s*R\$\s30,05\s*→\s*R\$\s32,05/);
-  await page.getByRole('button', { name: 'Lançar compra' }).click();
-  await expect(saved(page, 'Compra de 100 PETR4')).toBeVisible();
+  await launch(page, 'Lançar compra', 'Compra de 100 PETR4');
 
   // Partial sale with profit (RN06): 50 × 40,00 − 5,00 − 50 × 32,05 = 392,50.
   await fill(page, {
@@ -78,8 +81,7 @@ test('a new user registers, trades PETR4, edits and deletes an operation, closes
   await expect(summary(page)).toContainText(/Posição de PETR4\s*200 → 150/);
   await expect(summary(page)).toContainText(/Preço médio\s*R\$\s32,05 \(venda não muda\)/);
   await expect(summary(page)).toContainText(/Lucro realizado estimado\s*\+ R\$\s392,50/);
-  await page.getByRole('button', { name: 'Lançar venda' }).click();
-  await expect(saved(page, 'Venda de 50 PETR4')).toBeVisible();
+  await launch(page, 'Lançar venda', 'Venda de 50 PETR4');
 
   // The Detail shows the values the preview showed: 150 at PM 32,05, cost 150 × 32,05 = 4.807,50.
   await page.getByRole('link', { name: 'Ver carteira' }).click();
@@ -90,7 +92,8 @@ test('a new user registers, trades PETR4, edits and deletes an operation, closes
     /150\s*R\$\s32,05\s*ⓘ\s*R\$\s4\.807,50\s*ⓘ\s*\+ R\$\s392,50/,
   );
 
-  // Edit the second buy to 36,00 (RN09): PM (3.005,00 + 3.605,00) / 200 = 33,05; profit 2.000,00 − 5,00 − 1.652,50.
+  // Edit the second buy to 36,00 (RN09): PM (3.005,00 + 3.605,00) / 200 = 33,05;
+  // profit 2.000,00 − 5,00 − 1.652,50 = 342,50; cost 150 × 33,05 = 4.957,50.
   await openTab(page, 'Histórico');
   await page.getByRole('button', { name: 'Editar operação de 05/10/2026, PETR4' }).click();
   await expect(page.getByRole('heading', { name: 'Editar operação', level: 1 })).toBeVisible();
@@ -135,8 +138,7 @@ test('a new user registers, trades PETR4, edits and deletes an operation, closes
   });
   await expect(summary(page)).toContainText(/Posição de PETR4\s*50 → 0/);
   await expect(summary(page)).toContainText(/Lucro realizado estimado\s*\+ R\$\s592,50/);
-  await page.getByRole('button', { name: 'Lançar venda' }).click();
-  await expect(saved(page, 'Venda de 50 PETR4')).toBeVisible();
+  await launch(page, 'Lançar venda', 'Venda de 50 PETR4');
 
   const closedState = async () => {
     await expect(page.getByText('3 operações · nenhuma posição aberta')).toBeVisible();
