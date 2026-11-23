@@ -9,6 +9,8 @@ import { AssetPageDto } from '../../api/models';
 export const CATALOG_PAGE_SIZE = 20;
 /** Longest search the API accepts (maxLength of the search parameter in the OpenAPI). */
 export const SEARCH_MAX_LENGTH = 100;
+/** Typing pause before searching (as the preview of the form, D42). */
+export const SEARCH_DEBOUNCE_MS = 300;
 
 @Injectable({ providedIn: 'root' })
 export class AssetsService {

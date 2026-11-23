@@ -1,5 +1,12 @@
 import { AbstractControl, FormGroup, ValidatorFn } from '@angular/forms';
-import { FieldError, FieldErrorCode, FieldErrorParams, ProblemDetails } from '../../api/models';
+import {
+  AssetType,
+  FieldError,
+  FieldErrorCode,
+  FieldErrorParams,
+  ProblemDetails,
+} from '../../api/models';
+import { formatDate } from '../format/pt-br';
 
 /**
  * Field error texts of claude/microcopy.md, section 10 (D56), by field + code. The API `message` is never shown.
@@ -42,12 +49,80 @@ export const PORTFOLIO_TEXTS = {
   },
 } satisfies Record<string, FieldTexts>;
 
+const QUANTITY_LIMIT = 'Quantidade grande demais: até {maxIntegerDigits} dígitos antes da vírgula.';
+const WHOLE_QUANTITY: FieldTexts = {
+  REQUIRED: 'Informe a quantidade.',
+  NOT_POSITIVE: 'Use um número inteiro maior que zero.',
+  NOT_INTEGER: 'Use um número inteiro maior que zero.',
+  TOO_LARGE: QUANTITY_LIMIT,
+};
+
+/** Quantity by class of the asset (RN04, D55): the same codes read differently for fixed income and crypto. */
+export const QUANTITY_TEXTS: Record<AssetType, FieldTexts> = {
+  STOCK: WHOLE_QUANTITY,
+  FII: WHOLE_QUANTITY,
+  ETF: WHOLE_QUANTITY,
+  BDR: WHOLE_QUANTITY,
+  FIXED_INCOME: {
+    REQUIRED: 'Informe a quantidade.',
+    NOT_POSITIVE: 'Use um valor maior que zero, em múltiplos de {step} (ex.: 0,52).',
+    INVALID_STEP: 'Use um valor maior que zero, em múltiplos de {step} (ex.: 0,52).',
+    TOO_LARGE: QUANTITY_LIMIT,
+  },
+  CRYPTO: {
+    REQUIRED: 'Informe a quantidade.',
+    NOT_POSITIVE: 'Use um valor maior que zero, com até {maxDecimals} casas decimais.',
+    TOO_MANY_DECIMALS: 'Use um valor maior que zero, com até {maxDecimals} casas decimais.',
+    TOO_LARGE: QUANTITY_LIMIT,
+  },
+};
+
+const PRICE_FORMAT = 'Use um preço maior que zero, com até {maxDecimals} casas decimais.';
+const FEES_FORMAT =
+  'Use 0 ou mais, com até {maxDecimals} casas decimais. Use 0 se não houve custos.';
+
+/** Operation form (frame 5); quantity is in QUANTITY_TEXTS, by class. */
+export const OPERATION_TEXTS = {
+  type: { REQUIRED: 'Escolha Compra ou Venda.', INVALID_VALUE: 'Escolha Compra ou Venda.' },
+  assetId: {
+    REQUIRED: 'Escolha um ativo da lista.',
+    NOT_FOUND: 'Este ativo não está no catálogo. Escolha um da lista.',
+  },
+  brokerId: {
+    REQUIRED: 'Escolha a corretora.',
+    NOT_FOUND: 'Esta corretora não está na lista. Escolha uma da lista.',
+  },
+  tradeDate: {
+    REQUIRED: 'Informe a data do pregão (dd/mm/aaaa).',
+    INVALID_FORMAT: 'Informe a data do pregão (dd/mm/aaaa).',
+    FUTURE_DATE: 'A data não pode ser depois de hoje ({today}).',
+  },
+  unitPrice: {
+    REQUIRED: 'Informe o preço unitário.',
+    NOT_POSITIVE: PRICE_FORMAT,
+    TOO_MANY_DECIMALS: PRICE_FORMAT,
+    TOO_LARGE: 'Preço grande demais: até {maxIntegerDigits} dígitos antes da vírgula.',
+  },
+  fees: {
+    REQUIRED: 'Informe os custos. Use 0 se não houve.',
+    NEGATIVE: FEES_FORMAT,
+    TOO_MANY_DECIMALS: FEES_FORMAT,
+    TOO_LARGE: 'Custos grandes demais: até {maxIntegerDigits} dígitos antes da vírgula.',
+  },
+} satisfies Record<string, FieldTexts>;
+
 type CodedError = Pick<FieldError, 'code' | 'params'>;
+
+/** A client validator that answers with a code of the API (D56), so its text is the server's: `{ coded: {...} }`. */
+export const coded = (code: FieldErrorCode, params?: FieldErrorParams) => ({
+  coded: { code, params },
+});
 
 /** The server error put on the control by applyServerErrors, or the one its validators stand for. */
 function codedError(control: AbstractControl<string>): CodedError {
   const errors = control.errors ?? {};
   if (errors['server']) return errors['server'] as CodedError;
+  if (errors['coded']) return errors['coded'] as CodedError;
   if (errors['required']) return { code: 'REQUIRED' };
   if (errors['email']) return { code: 'INVALID_FORMAT' };
   if (errors['minlength']) {
@@ -68,11 +143,13 @@ export function fieldErrorText(
   if (!control.invalid || !control.touched) return null;
   const { code, params } = codedError(control);
   const values: Record<string, unknown> = { ...defaults, ...params };
-  return (texts[code] ?? UNKNOWN_CODE_TEXT).replace(/\{(\w+)\}/g, (_, key: string) =>
-    key === 'n'
-      ? String((values['min'] as number) - charCount(control.value))
-      : String(values[key]),
-  );
+  return (texts[code] ?? UNKNOWN_CODE_TEXT).replace(/\{(\w+)\}/g, (_, key: string) => {
+    if (key === 'n') return String((values['min'] as number) - charCount(control.value));
+    // Microcopy, section 10: today as dd/mm/aaaa and the step in the pt-BR format ("0,01").
+    if (key === 'today') return formatDate(String(values[key]));
+    if (key === 'step') return String(values[key]).replace('.', ',');
+    return String(values[key]);
+  });
 }
 
 /** Characters as the API counts them (code points: an emoji is 1), not UTF-16 units like Validators.minLength. */

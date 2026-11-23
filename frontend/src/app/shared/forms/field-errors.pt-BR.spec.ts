@@ -1,7 +1,10 @@
 import { FormControl, FormGroup, ValidatorFn, Validators } from '@angular/forms';
 import {
   LOGIN_TEXTS,
+  OPERATION_TEXTS,
+  QUANTITY_TEXTS,
   REGISTER_TEXTS,
+  coded,
   UNKNOWN_CODE_TEXT,
   applyServerErrors,
   fieldErrorText,
@@ -62,6 +65,24 @@ describe('fieldErrorText', () => {
     });
 
     expect(fieldErrorText(REGISTER_TEXTS.name, control)).toBe('Use até 150 caracteres.');
+  });
+
+  it('shows today as dd/mm/aaaa and the step in pt-BR (RN04, D54, D56)', () => {
+    const date = touched('2026-12-01', () => coded('FUTURE_DATE', { today: '2026-11-23' }));
+    const quantity = touched('0.525', () => coded('INVALID_STEP', { step: '0.01' }));
+
+    expect(fieldErrorText(OPERATION_TEXTS.tradeDate, date)).toBe(
+      'A data não pode ser depois de hoje (23/11/2026).',
+    );
+    expect(fieldErrorText(QUANTITY_TEXTS.FIXED_INCOME, quantity)).toBe(
+      'Use um valor maior que zero, em múltiplos de 0,01 (ex.: 0,52).',
+    );
+    expect(
+      fieldErrorText(
+        QUANTITY_TEXTS.STOCK,
+        touched('1.5', () => coded('NOT_INTEGER')),
+      ),
+    ).toBe('Use um número inteiro maior que zero.');
   });
 
   it('uses the default text for a code the microcopy does not list', () => {

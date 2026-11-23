@@ -12,19 +12,27 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl } from '@angular/forms';
+import { Router } from '@angular/router';
 import { Subscription, debounceTime } from 'rxjs';
-import { AssetDto } from '../../api/models';
+import { AssetDto, PortfolioDto } from '../../api/models';
 import { ASSET_TYPE, assetName } from '../../shared/assets/asset-type';
 import { plural } from '../../shared/format/pt-br';
 import { AssetAvatar } from '../../shared/ui/asset-avatar';
 import { Badge } from '../../shared/ui/badge';
 import { Button } from '../../shared/ui/button';
 import { LoadError, SKELETON_DELAY_MS, expectedFailure } from '../../shared/ui/load-error';
+import { Icon } from '../../shared/ui/icon';
+import { IconButton } from '../../shared/ui/icon-button';
 import { TextField } from '../../shared/ui/text-field';
-import { AssetsService, CATALOG_PAGE_SIZE, SEARCH_MAX_LENGTH } from './assets.service';
-
-/** Typing pause before searching (as the preview of the form, D42). */
-export const SEARCH_DEBOUNCE_MS = 300;
+import { FormState } from '../operations/operation-form-page';
+import { PortfoliosService } from '../portfolios/portfolios.service';
+import { PortfolioPicker } from './portfolio-picker';
+import {
+  AssetsService,
+  CATALOG_PAGE_SIZE,
+  SEARCH_DEBOUNCE_MS,
+  SEARCH_MAX_LENGTH,
+} from './assets.service';
 
 /**
  * Frame 7, asset catalog (C1): search by ticker or issuer name; code, name (issuer), sector and class of each asset.
@@ -32,7 +40,7 @@ export const SEARCH_DEBOUNCE_MS = 300;
  */
 @Component({
   selector: 'app-assets-page',
-  imports: [AssetAvatar, Badge, Button, LoadError, TextField],
+  imports: [AssetAvatar, Badge, Button, Icon, IconButton, LoadError, PortfolioPicker, TextField],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex flex-col gap-6 pb-12 pt-4 md:pt-8">
@@ -112,7 +120,8 @@ export const SEARCH_DEBOUNCE_MS = 300;
                   <th scope="col" class="px-5 py-3 text-left">Código</th>
                   <th scope="col" class="px-4 py-3 text-left">Nome</th>
                   <th scope="col" class="px-4 py-3 text-left">Setor</th>
-                  <th scope="col" class="px-5 py-3 text-left">Tipo</th>
+                  <th scope="col" class="px-4 py-3 text-left">Tipo</th>
+                  <th scope="col" class="px-5 py-3"><span class="sr-only">Ações</span></th>
                 </tr>
               </thead>
               <tbody>
@@ -133,8 +142,16 @@ export const SEARCH_DEBOUNCE_MS = 300;
                       {{ name(asset) }}
                     </td>
                     <td class="px-4 py-3 text-body-sm text-secondary">{{ sector(asset) }}</td>
-                    <td class="px-5 py-3">
+                    <td class="px-4 py-3">
                       <app-badge>{{ type(asset) }}</app-badge>
+                    </td>
+                    <td class="px-5 py-2 text-right">
+                      <app-icon-button
+                        icon="add"
+                        tooltip="Lançar operação"
+                        [label]="'Lançar operação de ' + code(asset)"
+                        (click)="launch(asset)"
+                      />
                     </td>
                   </tr>
                 }
@@ -153,6 +170,17 @@ export const SEARCH_DEBOUNCE_MS = 300;
                   {{ name(asset) }}
                 </p>
                 <p class="text-caption text-secondary">{{ sector(asset) }}</p>
+                <button
+                  appButton
+                  variant="secondary"
+                  type="button"
+                  class="w-full"
+                  [attr.aria-label]="'Lançar operação de ' + code(asset)"
+                  (click)="launch(asset)"
+                >
+                  <app-icon name="plus" />
+                  Lançar operação
+                </button>
               </li>
             }
           </ul>
@@ -175,10 +203,21 @@ export const SEARCH_DEBOUNCE_MS = 300;
         }
       }
     </div>
+
+    @if (picking(); as p) {
+      <app-portfolio-picker
+        [asset]="code(p.asset)"
+        [portfolios]="p.portfolios"
+        (chosen)="open(p.asset, $event)"
+        (cancelled)="picking.set(null)"
+      />
+    }
   `,
 })
 export class AssetsPage {
   private readonly service = inject(AssetsService);
+  private readonly portfolios = inject(PortfoliosService);
+  private readonly router = inject(Router);
   private readonly host: HTMLElement = inject(ElementRef).nativeElement;
   private readonly injector = inject(Injector);
   private readonly errors = inject(ErrorHandler);
@@ -193,6 +232,7 @@ export class AssetsPage {
   protected readonly items = signal<AssetDto[]>([]);
   private readonly total = signal(0);
   protected readonly status = signal<'loading' | 'error' | 'ready'>('loading');
+  protected readonly picking = signal<{ asset: AssetDto; portfolios: PortfolioDto[] } | null>(null);
   protected readonly slow = signal(false);
 
   protected readonly found = computed(
@@ -217,6 +257,30 @@ export class AssetsPage {
       .pipe(debounceTime(SEARCH_DEBOUNCE_MS), takeUntilDestroyed())
       .subscribe(() => this.goTo(1));
     this.load();
+  }
+
+  /**
+   * "Lançar operação" (C1): straight to the form with the asset chosen when there is one portfolio; with more, the
+   * dialog asks which. shortcut: without portfolios the list opens, where the empty state creates the first one; ask in the dialog
+   * when a frame has that state.
+   */
+  protected launch(asset: AssetDto): void {
+    this.portfolios.list().subscribe({
+      next: (portfolios) => {
+        if (portfolios.length > 1) this.picking.set({ asset, portfolios });
+        else if (portfolios.length) this.open(asset, portfolios[0].id);
+        else this.router.navigate(['/carteiras']);
+      },
+      error: (error: unknown) => {
+        if (!expectedFailure(error)) this.errors.handleError(error);
+      },
+    });
+  }
+
+  protected open(asset: AssetDto, portfolioId: string): void {
+    this.picking.set(null);
+    const state: FormState = { asset };
+    this.router.navigate(['/carteiras', portfolioId, 'operacoes', 'nova'], { state });
   }
 
   protected turnPage(page: number): void {

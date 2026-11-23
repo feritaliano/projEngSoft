@@ -1,8 +1,11 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
-// Paths of the Figma icons (icon/Mais, icon/Excluir, icon/Abrir), stroked with currentColor to follow the theme.
+// Paths of the Figma icons (icon/Mais, icon/Adicionar, icon/Excluir, icon/Editar, icon/Abrir), stroked with
+// currentColor to follow the theme.
 const ICONS = {
   plus: { size: 16, path: 'M8 3.33333V8M8 8V12.6667M8 8H3.33333M8 8H12.6667' },
+  add: { size: 18, path: 'M9 3.75V14.25M3.75 9H14.25' },
+  edit: { size: 18, path: 'M10.125 4.875L13.125 7.875M3 15H6L14.25 6.75L11.25 3.75L3 12V15Z' },
   delete: {
     size: 18,
     path: 'M2.25 4.5H3.75M3.75 4.5H6M3.75 4.5L4.5 15H13.5L14.25 4.5M6 4.5H12M6 4.5V3H12V4.5M12 4.5H14.25M14.25 4.5H15.75M7.5 8.25V12.75M10.5 8.25V12.75',

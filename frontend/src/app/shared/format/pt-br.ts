@@ -55,6 +55,26 @@ export function formatSignedMoney(value: string): { text: string; tone: Tone } {
 export const formatQuantity = (value: string, assetType: AssetType): string =>
   QUANTITY[assetType].format(decimal(value));
 
+const AMOUNT = new Intl.NumberFormat('pt-BR', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+const AVERAGE_PRICE = new Intl.NumberFormat('pt-BR', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 4,
+});
+
+/** Money in the "Conta" of the explainer (microcopy, section 1): no currency, "1.804,90". */
+export const formatAmount = (value: string): string => AMOUNT.format(decimal(value));
+
+/** An intermediate average price in the "Conta": up to 4 places, "32,0327" (microcopy, section 1). */
+export const formatAveragePrice = (value: string): string => AVERAGE_PRICE.format(decimal(value));
+
+const SAO_PAULO_DAY = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' });
+
+/** Today in America/Sao_Paulo as YYYY-MM-DD: the day the backend uses to refuse a future date (D54). */
+export const todayInSaoPaulo = (now = new Date()): string => SAO_PAULO_DAY.format(now);
+
 /** "2026-10-28" → "28/10/2026". */
 export const formatDate = (isoDate: string): string => isoDate.split('-').reverse().join('/');
 

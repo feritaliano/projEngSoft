@@ -14,7 +14,13 @@ import {
 import { NgTemplateOutlet } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { Subscription, forkJoin } from 'rxjs';
-import { AssetType, PortfolioDto, PortfolioSummary, Position } from '../../api/models';
+import {
+  AssetType,
+  DerivedValue,
+  PortfolioDto,
+  PortfolioSummary,
+  Position,
+} from '../../api/models';
 import { NotFoundPage } from '../../core/layout/not-found-page';
 import { ASSET_TYPE, GROUP_ORDER, assetName } from '../../shared/assets/asset-type';
 import {
@@ -24,6 +30,7 @@ import {
   formatSignedMoney,
   plural,
 } from '../../shared/format/pt-br';
+import { DerivedValueExplainer } from '../../shared/derived-value/derived-value-explainer';
 import { AssetAvatar } from '../../shared/ui/asset-avatar';
 import { Badge } from '../../shared/ui/badge';
 import { Icon } from '../../shared/ui/icon';
@@ -59,7 +66,16 @@ interface Detail {
  */
 @Component({
   selector: 'app-portfolio-detail-page',
-  imports: [NgTemplateOutlet, NotFoundPage, PortfolioHeader, AssetAvatar, Badge, Icon, LoadError],
+  imports: [
+    NgTemplateOutlet,
+    NotFoundPage,
+    PortfolioHeader,
+    AssetAvatar,
+    Badge,
+    DerivedValueExplainer,
+    Icon,
+    LoadError,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (status() === 'not-found') {
@@ -110,12 +126,24 @@ interface Detail {
                   <dd class="text-numeric-lg tabular-nums text-primary">
                     {{ money(d.summary.totalCost.value) }}
                   </dd>
+                  <dd>
+                    <app-derived-value-explainer
+                      [value]="d.summary.totalCost"
+                      link="Como foi calculado"
+                    />
+                  </dd>
                 </div>
                 <div class="flex flex-col gap-1 rounded-lg border border-default bg-surface p-5">
                   <dt class="text-label-md text-secondary">Lucro realizado</dt>
                   @let profit = signed(d.summary.realizedProfit.value);
                   <dd class="text-numeric-lg tabular-nums" [class]="tone[profit.tone]">
                     {{ profit.text }}
+                  </dd>
+                  <dd>
+                    <app-derived-value-explainer
+                      [value]="d.summary.realizedProfit"
+                      link="Como foi calculado"
+                    />
                   </dd>
                 </div>
                 <div class="flex flex-col gap-1 rounded-lg border border-default bg-surface p-5">
@@ -315,9 +343,27 @@ interface Detail {
           />
         </th>
         <td class="px-4 py-3 text-right">{{ quantity(position) }}</td>
-        <td class="px-4 py-3 text-right">{{ moneyOrDash(position.averagePrice?.value) }}</td>
-        <td class="px-4 py-3 text-right">{{ moneyOrDash(position.totalCost?.value) }}</td>
-        <td class="px-5 py-3 text-right" [class]="tone[profit.tone]">{{ profit.text }}</td>
+        <td class="whitespace-nowrap px-4 py-3 text-right">
+          {{ moneyOrDash(position.averagePrice?.value) }}
+          <ng-container
+            [ngTemplateOutlet]="explain"
+            [ngTemplateOutletContext]="{ $implicit: position.averagePrice, position }"
+          />
+        </td>
+        <td class="whitespace-nowrap px-4 py-3 text-right">
+          {{ moneyOrDash(position.totalCost?.value) }}
+          <ng-container
+            [ngTemplateOutlet]="explain"
+            [ngTemplateOutletContext]="{ $implicit: position.totalCost, position }"
+          />
+        </td>
+        <td class="whitespace-nowrap px-5 py-3 text-right" [class]="tone[profit.tone]">
+          {{ profit.text }}
+          <ng-container
+            [ngTemplateOutlet]="explain"
+            [ngTemplateOutletContext]="{ $implicit: position.realizedProfit, position }"
+          />
+        </td>
       </tr>
     </ng-template>
 
@@ -338,20 +384,41 @@ interface Detail {
             <dt class="text-caption text-secondary">Preço médio</dt>
             <dd class="text-numeric-md text-primary">
               {{ moneyOrDash(position.averagePrice?.value) }}
+              <ng-container
+                [ngTemplateOutlet]="explain"
+                [ngTemplateOutletContext]="{ $implicit: position.averagePrice, position }"
+              />
             </dd>
           </div>
           <div>
             <dt class="text-caption text-secondary">Custo total</dt>
             <dd class="text-numeric-md text-primary">
               {{ moneyOrDash(position.totalCost?.value) }}
+              <ng-container
+                [ngTemplateOutlet]="explain"
+                [ngTemplateOutletContext]="{ $implicit: position.totalCost, position }"
+              />
             </dd>
           </div>
           <div>
             <dt class="text-caption text-secondary">Lucro realizado</dt>
-            <dd class="text-numeric-md" [class]="tone[profit.tone]">{{ profit.text }}</dd>
+            <dd class="text-numeric-md" [class]="tone[profit.tone]">
+              {{ profit.text }}
+              <ng-container
+                [ngTemplateOutlet]="explain"
+                [ngTemplateOutletContext]="{ $implicit: position.realizedProfit, position }"
+              />
+            </dd>
           </div>
         </dl>
       </li>
+    </ng-template>
+
+    <!-- The ⓘ of a value of the row (B13); a closed position has no PM nor cost (RN08), so no ⓘ. -->
+    <ng-template #explain let-value let-row="position">
+      @if (asDerived(value); as derived) {
+        <app-derived-value-explainer [value]="derived" [asset]="asPosition(row).asset" />
+      }
     </ng-template>
 
     <ng-template #asset let-row>
@@ -407,6 +474,7 @@ export class PortfolioDetailPage {
   protected readonly plural = plural;
   protected readonly classOf = (type: AssetType) => ASSET_TYPE[type];
   protected readonly asPosition = (row: Position) => row;
+  protected readonly asDerived = (value: DerivedValue | null) => value;
   protected readonly name = (row: Position) => assetName(row.asset);
   protected readonly quantity = (row: Position) =>
     formatQuantity(row.quantity, row.asset.assetType);

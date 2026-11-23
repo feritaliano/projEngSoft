@@ -51,8 +51,8 @@ const LONGO: PortfolioDto = {
   lastTradeDate: '2026-10-28',
 };
 const SUMMARY: PortfolioSummary = {
-  totalCost: derived('16151.27'),
-  realizedProfit: derived('693.87'),
+  totalCost: { ...derived('16151.27'), formulaCode: 'PORTFOLIO_TOTAL_COST' },
+  realizedProfit: { ...derived('693.87'), formulaCode: 'PORTFOLIO_REALIZED_PROFIT' },
   assetCount: 6,
 };
 const POSITIONS: Position[] = [
@@ -121,11 +121,19 @@ describe('PortfolioDetailPage (frame 4, B6, B7)', () => {
     expect(element.textContent).toContain('11 operações · 6 ativos');
     const kpis = [...element.querySelector('dl')!.children].map(text);
     expect(kpis).toEqual([
-      'Custo total R$ 16.151,27',
-      'Lucro realizado + R$ 693,87',
+      'Custo total R$ 16.151,27 Como foi calculado',
+      'Lucro realizado + R$ 693,87 Como foi calculado',
       'Ativos em carteira 6 1 posição encerrada',
     ]);
     expect(element.querySelector('dl > div:nth-child(2) dd')?.className).toContain('text-positive');
+    // B13: each total explains itself; each link is named by the label of its total (two links with the same text).
+    const links = [...element.querySelector('dl')!.querySelectorAll('button')].map((b) =>
+      b.getAttribute('aria-label'),
+    );
+    expect(links).toEqual([
+      'Como foi calculado: Custo total da carteira',
+      'Como foi calculado: Lucro realizado da carteira',
+    ]);
   });
 
   it('groups the open positions by class in the order of the frame, with the quantity of each class', async () => {
@@ -142,13 +150,20 @@ describe('PortfolioDetailPage (frame 4, B6, B7)', () => {
     ]);
     const rows = [...table!.querySelectorAll('tbody tr:not(:first-child)')].map(text);
     expect(rows).toEqual([
-      'IT ITSA4 Ação 300 R$ 9,87 R$ 2.961,00 R$ 0,00',
-      'PE PETR4 Ação 100 R$ 32,03 R$ 3.203,27 + R$ 293,47',
-      'BO BOVA11 ETF 20 R$ 118,45 R$ 2.369,00 R$ 0,00',
-      'MX MXRF11 FII 150 R$ 10,12 R$ 1.518,00 − R$ 12,40',
-      'TE Tesouro IPCA+ 2035 Renda fixa 0,52 R$ 3.846,15 R$ 2.000,00 R$ 0,00',
-      'BT BTC Cripto 0,0125 R$ 328.000,00 R$ 4.100,00 R$ 0,00',
+      'IT ITSA4 Ação 300 R$ 9,87 ⓘ R$ 2.961,00 ⓘ R$ 0,00 ⓘ',
+      'PE PETR4 Ação 100 R$ 32,03 ⓘ R$ 3.203,27 ⓘ + R$ 293,47 ⓘ',
+      'BO BOVA11 ETF 20 R$ 118,45 ⓘ R$ 2.369,00 ⓘ R$ 0,00 ⓘ',
+      'MX MXRF11 FII 150 R$ 10,12 ⓘ R$ 1.518,00 ⓘ − R$ 12,40 ⓘ',
+      'TE Tesouro IPCA+ 2035 Renda fixa 0,52 R$ 3.846,15 ⓘ R$ 2.000,00 ⓘ R$ 0,00 ⓘ',
+      'BT BTC Cripto 0,0125 R$ 328.000,00 ⓘ R$ 4.100,00 ⓘ R$ 0,00 ⓘ',
     ]);
+    // B13: the ⓘ of each value is named by its label (microcopy, section 1).
+    const petr4 = table!.querySelectorAll('tbody tr')[2];
+    expect([...petr4.querySelectorAll('button')].map((b) => b.getAttribute('aria-label'))).toEqual([
+      'Como foi calculado: Custo total',
+      'Como foi calculado: Custo total',
+      'Como foi calculado: Custo total',
+    ]); // the fixture uses TOTAL_COST for every value
     expect(text(table!.querySelector('tfoot'))).toBe('Total R$ 16.151,27');
     expect(element.querySelector('app-asset-avatar')?.getAttribute('aria-hidden')).toBe('true');
   });
@@ -176,7 +191,7 @@ describe('PortfolioDetailPage (frame 4, B6, B7)', () => {
 
     expect(text(stocks.querySelector('p'))).toBe('Ações · 2 ativos');
     expect(text(stocks.querySelector('li:nth-child(2)'))).toBe(
-      'PE PETR4 Ação Quantidade 100 Preço médio R$ 32,03 Custo total R$ 3.203,27 Lucro realizado + R$ 293,47',
+      'PE PETR4 Ação Quantidade 100 Preço médio R$ 32,03 ⓘ Custo total R$ 3.203,27 ⓘ Lucro realizado + R$ 293,47 ⓘ',
     );
   });
 
@@ -196,7 +211,7 @@ describe('PortfolioDetailPage (frame 4, B6, B7)', () => {
     expect(toggle.getAttribute('aria-expanded')).toBe('true');
     expect(text(toggle)).toBe('Recolher');
     expect(region.hidden).toBe(false);
-    expect(text(region.querySelector('tbody tr'))).toBe('WE WEGE3 Ação 0 — — + R$ 412,80');
+    expect(text(region.querySelector('tbody tr'))).toBe('WE WEGE3 Ação 0 — — + R$ 412,80 ⓘ');
   });
 
   it('shows the empty state of a portfolio without operations', async () => {

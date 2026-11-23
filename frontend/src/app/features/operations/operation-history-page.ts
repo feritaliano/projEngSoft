@@ -1,4 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
+import { NgTemplateOutlet } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -11,15 +12,29 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
-import { Subscription, forkJoin } from 'rxjs';
-import { AssetRef, AssetType, BrokerDto, OperationDto, PortfolioDto } from '../../api/models';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { Subscription, forkJoin, map } from 'rxjs';
+import {
+  AssetRef,
+  AssetType,
+  BrokerDto,
+  OperationDto,
+  PortfolioDto,
+  RuleViolation,
+  RuleViolationProblem,
+} from '../../api/models';
+import { problemOf } from '../../core/http/error.interceptor';
 import { NotFoundPage } from '../../core/layout/not-found-page';
 import { ASSET_TYPE, CHIP_ORDER, assetName } from '../../shared/assets/asset-type';
 import { formatDate, formatMoney, formatQuantity, plural } from '../../shared/format/pt-br';
 import { AssetAvatar } from '../../shared/ui/asset-avatar';
 import { Badge } from '../../shared/ui/badge';
+import { BusinessRuleError } from '../../shared/business-rule/business-rule-error';
 import { Button } from '../../shared/ui/button';
+import { ConfirmDialog } from '../../shared/ui/confirm-dialog';
+import { Icon } from '../../shared/ui/icon';
+import { IconButton } from '../../shared/ui/icon-button';
 import { LoadError, SKELETON_DELAY_MS, expectedFailure } from '../../shared/ui/load-error';
 import { PortfolioHeader } from '../portfolios/portfolio-header';
 import { PortfoliosService } from '../portfolios/portfolios.service';
@@ -52,7 +67,20 @@ export function noResultTitle(
  */
 @Component({
   selector: 'app-operation-history-page',
-  imports: [NotFoundPage, PortfolioHeader, AssetAvatar, Badge, Button, LoadError],
+  imports: [
+    NgTemplateOutlet,
+    RouterLink,
+    Icon,
+    NotFoundPage,
+    PortfolioHeader,
+    AssetAvatar,
+    Badge,
+    BusinessRuleError,
+    Button,
+    ConfirmDialog,
+    IconButton,
+    LoadError,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (status() === 'not-found') {
@@ -60,6 +88,22 @@ export function noResultTitle(
     } @else {
       <div class="flex flex-col gap-6 pb-12 pt-4 md:pt-8">
         <app-portfolio-header [portfolio]="portfolio()" [subtitle]="subtitle()" />
+
+        @if (rejected(); as r) {
+          <app-business-rule-error
+            [violation]="r.violation"
+            [context]="{ action: 'delete', date: r.operation.tradeDate }"
+            [portfolioId]="id"
+          />
+        }
+        @if (alreadyDeleted()) {
+          <p
+            role="status"
+            class="rounded-lg border border-default bg-surface p-4 text-body-sm text-primary"
+          >
+            Esta operação já tinha sido excluída. A lista foi atualizada.
+          </p>
+        }
 
         @if (status() === 'error') {
           <app-load-error
@@ -75,6 +119,10 @@ export function noResultTitle(
             <p class="max-w-130 text-body-md text-secondary">
               As compras e vendas que você lançar aparecem aqui, da mais recente para a mais antiga.
             </p>
+            <a appButton [routerLink]="['/carteiras', id, 'operacoes', 'nova']">
+              <app-icon name="plus" />
+              Lançar primeira operação
+            </a>
           </section>
         } @else {
           @if (portfolio()) {
@@ -186,13 +234,15 @@ export function noResultTitle(
                     <th scope="col" class="px-3 py-3 text-left">Corretora</th>
                     <th scope="col" class="px-3 py-3 text-right">Quantidade</th>
                     <th scope="col" class="px-3 py-3 text-right">Preço unitário</th>
-                    <th scope="col" class="px-5 py-3 text-right">Custos</th>
+                    <th scope="col" class="px-3 py-3 text-right">Custos</th>
+                    <th scope="col" class="px-5 py-3"><span class="sr-only">Ações</span></th>
                   </tr>
                 </thead>
                 <tbody>
                   @for (operation of items(); track operation.id) {
                     <tr
                       class="border-b border-default text-numeric-md text-primary last:border-b-0"
+                      [class.bg-negative-subtle]="operation.id === highlighted()"
                     >
                       <td class="whitespace-nowrap px-5 py-3">{{ date(operation.tradeDate) }}</td>
                       <td class="px-3 py-3">
@@ -213,8 +263,14 @@ export function noResultTitle(
                       <td class="whitespace-nowrap px-3 py-3 text-right">
                         {{ money(operation.unitPrice) }}
                       </td>
-                      <td class="whitespace-nowrap px-5 py-3 text-right">
+                      <td class="whitespace-nowrap px-3 py-3 text-right">
                         {{ money(operation.fees) }}
+                      </td>
+                      <td class="px-5 py-2">
+                        <ng-container
+                          [ngTemplateOutlet]="actions"
+                          [ngTemplateOutletContext]="{ $implicit: operation }"
+                        />
                       </td>
                     </tr>
                   }
@@ -223,7 +279,10 @@ export function noResultTitle(
             </div>
             <ul class="flex flex-col gap-3 md:hidden">
               @for (operation of items(); track operation.id) {
-                <li class="flex flex-col gap-2 rounded-lg border border-default bg-surface p-4">
+                <li
+                  class="flex flex-col gap-2 rounded-lg border border-default bg-surface p-4"
+                  [class.bg-negative-subtle]="operation.id === highlighted()"
+                >
                   <div class="flex items-center gap-2">
                     <app-asset-avatar [asset]="operation.asset" />
                     <app-badge [tone]="operation.type === 'BUY' ? 'primary' : 'warning'">{{
@@ -238,7 +297,13 @@ export function noResultTitle(
                     {{ quantity(operation) }} × {{ money(operation.unitPrice) }} · custos
                     {{ money(operation.fees) }}
                   </p>
-                  <p class="text-caption text-secondary">{{ operation.broker.name }}</p>
+                  <div class="flex items-center justify-between gap-2">
+                    <p class="text-caption text-secondary">{{ operation.broker.name }}</p>
+                    <ng-container
+                      [ngTemplateOutlet]="actions"
+                      [ngTemplateOutletContext]="{ $implicit: operation }"
+                    />
+                  </div>
                 </li>
               }
             </ul>
@@ -259,12 +324,43 @@ export function noResultTitle(
         }
       </div>
     }
+
+    <ng-template #actions let-row>
+      @let operation = asOperation(row);
+      <span class="flex justify-end gap-1">
+        <app-icon-button
+          icon="edit"
+          tooltip="Editar operação"
+          [label]="'Editar operação de ' + target(operation)"
+          (click)="edit(operation)"
+        />
+        <app-icon-button
+          icon="delete"
+          tooltip="Excluir operação"
+          [label]="'Excluir operação de ' + target(operation)"
+          (click)="toDelete.set(operation)"
+        />
+      </span>
+    </ng-template>
+
+    @if (toDelete(); as operation) {
+      <app-confirm-dialog
+        [heading]="'Excluir a ' + kind(operation) + ' de ' + date(operation.tradeDate) + '?'"
+        [text]="deletionText(operation)"
+        [confirmLabel]="'Excluir ' + kind(operation)"
+        [busy]="deleting()"
+        (confirmed)="remove(operation)"
+        (cancelled)="toDelete.set(null)"
+      />
+    }
   `,
 })
 export class OperationHistoryPage {
   private readonly portfoliosService = inject(PortfoliosService);
   private readonly service = inject(OperationsService);
-  private readonly id = inject(ActivatedRoute).snapshot.paramMap.get('id') ?? '';
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  protected readonly id = this.route.snapshot.paramMap.get('id') ?? '';
   private readonly host: HTMLElement = inject(ElementRef).nativeElement;
   private readonly injector = inject(Injector);
   private readonly errors = inject(ErrorHandler);
@@ -283,6 +379,21 @@ export class OperationHistoryPage {
   protected readonly status = signal<'loading' | 'error' | 'not-found' | 'ready'>('loading');
   protected readonly slow = signal(false);
   protected readonly loadingMore = signal(false);
+  protected readonly toDelete = signal<OperationDto | null>(null);
+  protected readonly deleting = signal(false);
+  /** A purchase whose deletion was refused (RN10, 422): the BusinessRuleError and the row in evidence. */
+  protected readonly rejected = signal<{
+    operation: OperationDto;
+    violation: RuleViolation;
+  } | null>(null);
+  protected readonly alreadyDeleted = signal(false);
+  /** ?operacao= of the link "Ver venda de …" of the BusinessRuleError (C2): that sale in evidence. */
+  private readonly linked = toSignal(
+    this.route.queryParamMap.pipe(map((params) => params.get('operacao'))),
+  );
+  protected readonly highlighted = computed(
+    () => this.rejected()?.operation.id ?? this.linked() ?? null,
+  );
 
   protected readonly subtitle = computed(() => {
     const portfolio = this.portfolio();
@@ -320,6 +431,12 @@ export class OperationHistoryPage {
     formatQuantity(operation.quantity, operation.asset.assetType);
   protected readonly typeLabel = (operation: OperationDto) =>
     operation.type === 'BUY' ? 'Compra' : 'Venda';
+  protected readonly kind = (operation: OperationDto) =>
+    operation.type === 'BUY' ? 'compra' : 'venda';
+  protected readonly asOperation = (row: OperationDto) => row;
+  /** The target of an icon action (microcopy, section 7): "22/05/2026, MXRF11". */
+  protected readonly target = (operation: OperationDto) =>
+    `${formatDate(operation.tradeDate)}, ${assetName(operation.asset)}`;
 
   constructor() {
     inject(DestroyRef).onDestroy(() => {
@@ -327,6 +444,53 @@ export class OperationHistoryPage {
       this.request?.unsubscribe();
     });
     this.load();
+  }
+
+  protected edit(operation: OperationDto): void {
+    this.router.navigate(['/carteiras', this.id, 'operacoes', operation.id, 'editar']);
+  }
+
+  /**
+   * ConfirmDialog "Excluir operação" (C3). shortcut: the frame also says how much realized profit leaves the total and
+   * the position after it; the front does not compute them (D28), so the text says what is recalculated instead. Add
+   * the numbers when the API previews a deletion.
+   */
+  protected deletionText(operation: OperationDto): string {
+    const asset = assetName(operation.asset);
+    const date = formatDate(operation.tradeDate);
+    const quantity = formatQuantity(operation.quantity, operation.asset.assetType);
+    return `A ${this.kind(operation)} de ${quantity} ${asset} será apagada. A posição, o preço médio e o lucro realizado de ${asset} nesta carteira serão recalculados a partir de ${date}.`;
+  }
+
+  /** 204: list and header again. 422: RN10 with the sale it would break. 404: deleted elsewhere, so reload. */
+  protected remove(operation: OperationDto): void {
+    this.deleting.set(true);
+    this.rejected.set(null);
+    this.alreadyDeleted.set(false);
+    this.service.remove(this.id, operation.id).subscribe({
+      next: () => this.removed(),
+      error: (error: unknown) => {
+        const status = error instanceof HttpErrorResponse ? error.status : null;
+        const violation = (problemOf(error) as Partial<RuleViolationProblem> | null)?.violation;
+        if (status === 404) {
+          this.alreadyDeleted.set(true);
+          this.removed();
+          return;
+        }
+        this.deleting.set(false);
+        this.toDelete.set(null);
+        if (status === 422 && violation) this.rejected.set({ operation, violation });
+        else if (!expectedFailure(error)) this.errors.handleError(error);
+      },
+    });
+  }
+
+  private removed(): void {
+    this.deleting.set(false);
+    this.toDelete.set(null);
+    this.load();
+    // The row and its button are gone: the focus goes to the title, as after a retry (U7a).
+    this.focusTitleOnLoad = true;
   }
 
   protected choose(key: 'assetId' | 'brokerId', event: Event): void {

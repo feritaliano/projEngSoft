@@ -32,11 +32,22 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   );
 };
 
-/** The RFC 7807 body (application/problem+json) of an API error, or null when there is none. */
+/**
+ * The RFC 7807 body (application/problem+json) of an API error, or null when there is none. A call without response
+ * body (DELETE, 204) is generated with responseType "text", so its error body arrives as a JSON string.
+ */
 export function problemOf(error: unknown): ProblemDetails | null {
   if (!(error instanceof HttpErrorResponse)) return null;
-  const body: unknown = error.error;
+  const body: unknown = typeof error.error === 'string' ? parseJson(error.error) : error.error;
   return typeof body === 'object' && body !== null && 'status' in body && 'title' in body
     ? (body as ProblemDetails)
     : null;
+}
+
+function parseJson(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null; // not JSON (a proxy's HTML page, say): no problem details
+  }
 }

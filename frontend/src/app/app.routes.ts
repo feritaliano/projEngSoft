@@ -42,6 +42,20 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'carteiras/:id/operacoes/nova',
+        title: 'Lançar operação · Carteira B3',
+        canActivate: [authGuard],
+        loadComponent: () =>
+          import('./features/operations/operation-form-page').then((m) => m.OperationFormPage),
+      },
+      {
+        path: 'carteiras/:id/operacoes/:operationId/editar',
+        title: 'Editar operação · Carteira B3',
+        canActivate: [authGuard],
+        loadComponent: () =>
+          import('./features/operations/operation-form-page').then((m) => m.OperationFormPage),
+      },
+      {
         path: 'ativos',
         title: 'Ativos · Carteira B3',
         canActivate: [authGuard],

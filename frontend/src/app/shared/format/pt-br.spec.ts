@@ -1,4 +1,13 @@
-import { formatDate, formatMoney, formatQuantity, formatSignedMoney, plural } from './pt-br';
+import {
+  formatAmount,
+  formatAveragePrice,
+  formatDate,
+  formatMoney,
+  formatQuantity,
+  formatSignedMoney,
+  plural,
+  todayInSaoPaulo,
+} from './pt-br';
 
 // Intl puts a no-break space (U+00A0) between the currency and the number.
 const NBSP = String.fromCharCode(0xa0);
@@ -30,6 +39,17 @@ describe('pt-BR formatting (RN11: from the decimal string, no conversion to numb
     expect(formatQuantity('0.01250000', 'CRYPTO')).toBe('0,0125');
     expect(formatQuantity('1', 'CRYPTO')).toBe('1');
     expect(formatQuantity('0.00000001', 'CRYPTO')).toBe('0,00000001');
+  });
+
+  it('formats the numbers of a "Conta": 2 places, and up to 4 for an average price', () => {
+    expect(formatAmount('1804.9')).toBe('1.804,90');
+    expect(formatAveragePrice('32.0326666666666666666666666666666666666667')).toBe('32,0327');
+    expect(formatAveragePrice('30')).toBe('30,00');
+  });
+
+  it('tells today in São Paulo, not in UTC (D54)', () => {
+    // 01:30 UTC on 24/11 is still 23/11 in São Paulo (UTC−3).
+    expect(todayInSaoPaulo(new Date('2026-11-24T01:30:00Z'))).toBe('2026-11-23');
   });
 
   it('formats an ISO date as dd/mm/aaaa', () => {
