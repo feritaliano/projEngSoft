@@ -1,23 +1,8 @@
-import { Page, expect, test } from '@playwright/test';
-import { seriousViolations, signIn } from './support';
+import { expect, test } from '@playwright/test';
+import { kpi, openLongoPrazo, seriousViolations, signIn, tabs } from './support';
 
 // Against the real API and the seed (job e2e). "Longo prazo" of the demo user = handoff, "Massa das telas 3 e 4":
 // 11 operations, 6 open positions and WEGE3 closed.
-
-const openLongoPrazo = async (page: Page) => {
-  await signIn(page);
-  await page.getByRole('link', { name: 'Longo prazo', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Longo prazo', level: 1 })).toBeVisible();
-};
-
-const tabs = (page: Page) => page.getByRole('navigation', { name: 'Seções da carteira' });
-
-/** Value of an indicator: the dd after its visible label (the dt of the hidden mobile cards are not visible). */
-const kpi = (page: Page, label: string) =>
-  page
-    .getByRole('term')
-    .filter({ hasText: new RegExp(`^${label}$`) })
-    .locator('xpath=following-sibling::dd[1]');
 
 test('shows the totals and the positions of "Longo prazo" as the API computes them (B6, B7)', async ({
   page,

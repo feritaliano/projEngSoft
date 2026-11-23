@@ -1,5 +1,5 @@
 import { Page, expect, test } from '@playwright/test';
-import { seriousViolations, signIn } from './support';
+import { fill, kpi, openLongoPrazo, seriousViolations, signIn, summary } from './support';
 
 // Against the real API and the seed (job e2e). A test that saves works on a portfolio of its own, so the totals of
 // "Longo prazo" stay as the other files check them; the rule violations of "Longo prazo" are refused, nothing saved.
@@ -14,50 +14,6 @@ const newPortfolio = async (page: Page) => {
   await expect(page.getByRole('heading', { name, level: 1 })).toBeVisible();
   return name;
 };
-
-const openLongoPrazo = async (page: Page) => {
-  await signIn(page);
-  await page.getByRole('link', { name: 'Longo prazo', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Longo prazo', level: 1 })).toBeVisible();
-};
-
-const summary = (page: Page) => page.getByRole('region', { name: 'Resumo da operação' });
-
-interface Operation {
-  type?: 'Compra' | 'Venda';
-  asset?: string;
-  broker?: string;
-  date?: string;
-  quantity: string;
-  price: string;
-  fees: string;
-}
-
-/** Fills the form as a user does: the asset through the search, the rest field by field. */
-const fill = async (page: Page, operation: Operation) => {
-  if (operation.type) {
-    await page
-      .getByRole('group', { name: 'Tipo de operação' })
-      .getByText(operation.type, { exact: true })
-      .click();
-  }
-  if (operation.asset) {
-    await page.getByRole('combobox', { name: 'Ativo' }).fill(operation.asset);
-    await page.getByRole('option', { name: new RegExp(`^${operation.asset} `) }).click();
-  }
-  if (operation.broker)
-    await page.getByLabel('Corretora').selectOption({ label: operation.broker });
-  if (operation.date) await page.getByLabel('Data do pregão').fill(operation.date);
-  await page.getByLabel('Quantidade', { exact: true }).fill(operation.quantity);
-  await page.getByLabel('Preço unitário (R$)').fill(operation.price);
-  await page.getByLabel('Custos (R$)').fill(operation.fees);
-};
-
-const kpi = (page: Page, label: string) =>
-  page
-    .getByRole('term')
-    .filter({ hasText: new RegExp(`^${label}$`) })
-    .locator('xpath=following-sibling::dd[1]');
 
 test('launches a buy and a sell with profit through the form and sees the position (RN05, RN06, D42)', async ({
   page,
