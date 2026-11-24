@@ -46,8 +46,9 @@ test('shows the totals and the positions of "Longo prazo" as the API computes th
   // text of the row starts with the template's whitespace, hence \s*.
   await expect(row(/^\s*Total/)).toContainText('R$ 16.151,27');
   await expect(row('WEGE3')).toHaveCount(0);
-  // Groups in the order of frame 4 (ETFs before FIIs); a class without positions (BDRs) does not show.
-  await expect(open).toContainText(/Ações[\s\S]*ETFs[\s\S]*FIIs[\s\S]*Renda fixa[\s\S]*Cripto/);
+  // Groups by the cost of the class, highest first (D63): Ações 6.164,27, Cripto 4.100, ETFs 2.369, Renda fixa 2.000,
+  // FIIs 1.518. A class without positions (BDRs) does not show.
+  await expect(open).toContainText(/Ações[\s\S]*Cripto[\s\S]*ETFs[\s\S]*Renda fixa[\s\S]*FIIs/);
   await expect(open.getByText('BDRs')).toHaveCount(0);
   // Stages after the S1 stay out of the DOM (D48).
   await expect(page.getByText('Valor de mercado')).toHaveCount(0);

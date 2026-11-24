@@ -22,7 +22,7 @@ import {
   Position,
 } from '../../api/models';
 import { NotFoundPage } from '../../core/layout/not-found-page';
-import { ASSET_TYPE, GROUP_ORDER, assetName } from '../../shared/assets/asset-type';
+import { ASSET_TYPE, assetName } from '../../shared/assets/asset-type';
 import {
   Tone,
   formatMoney,
@@ -451,13 +451,13 @@ export class PortfolioDetailPage {
     const detail = this.detail();
     return detail ? detailSubtitle(detail.portfolio) : '';
   });
-  /** Open positions by class, in the order of the frame; a class without positions does not show. */
+  /** Open positions by class, in the order the API sends them: the class with more holdings first (D63, no sum here). */
   protected readonly groups = computed(() => {
     const open = this.detail()?.positions.filter((p) => p.status === 'OPEN') ?? [];
-    return GROUP_ORDER.map((type) => ({
+    return [...new Set(open.map((p) => p.asset.assetType))].map((type) => ({
       type,
       rows: open.filter((p) => p.asset.assetType === type),
-    })).filter((group) => group.rows.length);
+    }));
   });
   protected readonly closed = computed(
     () => this.detail()?.positions.filter((p) => p.status === 'CLOSED') ?? [],
