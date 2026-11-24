@@ -73,8 +73,8 @@ carteira-b3/
 │   │   ├── inserts.sql              [P1] seed
 │   │   └── queries.sql              [P2] 18 consultas com enunciado
 │   ├── results/                     [P3] gerado por npm run db:results: tables/<tabela>.txt e queries/consulta-NN.txt
-│   └── entrega/                     [P4] entrega da Parte 2: BD_Parte2_CarteiraB3.docx e .pdf, parte2-ddl-inserts.sql
-│                                    (ddl.sql + inserts.sql, roda do zero num banco vazio) e parte2-consultas.sql (= queries.sql)
+│   └── entrega/                     [P4] entrega da Parte 2, congelada em 24/11 (não regerar): BD_Parte2_CarteiraB3.docx e .pdf,
+│                                    parte2-ddl-inserts.sql (ddl.sql + inserts.sql da data) e parte2-consultas.sql (queries.sql)
 ├── data/
 │   └── raw/                         arquivos brutos das fontes externas (bronze); só o .gitkeep vai para o Git
 ├── docker/

@@ -12,7 +12,8 @@
 - [x] ~~Agente revisor: auditoria e revisão final do S1 (#57): 0 crítico, 0 alto, 3 médios, 16 baixos~~.
 
 ## 2. Agora (até 30/11)
-- [ ] **Agente de banco: P4 (relatório da Parte 2)**, 25/11–30/11. **Enviar a Parte 2 até 30/11** (prazo da disciplina: 07/12).
+- [x] ~~Agente de banco: P4 (relatório da Parte 2)~~, gerado em 24/11 (`database/entrega/`).
+- [ ] **Você: enviar a Parte 2 até 30/11** (prazo da disciplina: 07/12): `BD_Parte2_CarteiraB3.pdf` e os dois `.sql` de `database/entrega/`.
 - [ ] **Agente de frontend e de backend: D63**, a ordem das classes no Detalhe pelo patrimônio. O backend ordena; o frontend agrupa na ordem recebida.
 - [ ] **Você: PL1**, o calendário de entregas de ES (vencido em 19/11), e **PL2**, o retorno da Parte 1 de BD (se não chegar até 26/11, o P4 segue com uma nota).
 

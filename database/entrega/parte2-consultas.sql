@@ -1,3 +1,6 @@
+-- Carteira B3: trabalho de Banco de Dados, Parte 2. As 18 consultas, num banco criado por parte2-ddl-inserts.sql:
+--   psql -d <banco> -f parte2-consultas.sql
+
 -- Consultas da Parte 2 de Banco de Dados (tarefa P2): 18 consultas sobre o seed (database/sql/inserts.sql).
 -- Uso: num banco migrado e semeado, psql -f database/sql/queries.sql (ou node database/scripts/run-sql.mjs database/sql/queries.sql).
 -- 1 a 10: junção de duas ou mais tabelas; 11 a 13: LEFT JOIN; 14 a 18: agregação com GROUP BY, HAVING e ORDER BY.

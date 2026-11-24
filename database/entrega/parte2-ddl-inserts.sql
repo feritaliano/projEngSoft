@@ -1,6 +1,7 @@
 -- Carteira B3: trabalho de Banco de Dados, Parte 2. PostgreSQL 16.
 -- Criação das relações (schema public) seguida da inserção dos dados. Roda do zero num banco vazio:
 --   psql -v ON_ERROR_STOP=1 -d <banco> -f parte2-ddl-inserts.sql
+-- Os comentários internos vêm de database/sql/ddl.sql e database/sql/inserts.sql, no repositório do projeto.
 
 -- ==================================================================== DDL
 
