@@ -81,7 +81,7 @@
 | P2 | **Concluído (13/11, antecipado), PR #34.** `queries.sql`: 10 com junção, 3 LEFT/RIGHT JOIN, 5 com agregação + GROUP BY/HAVING/ORDER BY, cada uma com enunciado | 19/11–22/11 | P1 (ou o que entrou pelo G-P1) | 18 consultas respondendo perguntas reais do domínio; nenhuma compara o preço de compra de operação com `fixed_income_prices` (o Tesouro da carteira de demonstração tem preço ilustrativo, D62b) |
 | B7 | **Concluído (13/11, antecipado), PR #34.** Atualizar a descrição do problema (`database/docs/descricao-problema.md`) com carteira ideal, metas, renda fixa e cripto (D43, D44), para o relatório | 19/11–22/11 | D3 | Texto coerente com o ER da D3 |
 | P3 | **Concluído (15/11, antecipado), PR #41.** Script de resultados + listagem completa de cada tabela (`npm run db:results`; regerado e conferido no job `database`) | 23/11–24/11 | P2 | Arquivos em `database/results/` |
-| P4 | Relatório final: título, integrantes, SGBD (PostgreSQL, PostgreSQL Global Development Group), texto e ER corrigidos com o retorno da Parte 1, DDL + inserts (.sql), listagens, consultas com enunciado, SQL e resultado | 25/11–30/11 | P3, B7, retorno da Parte 1 (PL2) | Enviado até 30/11 (prazo 07/12) |
+| P4 | **Relatório gerado (24/11); envio pelo usuário.** `database/entrega/` (127 páginas; `tax_rules` com as 4 regras do seed, D62a). Relatório final: título, integrantes, SGBD (PostgreSQL, PostgreSQL Global Development Group), texto e ER corrigidos com o retorno da Parte 1, DDL + inserts (.sql), listagens, consultas com enunciado, SQL e resultado | 25/11–30/11 | P3, B7, retorno da Parte 1 (PL2) | Enviado até 30/11 (prazo 07/12) |
 
 **Dependências do P1 (fontes):**
 | Fonte | Situação | Decisão até | Se não sair |
