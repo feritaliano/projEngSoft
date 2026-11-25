@@ -1,5 +1,7 @@
 # Prompts de correção — revisão final do S1 (23/11/2026)
 
+> **Datas e prioridades revistas pela D64 (25/11/2026):** BD-2, BK-5, FE-3 e R1-b passam para 25–26/11, no caminho crítico do S1+, e o P4 para 28/11–30/11; onde este arquivo disser "até 04/12", "até 05/12" ou "depois do P4", vale `claude/prompts-s1-plus-d64.md` e a seção "S1+ (D64)" de `claude/plano-de-acao.md`.
+
 > Gerado a partir de `claude/revisao-s1-final.md` (`main` em `e8e001c`). Cada bloco é um prompt pronto para colar no agente indicado. Há um prompt por agente e por PR. Todo achado aberto aparece em exatamente um prompt ou na lista "Decisão do usuário". Os achados da auditoria paralela (A-1 a A-7) estão em `claude/prompts-correcao-s1-auditoria-final.md` e não se repetem aqui. Prazos: o plano (`claude/plano-de-acao.md`) não tem mais tarefa de código antes de 06/12; o P4 tem prioridade até 30/11 (G-P4). Por isso as correções ocupam a janela original do R1 (03–06/12), com limite em 04/12 para sobrar folga até a entrega de 06/12.
 
 > **Mesmo PR que a auditoria:** BK-5 e BD-2 têm o mesmo ID, agente e prazo em `claude/prompts-correcao-s1-auditoria-final.md`. Cada agente faz **um PR por ID**, juntando os dois prompts: BD-2 = A-1 (seed depois do K5) + N7 (actions do job `database`); BK-5 = A-1 (teste do seed depois da carga) + N6 e N7 (imagem dos testes e actions do job `backend`). No frontend, R1-b (auditoria) e FE-3 (abaixo) continuam PRs separados.
