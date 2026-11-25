@@ -38,6 +38,8 @@
 
 **Replanejamento de 12/11/2026 (revisão do S1, `claude/verificacao-plano-figma.md` P1–P11; aprovado pelo usuário em 12/11):** (1) **atraso registrado:** o P1 venceu em 07/11 sem seed; o BD-1 (PR #24, 12/11) entregou o primeiro corte (10 das 36 tabelas: catálogo, índices, tipos de título, proventos e IBOV) e as ~26 restantes entram no segundo corte, 13/11–18/11, com o gatilho novo **G-P1**; P2, P3 e P4 foram refeitos em cadeia e o **envio da Parte 2 continua em 30/11** (prazo 07/12), sem esbarrar no R1; (2) as dependências do P1 ganharam data (preço de cripto: JSON do Mercado Bitcoin pelo navegador até 14/11; senão, candles da API pública da Foxbit) e `economic_indexes` (5) e `fixed_income_types` (8) ficam abaixo das ±10 tuplas com justificativa (D60d); (3) **W4 dividido** em W4a (Catálogo, Histórico, Detalhe: API toda na `main`) e W4b (formulário e prévia, depois do PR 3 do K4); W2 e W3 antecipados em 2 dias, já que o W1 terminou em 11/11; (4) as correções da revisão entram como tarefas com data: BK-1, BK-2, BK-3, BK-4, FE-1, FE-2 (`claude/prompts-correcao-s1.md`) e U7 parte A; o PR 3 do K4 com o BK-2 passa para 15–19/11 e o K5 para 21–26/11, e o backend termina em 26/11; (5) pendências sem tarefa ganharam ID, data e dono (B7, PL1–PL3); (6) datas, status de F2/F3, frase do catálogo e critério do K4 corrigidos. Escopo e ordem das etapas inalterados.
 
+**Situação em 24/11/2026:** P4 gerado (`database/entrega/`); falta o envio da Parte 2 pelo usuário até 30/11.
+
 **Situação em 23/11/2026:** concluídos W4b (PR #48) e R1 (PRs #49–#53, antecipado da janela de 03/12–06/12); FE-2b conferido num clone limpo. O código do S1 está pronto para a auditoria final do agente revisor; falta, fora do código, o P4 (relatório de BD). Apresentação em 09/12 pelo roteiro de `docs/roteiro-demonstracao.md`.
 
 **Situação em 18/11/2026:** concluídos também BK-3 (PR #43), W4a (PR #44) e K5 (PR #45); o check `e2e` é exigido na `main` (PL3). Conferido em 18/11 num banco limpo: migrations, seed, carga do K5 (idempotente) e API (login de demonstração; "Longo prazo" com custo 16.151,27 e lucro 693,87; prévia com violação RN07 sem gravar). O backend do S1 está completo; faltam W4b (frontend), o passo do K5 no "Como rodar" (FE-2b), P4 (relatório) e R1.
@@ -81,7 +83,7 @@
 | P2 | **Concluído (13/11, antecipado), PR #34.** `queries.sql`: 10 com junção, 3 LEFT/RIGHT JOIN, 5 com agregação + GROUP BY/HAVING/ORDER BY, cada uma com enunciado | 19/11–22/11 | P1 (ou o que entrou pelo G-P1) | 18 consultas respondendo perguntas reais do domínio; nenhuma compara o preço de compra de operação com `fixed_income_prices` (o Tesouro da carteira de demonstração tem preço ilustrativo, D62b) |
 | B7 | **Concluído (13/11, antecipado), PR #34.** Atualizar a descrição do problema (`database/docs/descricao-problema.md`) com carteira ideal, metas, renda fixa e cripto (D43, D44), para o relatório | 19/11–22/11 | D3 | Texto coerente com o ER da D3 |
 | P3 | **Concluído (15/11, antecipado), PR #41.** Script de resultados + listagem completa de cada tabela (`npm run db:results`; regerado e conferido no job `database`) | 23/11–24/11 | P2 | Arquivos em `database/results/` |
-| P4 | Relatório final: título, integrantes, SGBD (PostgreSQL, PostgreSQL Global Development Group), texto e ER corrigidos com o retorno da Parte 1, DDL + inserts (.sql), listagens, consultas com enunciado, SQL e resultado | 25/11–30/11 | P3, B7, retorno da Parte 1 (PL2) | Enviado até 30/11 (prazo 07/12) |
+| P4 | **Relatório gerado (24/11); falta o envio pelo usuário.** `database/entrega/`, 127 páginas, só os 6 itens do enunciado; ER atual (D3), sem nota sobre o retorno da Parte 1 nem justificativa das tabelas de domínio fechado, por decisão do usuário (24/11); seed atual (`tax_rules` com 4 regras). Relatório final: título, integrantes, SGBD (PostgreSQL, PostgreSQL Global Development Group), texto e ER corrigidos com o retorno da Parte 1, DDL + inserts (.sql), listagens, consultas com enunciado, SQL e resultado | 25/11–30/11 | P3, B7, retorno da Parte 1 (PL2) | Enviado até 30/11 (prazo 07/12) |
 
 **Dependências do P1 (fontes):**
 | Fonte | Situação | Decisão até | Se não sair |
@@ -89,7 +91,7 @@
 | Proventos (`income_distributions`) | Resolvida (D59, PF) | — | — |
 | Ibovespa (`index_values`) | Resolvida (D59, PF) | — | — |
 | Preço de cripto (`crypto_prices`) | **Resolvida (13/11/2026):** o usuário confirmou o bloqueio do Mercado Bitcoin também no navegador (F1); candles diários da API pública da Foxbit (BTC e ETH), com URL, hash e contagem na seção 6.1 do `fontes-poc.md` | — | — |
-| Tabelas de domínio fechado | `economic_indexes` 5 e `fixed_income_types` 8 aceitas (D60d); `tax_categories` 4 e `tax_rules` 4 (a regra vigente de cada categoria) no P1-2, pelo mesmo critério (aceito em 13/11/2026, D62a) | — | Justificado no relatório |
+| Tabelas de domínio fechado | `economic_indexes` 5 e `fixed_income_types` 8 aceitas (D60d); `tax_categories` 4 e `tax_rules` 4 (a regra vigente de cada categoria) no P1-2, pelo mesmo critério (aceito em 13/11/2026, D62a) | — | Aceito; o relatório não traz nota (decisão do usuário, 24/11) |
 
 ## Fundação
 | ID | Tarefa | Datas | Depende de | Pronto quando |
@@ -167,7 +169,7 @@ O catálogo de referência do S1 vem de duas fontes (D59): o seed do BD-1 (PR #2
 | ID | Pendência | Até | Dono |
 |---|---|---|---|
 | PL1 | Pedir à professora de ES o calendário de entregas incrementais e encaixar K2, K4 e R1 como marcos | 19/11 | usuário |
-| PL2 | Pedir à professora de BD o retorno da Parte 1; se não chegar até 26/11, o P4 segue com o ER atual e uma nota no relatório | pedir até 19/11 | usuário |
+| PL2 | Pedir à professora de BD o retorno da Parte 1; se não chegar até 26/11, o P4 segue com o ER atual e uma nota no relatório. **24/11: o P4 saiu com o ER atual e sem nota, por decisão do usuário** | pedir até 19/11 | usuário |
 | PL3 | ~~Exigir o check `e2e` na proteção da `main`~~ **Feito (18/11).** | — | usuário |
 | PL4 | Responder às decisões B1, B3, B4, B9 e M8 de `claude/prompts-correcao-s1.md` | antes de 06/12 | usuário |
 

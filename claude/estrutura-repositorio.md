@@ -72,7 +72,9 @@ carteira-b3/
 │   │   ├── ddl.sql                  [ok] gerado (pg_dump --schema-only --schema=public)
 │   │   ├── inserts.sql              [P1] seed
 │   │   └── queries.sql              [P2] 18 consultas com enunciado
-│   └── results/                     [P3] gerado por npm run db:results: tables/<tabela>.txt e queries/consulta-NN.txt
+│   ├── results/                     [P3] gerado por npm run db:results: tables/<tabela>.txt e queries/consulta-NN.txt
+│   └── entrega/                     [P4] entrega da Parte 2, congelada em 24/11 (não regerar): BD_Parte2_CarteiraB3.docx e .pdf,
+│                                    parte2-ddl-inserts.sql (ddl.sql + inserts.sql da data) e parte2-consultas.sql (queries.sql)
 ├── data/
 │   └── raw/                         arquivos brutos das fontes externas (bronze); só o .gitkeep vai para o Git
 ├── docker/
@@ -168,6 +170,7 @@ carteira-b3/
 | Schema e migrations | `prisma/` | Sim |
 | Prisma Client | `backend/src/generated/prisma/` | Não (gerado) |
 | DDL da entrega de BD | `database/sql/ddl.sql` | Sim (gerado) |
+| Relatório e arquivos .sql da Parte 2 de BD | `database/entrega/` | Sim |
 | Contrato da API | `backend/openapi/openapi.json` | Sim (gerado) |
 | Cliente da API no frontend | `frontend/src/app/api/` | Não (gerado) |
 | Handoff do UX (links do Figma) | `claude/handoff-ux.md` | Sim |
