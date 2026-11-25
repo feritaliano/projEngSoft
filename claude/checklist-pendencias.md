@@ -12,7 +12,7 @@
 - [x] ~~Agente revisor: auditoria e revisão final do S1 (#57): 0 crítico, 0 alto, 3 médios, 16 baixos~~.
 - [x] ~~Backend e frontend: D63, ordem das classes no Detalhe pelo patrimônio (#58, #59)~~.
 
-## 2. Caminho crítico do S1+ (D64; prioridade do backend e do banco até 30/11)
+## 2. Caminho crítico do S1+ (D64; prioridade do backend até 30/11 e do banco até 27/11)
 - [ ] **Você: DOC** (25/11): mesclar o PR da D64.
 - [ ] **Agentes de banco e de backend: BD-2 + BK-5** (25–26/11), um PR: seed depois do K5 (A-1), teste trocado, imagem fixa (N6), actions (N7).
 - [ ] **Agente de banco: BD-3** (25–26/11): domínio de `share_class` para as 62 ações rejeitadas pelo K5 e `ops.ingestion_runs`.

@@ -3,7 +3,7 @@
 > Gerados a partir da D64 (`claude/contexto-projeto.md`, seção 6) e da seção "S1+ (D64)" de `claude/plano-de-acao.md`. Cada bloco é um prompt pronto para colar no agente indicado. Um prompt por agente e por PR, exceto BD-2 + BK-5, que mudam juntos no mesmo PR. Os prompts de BD-2, BK-5, FE-3, R1-b e U7c continuam em `claude/prompts-correcao-s1-auditoria-final.md` e `claude/prompts-correcao-s1-revisao-final.md`; aqui só mudam a data e a prioridade.
 
 ## Regras desta rodada (valem para todos os prompts)
-- **Caminho crítico:** DADOS (BD-2 + BK-5, BD-3, BD-4, K6) → contrato da API → K7/K8. É a prioridade máxima do backend e do banco até 30/11: nenhuma tarefa dessas frentes passa na frente do caminho crítico. FE-3, R1-b, UX-2 e W5 andam em paralelo.
+- **Caminho crítico:** DADOS (BD-2 + BK-5, BD-3, BD-4, K6) → contrato da API → K7/K8 (o contrato corre junto do DADOS). É a prioridade máxima do backend até 30/11 e do banco até 27/11 (BD-4 atrasado continua na frente do P4): nenhuma tarefa dessas frentes passa na frente do caminho crítico. FE-3, R1-b, UX-2 e W5 andam em paralelo.
 - **Avisos ao usuário no mesmo dia:** contrato não mesclado em 26/11; K7 não mesclado em 30/11.
 - **Gatilhos:** G-S2a em 01/12 (TWR não conferido → sai o B10, ficam B8, B9 e B11); G-S2b em 03/12 (gráficos não prontos → ficam os números); nada do S1 muda depois de 04/12.
 - **Fora do S1+:** C4 e C8 na página do ativo, proventos (S6), metas e carteira ideal (S10), importação (B12), IR e o resto. Sem proventos, a rentabilidade mede só o preço, e o "como foi calculado" diz isso.
@@ -49,7 +49,7 @@ Prazo: 26/11/2026.
 ```
 Agente: backend. Tarefa BK-5, antecipada pela D64 para 25–26/11 (era até 04/12). Caminho crítico do S1+.
 Leia: a D64; a seção "S1+ (D64)" do plano; os dois prompts de BK-5 em claude/prompts-correcao-s1-auditoria-final.md (A-1) e claude/prompts-correcao-s1-revisao-final.md (N6, N7).
-Faça: o que os dois prompts pedem, no PR do BD-2. Não deixe o BK-5 atrasar o K6: os dois correm em 25/11, e o K6 tem prioridade se faltar tempo.
+Faça: o que os dois prompts pedem, no PR do BD-2. O BK-5 vem antes do K6: sem ele o BD-2 não entra, e o BD-4 e o K7 param.
 Pronto quando: os critérios dos dois prompts; job backend verde com o inserts.sql do BD-2.
 Prazo: 26/11/2026.
 ```
@@ -61,7 +61,7 @@ Leia: a D64; a seção "S1+ (D64)" do plano; claude/arquitetura.md, seção 6.3 
 Problema: o enum share_class (ON, PN, PNA, PNB, UNIT) não aceita as classes de 62 ações do mercado à vista que o K5 rejeita; a D64 põe o catálogo completo no S1+. A ingestão diária do K6 precisa registrar cada execução e não rodar duas vezes ao mesmo tempo, como a arquitetura prevê com ops.ingestion_runs, que ainda não existe.
 Faça:
 1. Liste, a partir do Cadastro de Instrumentos de 30/10 e da regra de filtro do K5, as classes das 62 ações rejeitadas, com a contagem por classe; amplie o domínio de share_class com elas (migration nova, enum do Prisma, CHECK se houver). Se alguma "classe" for na verdade sufixo de mercado ou de governança, e não classe de ação, registre no PR e pergunte ao usuário antes de incluir.
-2. Crie ops.ingestion_runs conforme a seção 6.3 da arquitetura (fonte, arquivo, hash, data de referência, status, linhas lidas, gravadas e rejeitadas, erro, início e fim), no schema ops (fora do ddl.sql e do relatório, D22).
+2. Crie ops.ingestion_runs com as colunas da seção 3.1 da arquitetura (fonte, arquivo, hash, data de referência, status, linhas lidas, gravadas e rejeitadas, erro), mais início e fim da execução (acréscimo desta tarefa), no schema ops (fora do ddl.sql e do relatório, D22).
 3. Atualize modelo-er.md, mapeamento.md e glossario.md (domínio de share_class), regenere o ddl.sql (npm run db:ddl) e acrescente os testes de restrição (database/tests/).
 4. Avise o agente de backend no PR: valores novos do enum e colunas de ops.ingestion_runs.
 Pronto quando: npm run db:drift sem diferenças; npm run db:test passando com o domínio novo e com ops.ingestion_runs; a soma das contagens por classe no PR dá 62; o seed continua 2× idêntico.
@@ -73,7 +73,7 @@ Prazo: 26/11/2026. Esforço estimado: 3 h.
 ```
 Agente: banco de dados. Tarefa BD-4 (D64, "histórico no seed"), 26–27/11, depois do BD-2 (mesmo inserts.sql) e do BD-3. Caminho crítico: a massa dos testes do K7 e do K8 e a demonstração dependem dela.
 Leia: a D64; a seção "S1+ (D64)" do plano; database/docs/fontes-poc.md (COTAHIST, índices da B3); database/sql/inserts.sql, seções 2.1 (IBOV) e 2.4 (quotes); database/docs/memoria-calculo.md.
-Problema: o seed tem quotes de dois pregões (30/10 e 12/11) e o IBOV de 2026; o B10 (TWR total e de 12 meses), o B11 (evolução) e o C2/C3 precisam de série diária e dos índices de comparação.
+Problema: o seed tem quotes de dois pregões (30/10 e 12/11) e o IBOV de 26/10 a 12/11/2026; o B10 (TWR total e de 12 meses), o B11 (evolução) e o C2/C3 precisam de série diária e dos índices de comparação.
 Faça:
 1. quotes: fechamentos diários do COTAHIST (arquivos anuais e diários da B3, em data/raw/) dos ativos das classes da B3 que aparecem nas carteiras do seed, de pelo menos 13 meses antes do último pregão do seed (ou da primeira operação dessas carteiras, se for antes) até esse pregão. Mercado à vista (TPMERC 010), mesmo mapeamento da seção 2.4.
 2. index_values no mesmo período: CDI diário e IPCA mensal pela API SGS do Banco Central e IBOV diário pela página de índices da B3 (anos necessários).
@@ -89,11 +89,12 @@ Prazo: 27/11/2026. Esforço estimado: 4–5 h.
 ## K6 — Ingestão diária no worker (backend)
 ```
 Agente: backend. Tarefa K6 (D64), 25–27/11. Caminho crítico; prioridade sobre qualquer outra tarefa do backend.
-Leia: a D64; a seção "S1+ (D64)" do plano; claude/arquitetura.md, seções 6.3 (medalhão leve, idempotência, ingestion_runs) e o módulo ingestion; D24, D27, D59; database/docs/fontes-poc.md (COTAHIST, índices da B3, Latin-1 do F9); o K5 (backend/src/modules/ingestion/).
+Leia: a D64; a seção "S1+ (D64)" do plano; claude/arquitetura.md, seções 6.3 (medalhão leve, bronze, idempotência, ingestion_runs) e 7.2 (módulo ingestion); D24, D27, D59; database/docs/fontes-poc.md (COTAHIST e índices da B3, com a codificação de cada arquivo); o K5 (backend/src/modules/ingestion/).
 Faça:
 1. Adapters (porta SourceIngestor, infrastructure do módulo dono): COTAHIST diário → quotes (mercado à vista, ativos do catálogo; ticker fora do catálogo é contado e ignorado); API SGS do BCB → index_values de CDI (diário) e IPCA (mensal); página de índices da B3 → IBOV.
-2. Agendamento no worker com @nestjs/schedule, todo dia útil depois da publicação do COTAHIST (confira o horário e registre no README), com advisory lock e uma linha em ops.ingestion_runs por execução e fonte (BD-3). Idempotente: mesmo arquivo (hash) não regrava; upsert na chave natural (D27).
-3. Comando de reprocesso por data ou período (ex.: npm run ingest:quotes -- --from --to), para o histórico e para o plano B da demonstração.
+2. Agendamento no worker com @nestjs/schedule (ainda não está no backend/package.json: instalar pede confirmação do usuário; registre versão e licença no PR), todo dia útil depois da publicação do COTAHIST (confira o horário e registre no README), com advisory lock e uma linha em ops.ingestion_runs por execução e fonte (BD-3). Idempotente: mesmo arquivo (hash) não regrava; upsert na chave natural (D27).
+3. Comando de reprocesso por data ou período (ex.: npm run ingest:quotes -- --from --to), para o histórico e para o plano B da demonstração; ao terminar, rode-o de 13/11 até o dia no carteira_dev e registre a contagem no PR.
+3a. Cada arquivo baixado vai para o bronze (data/raw/<fonte>/<ano>/, com o hash), como manda a seção 6.3.
 4. K5 grava as 62 ações com o domínio novo de share_class (BD-3).
 5. Data do último fechamento disponível para o K7 e o K8 (consulta, sem coluna nova).
 Pronto quando: teste de parse com trecho real reduzido de cada fonte (fixtures pequenas versionadas); o mesmo dia rodado 2× não muda nenhuma linha; fim de semana, feriado e arquivo ainda não publicado ficam registrados em ops.ingestion_runs sem derrubar o worker; K5 com zero rejeições por classe e contagem por tipo no PR; comandos e horário no backend/README.md; jobs backend e e2e verdes.
@@ -181,9 +182,9 @@ Faça:
 2. Detalhe: KPIs, colunas do B8 na tabela de posições, alocação por classe e por setor, evolução patrimonial e rentabilidade comparada com CDI, Ibovespa e IPCA, como no handoff; "sem cotação" na renda fixa e na cripto; data e fonte do fechamento visíveis; "como foi calculado" em todo número novo.
 3. Gráficos com ngx-echarts e ECharts: importe de echarts/core só os gráficos e componentes usados; a biblioteca carrega só nas rotas com gráfico (rota preguiçosa); conversão para number só nos arquivos *.chart.ts. Instalar os pacotes pede confirmação do usuário; registre versão e licença no PR (ECharts Apache-2.0, ngx-echarts MIT) e npm audit sem alta.
 4. Cada gráfico com a alternativa acessível do handoff.
-Pronto quando: specs dos estados novos (incluindo histórico menor que 12 meses e sem cotação); E2E da Lista e do Detalhe com a API real e o seed; axe sem violação séria ou crítica em claro, escuro e 390 px; ECharts fora do bundle inicial (conferido no relatório do build e colado no PR); npm run lint, test:cov e build verdes; jobs frontend e e2e verdes.
+Pronto quando: specs dos estados novos (incluindo histórico menor que 12 meses e sem cotação); E2E da Lista e do Detalhe com a API real e o seed; axe sem violação séria ou crítica em claro, escuro e 390 px; ECharts fora do bundle inicial (conferido no relatório do build e colado no PR); npm run lint, test:cov e build verdes; nenhuma toolbox de exportação do ECharts (saveAsImage, dataView) nem download da série (D59b); jobs frontend e e2e verdes.
 Gatilhos: G-S2a (01/12) tira os KPIs e o gráfico de rentabilidade se o TWR não for conferido; G-S2b (03/12) deixa só os números se os gráficos não estiverem prontos.
-Não faça: conta com dinheiro ou percentual no front (o backend manda tudo pronto, D28); proventos, metas, carteira ideal; mock de API no E2E.
+Não faça: conta com dinheiro ou percentual no front (o backend manda tudo pronto, D28); proventos, metas, carteira ideal (as guias Proventos e Metas e o botão e o marcador da carteira ideal continuam ocultos); exportação ou download da série (D59b); mock de API no E2E.
 Prazo: 02/12/2026.
 ```
 
@@ -210,7 +211,7 @@ Pronto quando: enviado até 30/11.
 ```
 Agentes: frontend (dono) e backend. Tarefa FECHO (D64), 04–06/12. Nada do S1 muda depois de 04/12: só teste, documentação e correção de defeito achado aqui; nenhuma função entra nem sai.
 Leia: a D64; a seção "S1+ (D64)" do plano; docs/roteiro-demonstracao.md; README.md da raiz; backend/README.md.
-Frontend: jornada E2E (journey) com os números novos (patrimônio, resultado, alocação, evolução, rentabilidade se o B10 ficou, página do ativo); axe e teclado nas telas novas, em claro, escuro e 390 px; README da raiz ("Como rodar") com o worker e a atualização diária; roteiro de demonstração com a parte nova e a conferência da data do último fechamento na véspera e 30 min antes; clone limpo pelo README.
+Frontend: jornada E2E (journey) com os números novos (patrimônio, resultado, alocação, evolução, rentabilidade se o B10 ficou, página do ativo); axe e teclado nas telas novas, em claro, escuro e 390 px; README da raiz ("Como rodar") com o worker e a atualização diária; roteiro de demonstração com a parte nova, o reprocesso das cotações até a véspera (comando do K6) e a conferência da data do último fechamento na véspera e 30 min antes; clone limpo pelo README.
 Backend: backend/README.md com o horário da atualização diária, o comando de reprocesso do histórico (plano B da demonstração) e o que fazer se o arquivo do dia não sair.
 Pronto quando: E2E do S1 com o S1+ verde no CI; alguém de fora sobe e usa o sistema seguindo só o README, com a data do último fechamento visível; contexto e plano atualizados com o que entrou e o que os gatilhos cortaram.
 Usuário: tag s1 no merge final; ensaio em 08/12.
