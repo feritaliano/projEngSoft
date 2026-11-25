@@ -5,7 +5,8 @@
 -- price_alerts), ou sem alvo quando a PK já é a chave natural (cotações, preços, itens de lista): ticker, CNPJ, código do índice, nome do tipo de título, (pai, nome) do
 -- setor, (tipo, vencimento) do título. Linha cuja chave natural pode ser nula (corretora ou emissor sem CNPJ, setor de
 -- primeiro nível, ativo de renda fixa sem ticker) é filtrada com NOT EXISTS sobre a mesma chave, porque NULL não
--- conflita no UNIQUE. Assim, o K5 pode fazer upsert pelo ticker/ISIN depois do seed, e o seed depois do K5, sem duplicar.
+-- conflita no UNIQUE. Assim, o K5 pode fazer upsert pelo ticker/ISIN depois do seed, e o seed depois do K5, sem duplicar:
+-- a linha que referencia emissor, que a carga também grava, acha o pai pela chave natural, nunca só pelo UUID fixo (BD-2).
 -- Faixas de UUID (último grupo): proventos 0000xx, corretoras 0001xx, setores 0003xx, emissores 0004xx, ativos 0005xx,
 -- tipos de título 0006xx, índices econômicos 0009xx, usuários 0010xx, carteiras 0011xx, lotes de importação 0012xx,
 -- operações 0013xx, proventos recebidos 0014xx, categorias de IR 0015xx, apurações 0016xx, DARF 0017xx,
@@ -15,7 +16,8 @@
 -- 3. imposto de renda (P0) → 4. usuários → 5. acompanhamento e planejamento (P1-2).
 -- Nas seções 2 a 5, a linha acha o pai pela chave natural (ISIN, ticker, CNPJ, código, e-mail, nome da carteira) com
 -- LEFT JOIN: se o pai não existir, a FK vem nula e o INSERT falha no NOT NULL, em vez de pular a linha em silêncio (a
--- seção 1 usa o UUID fixo do pai; crypto_assets usa JOIN, e o seed-check acusa cripto sem a especialização). Exceções, com FK que
+-- seção 1 usa o UUID fixo do pai que só o seed grava (setor, índice, tipo de título) e acha o emissor
+-- pelo CNPJ ou pelo nome (seed_issuer); crypto_assets usa JOIN, e o seed-check acusa cripto sem a especialização). Exceções, com FK que
 -- aceita nulo, conferidas pelo database/tests/seed-check.sql: operations.import_batch_id (lote confirmado com tantas
 -- operações quanto linhas), tax_assessments.darf_id (imposto devido > 0 se e só se há DARF) e
 -- saved_screens.sort_indicator_id (só as três telas previstas ficam sem ordenação).
@@ -109,8 +111,10 @@ ON CONFLICT (parent_id, name) DO NOTHING;
 -- patrocinado (AURA, JBSS) têm segmento na planilha da B3. Fundos, estrangeiros de BDR não patrocinado e o Tesouro
 -- ficam sem setor (emissor sem setor, caso de LEFT JOIN).
 -- Chave natural: cnpj (UNIQUE) e o nome (NOT EXISTS), porque o K5 cria emissores pelo nome do Cadastro, sem CNPJ.
-INSERT INTO issuers (id, sector_id, name, kind, cnpj, cvm_code)
-SELECT v.id::uuid, v.sector_id::uuid, v.name, v.kind::issuer_kind, v.cnpj, v.cvm_code
+-- Emissor que a carga do K5 já criou mantém o id e recebe CNPJ, código CVM e setor do seed; os ativos de 1.6 e 1.7
+-- acham o emissor pela chave natural, por meio da visão temporária seed_issuer (BD-2).
+CREATE TEMP VIEW seed_issuer AS
+SELECT v.id::uuid AS id, v.sector_id::uuid AS sector_id, v.name, v.kind::issuer_kind AS kind, v.cnpj, v.cvm_code
 FROM (VALUES
   ('00000000-0000-0000-0000-000000000401', '00000000-0000-0000-0000-000000000303', 'PETROLEO BRASILEIRO S.A. PETROBRAS', 'COMPANY', '33000167000101', '9512'),
   ('00000000-0000-0000-0000-000000000402', '00000000-0000-0000-0000-000000000306', 'VALE S.A.', 'COMPANY', '33592510000154', '4170'),
@@ -163,9 +167,21 @@ FROM (VALUES
   -- FII Opportunity (FTCE11): emissor sem ativo no seed (caso de LEFT JOIN) e o único FII da fonte com imóveis
   -- das 4 classes no informe trimestral (2.7). Nome do Cadastro de Instrumentos (com os dois espaços), CNPJ do informe.
   ('00000000-0000-0000-0000-000000000449', NULL, 'OPPORTUNITY FDO INV IMOB  RESPONS LIMITADA', 'FUND', '01235622000161', NULL)
-) AS v (id, sector_id, name, kind, cnpj, cvm_code)
-WHERE NOT EXISTS (SELECT 1 FROM issuers i WHERE i.name = v.name)
+) AS v (id, sector_id, name, kind, cnpj, cvm_code);
+
+INSERT INTO issuers (id, sector_id, name, kind, cnpj, cvm_code)
+SELECT s.id, s.sector_id, s.name, s.kind, s.cnpj, s.cvm_code
+FROM seed_issuer s
+WHERE NOT EXISTS (SELECT 1 FROM issuers i WHERE i.name = s.name)
 ON CONFLICT (cnpj) DO NOTHING;
+
+-- Emissor criado pela carga (pelo nome, sem CNPJ, código CVM nem setor): completa com os dados do seed.
+UPDATE issuers i
+SET sector_id = s.sector_id, cnpj = s.cnpj, cvm_code = s.cvm_code
+FROM seed_issuer s
+WHERE i.name = s.name AND i.id <> s.id
+  AND i.sector_id IS NULL AND i.cnpj IS NULL AND i.cvm_code IS NULL
+  AND num_nonnulls(s.sector_id, s.cnpj, s.cvm_code) > 0;
 
 -- 1.4 economic_indexes: os cinco valores de index_code. CDI, Selic, IPCA e IGP-M pelo BCB, API SGS
 -- (api.bcb.gov.br/dados/serie/bcdata.sgs.{codigo}/dados); Ibovespa pela página de índices da B3 (D59).
@@ -197,9 +213,10 @@ ON CONFLICT (name) DO NOTHING;
 -- companhia (hoje AXIA ENERGIA S.A., mesmo CNPJ) negocia como AXIA3, com outro ISIN. ISIN e espécie da ELET3 vêm do
 -- COTAHIST de 02/01/2025 (https://bvmf.bmfbovespa.com.br/InstDados/SerHist/COTAHIST_D02012025.ZIP,
 -- data/raw/b3-cotahist/); is_active = false (ativo fora de negociação, caso de LEFT JOIN).
--- Chave natural: ticker (UNIQUE).
+-- Chave natural: ticker (UNIQUE). O emissor (UUID do seed na coluna issuer_id) é achado pelo CNPJ, ou pelo nome quando
+-- o emissor não tem CNPJ: a carga do K5 pode tê-lo criado antes, com outro id. Sem emissor, o INSERT falha no NOT NULL.
 INSERT INTO assets (id, issuer_id, ticker, isin, type, share_class, bdr_program, is_active)
-SELECT v.id::uuid, v.issuer_id::uuid, v.ticker, v.isin, v.type::asset_type, v.share_class::share_class,
+SELECT v.id::uuid, i.id, v.ticker, v.isin, v.type::asset_type, v.share_class::share_class,
        v.bdr_program::bdr_program, v.is_active
 FROM (VALUES
   ('00000000-0000-0000-0000-000000000501', '00000000-0000-0000-0000-000000000401', 'PETR3', 'BRPETRACNOR9', 'STOCK', 'ON', NULL, TRUE),
@@ -253,13 +270,15 @@ FROM (VALUES
   ('00000000-0000-0000-0000-000000000549', '00000000-0000-0000-0000-000000000447', 'ACWX39', 'BRACWXBDR001', 'BDR', NULL, 'DRE', TRUE),
   ('00000000-0000-0000-0000-000000000550', '00000000-0000-0000-0000-000000000412', 'ELET3', 'BRELETACNOR6', 'STOCK', 'ON', NULL, FALSE)
 ) AS v (id, issuer_id, ticker, isin, type, share_class, bdr_program, is_active)
+LEFT JOIN seed_issuer s ON s.id = v.issuer_id::uuid
+LEFT JOIN issuers i ON i.cnpj = s.cnpj OR (s.cnpj IS NULL AND i.name = s.name)
 ON CONFLICT (ticker) DO NOTHING;
 
 -- 1.7 assets de renda fixa + fixed_income_bonds: 10 títulos com preço na data-base 11/11/2026 do CSV do Tesouro
 -- (PrecoTaxaTesouroDireto.csv). Sem ticker (RN03); o CSV não traz ISIN. Emissor: Tesouro Nacional (GOVERNMENT).
 -- Chave natural: (tipo, vencimento) em fixed_income_bonds (UNIQUE); o ativo só entra se o título ainda não existe.
 INSERT INTO assets (id, issuer_id, ticker, isin, type)
-SELECT v.id::uuid, v.issuer_id::uuid, NULL, NULL, 'FIXED_INCOME'
+SELECT v.id::uuid, i.id, NULL, NULL, 'FIXED_INCOME'
 FROM (VALUES
   ('00000000-0000-0000-0000-000000000551', '00000000-0000-0000-0000-000000000448', '00000000-0000-0000-0000-000000000601', DATE '2027-03-01'), -- Tesouro Selic 2027
   ('00000000-0000-0000-0000-000000000552', '00000000-0000-0000-0000-000000000448', '00000000-0000-0000-0000-000000000601', DATE '2029-03-01'), -- Tesouro Selic 2029
@@ -272,6 +291,8 @@ FROM (VALUES
   ('00000000-0000-0000-0000-000000000559', '00000000-0000-0000-0000-000000000448', '00000000-0000-0000-0000-000000000607', DATE '2030-12-15'), -- Tesouro Educa+ 2030
   ('00000000-0000-0000-0000-000000000560', '00000000-0000-0000-0000-000000000448', '00000000-0000-0000-0000-000000000608', DATE '2049-12-15') -- Renda+ Aposentadoria Extra 2049
 ) AS v (id, issuer_id, fixed_income_type_id, maturity_date)
+LEFT JOIN seed_issuer s ON s.id = v.issuer_id::uuid -- emissor pela chave natural, como em 1.6
+LEFT JOIN issuers i ON i.cnpj = s.cnpj OR (s.cnpj IS NULL AND i.name = s.name)
 WHERE NOT EXISTS (SELECT 1 FROM fixed_income_bonds b
                   WHERE b.fixed_income_type_id = v.fixed_income_type_id::uuid AND b.maturity_date = v.maturity_date)
 ON CONFLICT (id) DO NOTHING;
@@ -1286,6 +1307,6 @@ LEFT JOIN users u ON u.email = v.email
 LEFT JOIN portfolios p ON p.user_id = u.id AND p.name = v.portfolio
 ON CONFLICT DO NOTHING;
 
-DROP VIEW seed_asset_key;
+DROP VIEW seed_asset_key, seed_issuer;
 
 COMMIT;
