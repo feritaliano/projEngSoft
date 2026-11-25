@@ -101,6 +101,7 @@ database/
   tests/          constraints.sql, ops-constraints.sql, full-product-constraints.sql
   sql/            ddl.sql (gerado), inserts.sql (seed), queries.sql
   results/        resultados das consultas e listagens das tabelas
+  entrega/        relatório e .sql da Parte 2 de BD (P4, congelados em 24/11)
 data/raw/         arquivos brutos das fontes externas (fora do Git)
 docker/           scripts de inicialização do PostgreSQL
 docs/             roteiro de demonstração do S1 (R1)

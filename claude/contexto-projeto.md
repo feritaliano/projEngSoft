@@ -320,7 +320,7 @@ Definida em `claude/estrutura-repositorio.md` (D37): árvore completa, onde fica
 .github/          template de PR; workflows/ci.yml (K1)
 agentes/  claude/ prompts e documentação (inclui claude/handoff-ux.md)
 prisma/           schema.prisma, migrations/ (agente database)
-database/         docs/, scripts/, tests/, sql/ (ddl gerado, inserts, queries), results/
+database/         docs/, scripts/, tests/, sql/ (ddl gerado, inserts, queries), results/, entrega/ (Parte 2, P4)
 data/raw/         bronze (fora do Git)
 docker/           scripts de inicialização do PostgreSQL
 docs/             roteiro de demonstração do S1 (R1)
@@ -375,7 +375,7 @@ graphify-out/     grafo do código gerado pelo Graphify (fora do Git, D53); excl
 - [x] Confirmar a fonte do Ibovespa. **Decidida em 12/11/2026 (D59):** página de índices da B3; a prova de conceito confere se o COTAHIST também traz o índice.
 - [x] PF — prova de conceito das fontes (D59). **Concluída em 12/11/2026 (PR #23)**; achados F1–F9 em `database/docs/fontes-poc.md`.
 - [x] BD-1 — primeiro corte do seed (catálogo do S1 e mercado da PF). **Concluído em 12/11/2026 (PR #24, D60).**
-- [x] P1-2 — segundo corte do seed: as ~26 tabelas restantes, usuário de demonstração e carteira "Longo prazo". **Concluído em 13/11/2026 (PR #26)**; P2 e B7 no PR #34 (13/11), P3 no PR #41 (15/11). Falta o P4 (25–30/11, envio até 30/11).
+- [x] P1-2 — segundo corte do seed: as ~26 tabelas restantes, usuário de demonstração e carteira "Longo prazo". **Concluído em 13/11/2026 (PR #26)**; P2 e B7 no PR #34 (13/11), P3 no PR #41 (15/11). P4 (relatório) gerado em 24/11; falta o envio pelo usuário até 30/11.
 - [x] Preço de cripto para o seed. **Resolvido em 13/11/2026:** bloqueio do Mercado Bitcoin confirmado também no navegador (F1); candles diários da API pública da Foxbit (BTC e ETH), conforme `claude/plano-de-acao.md`.
 - [x] D59: atualizar a tabela de ingestão da seção 6.3 de `claude/arquitetura.md` (Ibovespa, proventos, Tesouro, cripto) e os prompts dos agentes de banco e de backend (prova de conceito e K5), com o espelho em `.claude/agents/`. **Feito em 12/11/2026**, junto com o checklist interativo (PF, K5 e G-K5).
 - [x] D2 (27–31/10): schema `ops` com `ops.user_sessions`; bloqueia o K2 (04/11). Banco do sistema, fora da entrega de BD. **Concluído em 26/10/2026 (D39).**
@@ -427,7 +427,7 @@ graphify-out/     grafo do código gerado pelo Graphify (fora do Git, D53); excl
 - [ ] D44: validar na legislação o IR de renda fixa e de cripto antes do S11. **Fonte de preço de cripto definida em 12/11/2026 (D59): Mercado Bitcoin, API pública v4**; a API ficou bloqueada para a rede de desenvolvimento (F1); para o seed, JSON baixado pelo usuário ou, se não sair até 14/11, a Foxbit (aprovado em 12/11/2026).
 - [x] D45: backend inclui o filtro `assetType` em `GET /portfolios/:id/operations` (K4). **Feito no PR #14 (11/11/2026)**, com os 6 valores.
 - [x] D47: na D3, conferir na fonte primária os campos marcados "conferir na fonte" (preços e taxas do Tesouro Direto; segmento e mandato de FII no informe mensal da CVM; taxa de administração e índice de ETF; programa de BDR) e registrar no contexto as linhas B que saírem da tela. **Feito em 31/10/2026 (D50):** saem da tela segmento e tipo do FII, índice de referência e taxa de administração do ETF; o programa do BDR fica.
-- [ ] BD Parte 2: o texto do problema (`descricao-problema.md`) e o ER do relatório passam a citar carteira ideal, metas, renda fixa e cripto (D43, D44). **Texto feito no B7 (PR #34, 13/11/2026)**; falta o ER no relatório, dentro do P4.
+- [x] BD Parte 2: o texto do problema (`descricao-problema.md`) e o ER do relatório passam a citar carteira ideal, metas, renda fixa e cripto (D43, D44). **Texto feito no B7 (PR #34, 13/11/2026)**; ER (conceitual e lógico) no relatório do P4 (24/11).
 
 **Fechamento do S1 (auditoria final de 23/11/2026)**
 - [ ] Correções da auditoria final (`claude/prompts-correcao-s1-auditoria-final.md` e `claude/prompts-correcao-s1-revisao-final.md`): **datas revistas pela D64:** BD-2 e BK-5 em 25–26/11, no caminho crítico (antes do P4); FE-3 e R1-b (frontend) em 25–26/11; U7c (UX) até 05/12; BK-4 (backend) depois de 06/12 e antes do S2.
@@ -516,3 +516,4 @@ graphify-out/     grafo do código gerado pelo Graphify (fora do Git, D53); excl
 | 23/11/2026 | R1: pasta `docs/` na raiz (D37) com `roteiro-demonstracao.md`, o roteiro da apresentação de 09/12 (8 partes em 9 min 30 s, preparação na véspera e plano B) | `claude/estrutura-repositorio.md`, seção 9 deste documento, `docs/roteiro-demonstracao.md` |
 | 23/11/2026 | D63 (ordem das classes no Detalhe pelo patrimônio, achado A-3 da auditoria final); seção 11 atualizada depois do R1 e da auditoria final: itens feitos fechados com evidência (P1-2, preço de cripto, `.env` do K1 e do K2, checks do CI, mapeamento D56 do frontend, prévia no OpenAPI, tabelas da D3 no seed) e bloco "Fechamento do S1" com as correções e as pendências do usuário | seções 6 e 11, `claude/checklist-pendencias.md` |
 | 25/11/2026 | D64 (S1+: B8, B9, B10, B11, página do ativo com C2 e C3 e catálogo completo com as 62 ações rejeitadas pelo K5 antes de 06/12; preço pelo fechamento do COTAHIST atualizado todo dia pelo worker; gráficos com ngx-echarts; caminho crítico DADOS → contrato → K7/K8; gatilhos G-S2a e G-S2b); D49 cita a antecipação; P4 passa para 28/11–30/11 (envio mantido em 30/11); BD-2, BK-5, FE-3 e R1-b antecipados para 25–26/11; D63 fechada (PR #59); seção 5 e seção 11 atualizadas | seções 5, 6 e 11, `claude/plano-de-acao.md`, `claude/checklist-pendencias.md`, `claude/prompts-s1-plus-d64.md`, `agentes/`, `.claude/agents/` |
+| 24/11/2026 | P4: relatório da Parte 2 de BD (`.docx` e `.pdf`, 127 páginas, nos 6 itens do enunciado) e os dois `.sql` de entrega; pasta `database/entrega/` (D37). O arquivo único DDL + inserts roda do zero num banco vazio e reproduz `database/results/` sem diferença | `CLAUDE.md`, `claude/estrutura-repositorio.md`, seção 9 deste documento, `claude/checklist-pendencias.md`, `claude/plano-de-acao.md`, `database/entrega/` |

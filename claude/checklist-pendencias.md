@@ -20,6 +20,11 @@
 - [ ] **Agente de backend: K6** (25–27/11): ingestão diária no worker (COTAHIST, BCB, IBOV) e K5 com as 62 ações.
 - [ ] **Agente de backend: contrato da API** do K7 e do K8, **mesclado até 26/11**. Se não sair, você é avisado no mesmo dia.
 - [ ] **Agente de backend: K7** (B8, B9, B10, B11) e **K8** (C2, C3), 26–30/11. **K7 mesclado até 30/11**; senão, aviso no mesmo dia.
+## 2. Agora (até 30/11)
+- [x] ~~Agente de banco: P4 (relatório da Parte 2)~~, gerado em 24/11 (`database/entrega/`).
+- [ ] **Você: enviar a Parte 2 até 30/11** (prazo da disciplina: 07/12): `BD_Parte2_CarteiraB3.pdf` e os dois `.sql` de `database/entrega/`.
+- [ ] **Agente de frontend e de backend: D63**, a ordem das classes no Detalhe pelo patrimônio. O backend ordena; o frontend agrupa na ordem recebida.
+- [ ] **Você: PL1**, o calendário de entregas de ES (vencido em 19/11), e **PL2**, o retorno da Parte 1 de BD (se não chegar até 26/11, o P4 segue com uma nota).
 
 ## 3. Em paralelo (não passa na frente do caminho crítico)
 - [ ] **Agente de UX/UI: UX-2** (25–27/11): Lista e Detalhe no handoff até 26/11, página do ativo até 27/11, microcopy dos `formulaCode` novos.
