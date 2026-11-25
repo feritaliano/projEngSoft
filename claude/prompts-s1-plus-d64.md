@@ -3,7 +3,7 @@
 > Gerados a partir da D64 (`claude/contexto-projeto.md`, seção 6) e da seção "S1+ (D64)" de `claude/plano-de-acao.md`. Cada bloco é um prompt pronto para colar no agente indicado. Um prompt por agente e por PR, exceto BD-2 + BK-5, que mudam juntos no mesmo PR. Os prompts de BD-2, BK-5, FE-3, R1-b e U7c continuam em `claude/prompts-correcao-s1-auditoria-final.md` e `claude/prompts-correcao-s1-revisao-final.md`; aqui só mudam a data e a prioridade.
 
 ## Regras desta rodada (valem para todos os prompts)
-- **Caminho crítico:** DADOS (BD-2 + BK-5, BD-3, BD-4, K6) → contrato da API → K7/K8. É a prioridade máxima do backend e do banco até 30/11: nenhuma tarefa dessas frentes passa na frente de K6, K7 e K8. FE-3, R1-b, UX-2 e W5 andam em paralelo.
+- **Caminho crítico:** DADOS (BD-2 + BK-5, BD-3, BD-4, K6) → contrato da API → K7/K8. É a prioridade máxima do backend e do banco até 30/11: nenhuma tarefa dessas frentes passa na frente do caminho crítico. FE-3, R1-b, UX-2 e W5 andam em paralelo.
 - **Avisos ao usuário no mesmo dia:** contrato não mesclado em 26/11; K7 não mesclado em 30/11.
 - **Gatilhos:** G-S2a em 01/12 (TWR não conferido → sai o B10, ficam B8, B9 e B11); G-S2b em 03/12 (gráficos não prontos → ficam os números); nada do S1 muda depois de 04/12.
 - **Fora do S1+:** C4 e C8 na página do ativo, proventos (S6), metas e carteira ideal (S10), importação (B12), IR e o resto. Sem proventos, a rentabilidade mede só o preço, e o "como foi calculado" diz isso.
@@ -14,7 +14,7 @@
 | Data | Banco | Backend | UX/UI | Frontend |
 |---|---|---|---|---|
 | 25/11 | BD-2, BD-3 | BK-5, K6 | UX-2 | FE-3, R1-b |
-| 26/11 | BD-2, BD-3 (fim), BD-4 | **Contrato (mesclar)**, K6, K7, K8 | UX-2 (Lista e Detalhe) | FE-3, R1-b (fim) |
+| 26/11 | BD-2 (fim), BD-3 (fim), BD-4 | BK-5 (fim), **Contrato (mesclar)**, K6, K7, K8 | UX-2 (Lista e Detalhe) | FE-3, R1-b (fim) |
 | 27/11 | BD-4 (fim) | K6 (fim), K7, K8 | UX-2 (página do ativo) | W5 |
 | 28–30/11 | **P4 (envio em 30/11)** | K7, K8 (**K7 mesclado em 30/11**) | U7c | W5, W6 (desde 30/11) |
 | 01/12 | — | **G-S2a** | — | W5, W6 |
@@ -120,7 +120,7 @@ Não faça: implementação dos cálculos (K7 e K8); endpoint que devolva arquiv
 Prazo: 26/11/2026. Esforço estimado: 3 h.
 ```
 
-## K7 — Carteira com mercado: B8, B9, B11, B10 (backend)
+## K7 — Carteira com mercado: B8, B9, B10, B11 (backend)
 ```
 Agente: backend. Tarefa K7 (D64), 26–30/11, mesclada até 30/11 (senão, avise o usuário no mesmo dia). Caminho crítico.
 Leia: a D64; a seção "S1+ (D64)" do plano; o contrato mesclado em 26/11; claude/arquitetura.md (market-data; analytics só como referência); D4, D17, D28, D32, D55, D63; database/docs/memoria-calculo.md.
