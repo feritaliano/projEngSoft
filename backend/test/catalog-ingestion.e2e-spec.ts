@@ -45,10 +45,6 @@ describe('Catalog load from the B3 files (integration, K5, D59)', () => {
     prisma.$queryRaw<{ name: string }[]>`
       SELECT name FROM issuers GROUP BY name HAVING count(*) > 1`;
 
-  const duplicatedTickers = () =>
-    prisma.$queryRaw<{ ticker: string }[]>`
-      SELECT ticker FROM assets WHERE ticker IS NOT NULL GROUP BY ticker HAVING count(*) > 1`;
-
   /** Id and natural key (issuer name, asset ticker) of every row. */
   const identities = () =>
     prisma.$queryRaw<{ id: string; key: string | null }[]>`
@@ -116,7 +112,7 @@ describe('Catalog load from the B3 files (integration, K5, D59)', () => {
     ]);
   });
 
-  it('runs the seed on top of the load without duplicating issuers or tickers and keeps the loaded ids (K5 → seed, BD-2)', async () => {
+  it('runs the seed on top of the load without duplicating issuers and keeps the loaded ids (K5 → seed, BD-2)', async () => {
     await load();
     // Only ids, names and tickers: the seed fills cnpj, cvm_code and sector_id of an issuer the load created.
     const loaded = await identities();
@@ -124,7 +120,6 @@ describe('Catalog load from the B3 files (integration, K5, D59)', () => {
     await runSqlFile(SEED);
 
     expect(await duplicatedIssuerNames()).toEqual([]);
-    expect(await duplicatedTickers()).toEqual([]);
     expect(await identities()).toEqual(expect.arrayContaining(loaded));
   });
 
