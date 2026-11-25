@@ -1,5 +1,7 @@
 # Prompts de correção — auditoria final do S1 (23/11/2026, `main` em `e8e001c`)
 
+> **Datas e prioridades revistas pela D64 (25/11/2026):** BD-2, BK-5, FE-3 e R1-b passam para 25–26/11, no caminho crítico do S1+, e o P4 para 28/11–30/11; onde este arquivo disser "até 04/12", "até 05/12" ou "depois do P4", vale `claude/prompts-s1-plus-d64.md` e a seção "S1+ (D64)" de `claude/plano-de-acao.md`.
+
 Relatório: `claude/rastreabilidade-s1-final.md`, seção "Achados". Prazo do S1: código entregue até 06/12/2026 (apresentação em 09/12; ensaio em 07–08/12). O P4 (relatório de BD, 25/11–30/11) tem prioridade sobre qualquer outra frente (G-P4); por isso o prompt do banco vem depois dele.
 
 ## Cobertura dos achados
