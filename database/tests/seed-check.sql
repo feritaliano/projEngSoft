@@ -2,8 +2,9 @@
 -- Uso no CI: roda depois de cada uma das duas execuções do seed e as contagens têm de ser iguais (idempotência).
 -- Aborta (RAISE) se faltar uma regra do seed; no fim, lista as contagens de todas as tabelas de public.
 -- As contas de posição, preço médio e IR seguem database/docs/memoria-calculo.md (seções 4 e 7).
--- As conferências de IR, proventos recebidos, eventos e telas salvas olham só os usuários do seed (demo@carteirab3.dev
--- e @example.com), para não falhar num banco de desenvolvimento com usuários criados pela tela.
+-- As conferências de IR, proventos recebidos, eventos, telas salvas, alertas e histórico de cotações olham só os
+-- usuários do seed (demo@carteirab3.dev e @example.com), para não falhar num banco de desenvolvimento com usuários
+-- criados pela tela.
 
 -- 1. Catálogo (BD-1): 6 classes, especializações, massa do handoff e corretoras sem nome repetido.
 DO $$
@@ -47,8 +48,8 @@ BEGIN
       ('crypto_prices', 25), ('darfs', 10), ('economic_indexes', 5), ('fii_monthly_reports', 16),
       ('fii_quarterly_reports', 17), ('fii_report_properties', 14), ('financial_statements', 11),
       ('fixed_income_bonds', 10), ('fixed_income_prices', 50), ('fixed_income_types', 8), ('import_batches', 10),
-      ('income_distributions', 26), ('index_values', 13), ('indicators', 15), ('issuers', 49), ('operations', 68),
-      ('portfolio_goals', 12), ('portfolios', 12), ('price_alerts', 13), ('quotes', 97), ('received_income', 29),
+      ('income_distributions', 26), ('index_values', 956), ('indicators', 15), ('issuers', 49), ('operations', 68),
+      ('portfolio_goals', 12), ('portfolios', 12), ('price_alerts', 13), ('quotes', 9841), ('received_income', 29),
       ('saved_screens', 11), ('screen_criteria', 15), ('sectors', 37), ('statement_lines', 44),
       ('target_allocations', 15), ('tax_assessments', 19), ('tax_categories', 4), ('tax_rules', 4), ('users', 10),
       ('watchlist_items', 13)) AS v (tabela, minimo) LOOP
@@ -266,7 +267,8 @@ BEGIN
     RAISE EXCEPTION 'seed: compensação de prejuízo, imposto ou DARF inconsistente'; END IF;
 END $$;
 
--- 9. Planejamento e acompanhamento: carteira ideal soma 100%; alerta disparado só com fechamento que cruza o alvo.
+-- 9. Planejamento e acompanhamento: carteira ideal soma 100%; alerta disparado só com fechamento que cruza o alvo e,
+-- nos do seed, no primeiro cruzamento depois da criação.
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM target_allocations GROUP BY portfolio_id HAVING sum(target_percent) <> 1) THEN
@@ -278,6 +280,62 @@ BEGIN
                                  AND CASE a.direction WHEN 'ABOVE' THEN q.close >= a.target_price
                                                       ELSE q.close <= a.target_price END))) THEN
     RAISE EXCEPTION 'seed: alerta disparado sem cotação que cruze o alvo'; END IF;
+  -- Alertas do seed contra o histórico até 12/11/2026 (BD-4): nenhum nasce cruzado (último fechamento antes do dia da
+  -- criação); o disparado guarda o primeiro fechamento que cruza, do dia da criação em diante; o ativo não tem nenhum.
+  IF EXISTS (
+      WITH a AS (
+        SELECT a.*, (a.created_at AT TIME ZONE 'America/Sao_Paulo')::date AS created_on
+        FROM price_alerts a JOIN users u ON u.id = a.user_id
+        WHERE u.email = 'demo@carteirab3.dev' OR u.email LIKE '%@example.com')
+      SELECT 1 FROM a
+      WHERE (SELECT CASE a.direction WHEN 'ABOVE' THEN q.close >= a.target_price ELSE q.close <= a.target_price END
+             FROM quotes q WHERE q.asset_id = a.asset_id AND q.quote_date < a.created_on
+             ORDER BY q.quote_date DESC LIMIT 1)
+         OR a.triggered_quote_date IS DISTINCT FROM
+            (SELECT min(q.quote_date) FROM quotes q
+             WHERE q.asset_id = a.asset_id AND q.quote_date BETWEEN a.created_on AND '2026-11-12'
+               AND CASE a.direction WHEN 'ABOVE' THEN q.close >= a.target_price ELSE q.close <= a.target_price END)) THEN
+    RAISE EXCEPTION 'seed: alerta criado já cruzado, ativo com cruzamento ou disparo fora do primeiro cruzamento'; END IF;
+END $$;
+
+-- 10. Histórico (BD-4, D64), de 02/01/2025 ao último pregão do seed (12/11/2026). Calendário de pregões = datas do
+-- COTAHIST no seed: 466 (250 em 2025 e 216 em 2026), as mesmas do IBOV, fonte independente. Cada
+-- ativo da B3 das carteiras do seed, mais a VIVT3 do roteiro de demonstração, tem cotação em todo pregão; CDI em todo
+-- pregão (o BCB publica também 24/12 e 31/12, sem pregão); IPCA em todo mês até 10/2026 (o de 11/2026 sai em
+-- dezembro); IBOV em todo pregão.
+DO $$
+DECLARE missing text;
+BEGIN
+  CREATE TEMP TABLE seed_trading_days ON COMMIT DROP AS
+    SELECT DISTINCT quote_date AS d FROM quotes WHERE quote_date BETWEEN '2025-01-02' AND '2026-11-12';
+  -- Com o IBOV em todo pregão (conferido abaixo), 466 datas dos dois lados tornam os calendários iguais.
+  IF (SELECT count(*) FROM seed_trading_days) <> 466
+     OR (SELECT count(*) FROM index_values v JOIN economic_indexes e ON e.id = v.economic_index_id
+         WHERE e.code = 'IBOV' AND v.reference_date BETWEEN '2025-01-02' AND '2026-11-12') <> 466 THEN
+    RAISE EXCEPTION 'seed: calendário de pregões ou do IBOV diferente de 466 dias'; END IF;
+  SELECT a.ticker || ' ' || c.d INTO missing
+  FROM (SELECT DISTINCT o.asset_id FROM operations o
+          JOIN portfolios p ON p.id = o.portfolio_id JOIN users u ON u.id = p.user_id
+        WHERE u.email = 'demo@carteirab3.dev' OR u.email LIKE '%@example.com'
+        UNION SELECT id FROM assets WHERE ticker = 'VIVT3') h
+  JOIN assets a ON a.id = h.asset_id AND a.type IN ('STOCK', 'FII', 'ETF', 'BDR')
+  CROSS JOIN seed_trading_days c
+  LEFT JOIN quotes q ON q.asset_id = h.asset_id AND q.quote_date = c.d
+  WHERE q.asset_id IS NULL ORDER BY 1 LIMIT 1;
+  IF missing IS NOT NULL THEN RAISE EXCEPTION 'seed: falta cotação de % (histórico)', missing; END IF;
+  SELECT e.code || ' ' || c.d INTO missing
+  FROM economic_indexes e
+  CROSS JOIN seed_trading_days c
+  LEFT JOIN index_values v ON v.economic_index_id = e.id AND v.reference_date = c.d
+  WHERE v.reference_date IS NULL AND e.code IN ('CDI', 'IBOV')
+  ORDER BY 1 LIMIT 1;
+  IF missing IS NOT NULL THEN RAISE EXCEPTION 'seed: falta % (histórico)', missing; END IF;
+  SELECT m::date::text INTO missing
+  FROM generate_series(DATE '2025-01-01', DATE '2026-10-01', interval '1 month') m
+  WHERE NOT EXISTS (SELECT 1 FROM index_values v JOIN economic_indexes e ON e.id = v.economic_index_id
+                    WHERE e.code = 'IPCA' AND v.reference_date = m::date)
+  ORDER BY 1 LIMIT 1;
+  IF missing IS NOT NULL THEN RAISE EXCEPTION 'seed: falta IPCA de %', missing; END IF;
 END $$;
 
 -- Contagens de todas as tabelas de public (o CI compara a saída das duas execuções do seed).

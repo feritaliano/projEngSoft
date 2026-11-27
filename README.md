@@ -44,7 +44,7 @@ Esse comando sobe o PostgreSQL 16 com os bancos `carteira_dev` e `carteira_test`
 npm run db:seed
 ```
 
-O seed carrega o catálogo de referência do S1 (setores, emissores, corretoras e 72 ativos reais das 6 classes) e usuários fictícios com carteiras e operações. Pode rodar mais de uma vez sem duplicar nada. Ele roda o `psql` de dentro do contêiner `carteira-b3-db`, por isso o PostgreSQL do passo 3 precisa estar de pé.
+O seed carrega o catálogo de referência do S1 (setores, emissores, corretoras e 72 ativos reais das 6 classes) e usuários fictícios com carteiras e operações, além do histórico de mercado de 02/01/2025 a 12/11/2026 (cotações diárias do COTAHIST dos ativos da B3 das carteiras e da VIVT3; CDI, IPCA e Ibovespa). Pode rodar mais de uma vez sem duplicar nada. Ele roda o `psql` de dentro do contêiner `carteira-b3-db`, por isso o PostgreSQL do passo 3 precisa estar de pé.
 
 **Catálogo completo da B3 (opcional, K5).** Os 72 ativos do seed bastam para usar o sistema. Para buscar e lançar as ações, units, FIIs, ETFs e BDRs da B3 (FII sem negócio no dia do COTAHIST fica fora), carregue o Cadastro de Instrumentos e o COTAHIST do mesmo pregão, antes ou depois do seed (os dois rodam em qualquer ordem sem duplicar):
 1. Baixe os dois arquivos para `data/raw/` (fora do Git) pelos endereços de `database/docs/fontes-poc.md`: `InstrumentsConsolidatedFile_AAAAMMDD.csv` em `data/raw/b3-instrumentos/` e o `COTAHIST_DDDMMAAAA.TXT` (de dentro do ZIP) do mesmo dia em `data/raw/b3-cotahist/`. Extraia o `.TXT` direto nessa pasta: o "Extrair tudo" do Windows cria uma subpasta com o nome do ZIP, e o caminho do comando do passo 2 deixa de apontar para o arquivo. Use um dia anterior a hoje: a carga só aceita o cadastro com "Status do Arquivo: Final".

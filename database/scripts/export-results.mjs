@@ -14,7 +14,8 @@ const TZ = "America/Sao_Paulo"; // timestamptz sai no fuso do seed, igual em qua
 
 function psql(sql, extra = []) {
   const args = ["-X", "-U", user, "-d", db, "-v", "ON_ERROR_STOP=1", "-q", "-P", "pager=off", ...extra];
-  const opts = { input: sql, encoding: "utf8", stdio: ["pipe", "pipe", "inherit"] };
+  // maxBuffer: a listagem de quotes passa de 1 MB (padrão do Node) desde o histórico do BD-4.
+  const opts = { input: sql, encoding: "utf8", stdio: ["pipe", "pipe", "inherit"], maxBuffer: 64 * 1024 * 1024 };
   if (process.env.PSQL === "local") {
     return execFileSync("psql", ["-h", url.hostname, "-p", url.port || "5432", ...args],
       { ...opts, env: { ...process.env, PGPASSWORD: decodeURIComponent(url.password), PGTZ: TZ } });

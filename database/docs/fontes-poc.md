@@ -194,6 +194,17 @@ Segundo corte do P1 (P1-2, 13/11/2026), seções 2.3 a 2.11 (arquivos na seção
 
 Conferido num banco migrado do zero: seed 2× com as mesmas contagens, `seed-check.sql` e `db:test` passando.
 
+Histórico (BD-4, D64, 26/11/2026), seções 2.12 e 2.13 (arquivos na seção 6.2), de 02/01/2025 ao último pregão do seed, 12/11/2026 (466 pregões: 250 em 2025 e 216 em 2026):
+
+| Tabela | Linhas novas | Origem |
+|---|---|---|
+| `quotes` | 9.744 (9.786 no arquivo, menos as 42 de 30/10 e 12/11 que já estavam em 2.4, com os mesmos valores): 466 pregões de 21 ativos, sem buraco. Os 20 ativos da B3 das carteiras do seed (AAPL34, ABEV3, BBAS3, BBDC4, BOVA11, EGIE3, HGLG11, ITSA4, ITUB4, IVVB11, KNRI11, MSFT34, MXRF11, NVDC34, PETR4, RENT3, SMAL11, TAEE11, VALE3, WEGE3) e a VIVT3 do roteiro de demonstração. A MGLU3 do roteiro não está no seed (vem do K5). `FATCOT` = 1 em todas as linhas; ISIN igual ao do seed | COTAHIST anual 2025 e 2026 |
+| `index_values` (CDI) | 468: todo pregão e 24/12 e 31/12/2025 (dia útil bancário sem pregão); % ao dia, como o SGS publica | SGS 12 |
+| `index_values` (IPCA) | 22: 01/2025 a 10/2026 (o de 11/2026 sai em dezembro); % no mês, `reference_date` no dia 1º | SGS 433 |
+| `index_values` (IBOV) | 453: 250 de 2025 e 203 de 2026 (216 no arquivo, menos as 13 de 26/10 a 12/11 de 2.1, com os mesmos valores); todo pregão do período | `IBOV_2025.csv` (seção 6.2) e arquivo 3 |
+
+Conferido num banco migrado do zero: seed 2× com as mesmas contagens e os mesmos valores, `seed-check.sql` (seção 10: cada ativo em todo pregão, calendário igual ao do IBOV, CDI em todo pregão, IPCA em todo mês) e `db:test` passando.
+
 ## 5. Achados e prompts de correção
 
 | ID | Achado | Para quem |
@@ -214,6 +225,7 @@ Conferido num banco migrado do zero: seed 2× com as mesmas contagens, `seed-che
 | F14 | A LC 224/2025 elevou o IRRF sobre JCP de 15% para 17,5% desde 01/01/2026 (Lei 9.249/1995, art. 9º, § 2º). `received_income.withheld_tax` do seed usa 17,5% (todos os JCP recebidos foram aprovados em 2026); JCP declarado em 2025 e pago em 2026 (PETR4 e BBDC4 de dez./2025) e JCP mensal do BBDC4 aprovado em 2025 ficaram sem recebimento no seed | backend (S6) e `memoria-calculo.md` (R18) |
 | F15 | O `listedCompaniesProxy` não traz o custo atribuído da bonificação (`bonus_unit_cost`, obrigatório). O seed usa o valor do documento da companhia (BBDC 2022, ITSA 2025, ITUB 2025); a bonificação da KLBN 2025 ficou fora (custo da unit só em fonte secundária) | backend (S2: registro manual do custo, D29) |
 | F16 | O informe mensal de FII traz `Cotas_Emitidas` fracionário (VISC11: 28828640.0000073); `shares_outstanding` é inteiro. O seed grava o inteiro mais próximo, com o original em comentário | backend (S8) |
+| F17 | Preços das operações da massa fictícia fora da faixa do pregão: 54 das 58 operações em ativos da B3 com cotação no dia têm `unit_price` fora de `low`–`high`, e a compra de PETR4 de 14/03/2026 é num sábado. Lista da "Longo prazo" e efeito no K7 na seção 6.2 | **Decidido (26/11/2026):** operações sem mudança (BK-3 e E2E); efeito no K7 com a usuária |
 
 ```
 F1 — OBSOLETO desde 13/11/2026 (bloqueio confirmado também no navegador; preço de cripto pela Foxbit, seção 2.5). Mantido como registro.
@@ -285,6 +297,26 @@ Baixadas em 13/11/2026 para `data/raw/` (fora do Git), cada uma na própria past
 
 Também usados, já baixados antes: informe mensal de FII de 2026 (arquivo extra da seção 1; `fii_monthly_reports`), CSV do Tesouro (arquivo 6; `fixed_income_prices`), `listedCompaniesProxy` (arquivos 4a–4c) e `b3-empresas/supplement_{BBAS,ITSA,ITUB,KLBN}.json` (`corporate_events`), Cadastro de Instrumentos de 30/10/2026 (nome do emissor do FII Opportunity, `FTCE11`). Custo atribuído das bonificações (F15): edital da AGE do Bradesco de 10/03/2022 (R$ 4,128165265), aviso aos acionistas da Itaúsa de 15/12/2025 (R$ 11,370033972) e fato relevante do Itaú Unibanco de 18/12/2025 (R$ 40,00).
 
+### 6.2 Fontes do histórico (BD-4, seções 2.12 e 2.13 do `inserts.sql`)
+
+Em `data/raw/` (fora do Git), cada fonte na própria pasta. Horários em BRT.
+
+| Arquivo | URL exata | Download | SHA-256 | Registros | Alimenta |
+|---|---|---|---|---|---|
+| `b3-cotahist/COTAHIST_A2025.ZIP` (contém `COTAHIST_A2025.TXT`) | `https://bvmf.bmfbovespa.com.br/InstDados/SerHist/COTAHIST_A2025.ZIP` | 25/11/2026 16:43 | ZIP `6cc0ad851c8f605ca30418acac48be81f1767f6ed05b4f563772d06ae448047d`; TXT `0af1d21672d799dd1d7fa67fd001e84f1d22203a33a17ebdbe2b5f322ff0b044` | 3.174.698 registros tipo 01 (o trailer confirma); pregões de 02/01 a 30/12/2025 | `quotes` de 2025 |
+| `b3-cotahist/COTAHIST_A2026.ZIP` (contém `COTAHIST_A2026.TXT`) | `https://bvmf.bmfbovespa.com.br/InstDados/SerHist/COTAHIST_A2026.ZIP` | 25/11/2026 16:43 | ZIP `fa0f17f0e097e6cd993321ee39b7c367f7d96af183146bdf60c4807c94a8e514`; TXT `2afeef5a6fe392439689634b511671c6eb9fb2d87bdd6c260dd2d2594ef6e839` | 3.596.865 registros tipo 01 (o trailer confirma); pregões de 02/01 a 24/11/2026 (o seed usa até 12/11) | `quotes` de 2026 |
+| `bcb-sgs/sgs12_CDI_20250102_20261112.json` | `https://api.bcb.gov.br/dados/serie/bcdata.sgs.12/dados?formato=json&dataInicial=02/01/2025&dataFinal=12/11/2026` | 26/11/2026 22:19 | `4cc8224f9a2ff12403c52a1c56f4973a2b7638f967ec1ea050ca379a864ad6d8` | 468 dias úteis (`data` dd/mm/aaaa, `valor` em % ao dia) | `index_values` do CDI |
+| `bcb-sgs/sgs433_IPCA_20250101_20261112.json` | `https://api.bcb.gov.br/dados/serie/bcdata.sgs.433/dados?formato=json&dataInicial=01/01/2025&dataFinal=12/11/2026` | 26/11/2026 22:19 | `a72510989195867d1cd67db42c9b777cc892d8eadb3caa194ce44ffbe6119df7` | 22 meses, 01/2025 a 10/2026 (`valor` em % no mês) | `index_values` do IPCA |
+| `b3-indices/IBOV_2025.csv` (resposta em base64 ao lado, `IBOV_2025.base64`, decodificada antes de gravar) | `https://sistemaswebb3-listados.b3.com.br/indexStatisticsProxy/IndexCall/GetDownloadPortfolioDay/eyJpbmRleCI6IklCT1YiLCJsYW5ndWFnZSI6InB0LWJyIiwieWVhciI6IjIwMjUifQ==` (base64 de `{"index":"IBOV","language":"pt-br","year":"2025"}`; autorizado pela usuária em 26/11/2026) | 26/11/2026 22:49 | `4a1388484f66b2418b4a4e6d2b9a5c1812eb25ae47624651dc2dd3e8357ff270` | 36 linhas: 31 dias × 12 meses, com 250 fechamentos de 02/01 a 30/12/2025 (os mesmos dias do COTAHIST), mais 2 linhas de rodapé (mínimo e máximo do mês, F6) | `index_values` do IBOV de 2025 |
+
+Também usado, já baixado antes: `IBOV_2026.csv` (arquivo 3), para o IBOV de 02/01 a 12/11/2026.
+
+O endpoint do IBOV (`GetDownloadPortfolioDay`, o botão "Download" da página de dados históricos do índice, o mesmo da PF) foi **autorizado pela usuária em 26/11/2026** para o ano de 2025; o arquivo foi baixado na sessão principal com essa autorização. Não é endpoint novo do sistema (D59b).
+
+Eventos marcados no campo `ESPECI` do COTAHIST (sufixo depois da espécie) para esses ativos na janela: `EB` na EGIE3 (27/11/2025, abertura 28,6% abaixo do fechamento anterior), ITUB4 (18/03/2025, −8,6%; e 26/12/2025, a bonificação de 2.10), ITSA4 (22/12/2025; a bonificação de 2.10 tem ex_date 19/12) e RENT3 (05/01/2026); `EBG` e `EX` na VIVT3 (desdobramento: abertura de 15/04/2025 igual à metade do fechamento anterior). Sem marca, mas com abertura muito abaixo do fechamento anterior em 26/10/2026 (o dia em que o IBOV caiu 13,9%, seção 3.2): RENT3 (exatamente a metade), SMAL11 (exatamente 70%), BBAS3 (exatamente 2/3) e BBDC4 (−26%). Nenhum deles está no `listedCompaniesProxy` baixado (só as bonificações de ITSA4 e ITUB4 de 12/2025, já em 2.10); o COTAHIST não é ajustado (D64b). Posições do seed que atravessam uma dessas datas: só BBDC4 ("Dividendos", demo@carteirab3.dev, 200) e SMAL11 ("Aposentadoria", henrique.costa@example.com, 200), em 26/10/2026.
+
+**Aviso para o K7 (decisão da usuária, 26/11/2026):** as posições de BBDC4 ("Dividendos", demo@carteirab3.dev, 200) e SMAL11 ("Aposentadoria", henrique.costa@example.com, 200) atravessam as quedas sem marca de 26/10/2026. O seed não muda: os fechamentos são os do COTAHIST, sem evento registrado na fonte, e entram no valor de mercado e na rentabilidade como variação de preço (sem o E1, D64b).
+
 ## 7. Classes de ação fora de `share_class` (BD-3, D64)
 
 Arquivo: `data/raw/b3-instrumentos/InstrumentsConsolidatedFile_20261030.csv` ("Status do Arquivo: Final", 89.059 linhas, SHA-256 `74948058ca4a26d9890a86e9cb6f82688c367f32cc57daebeba96c77a9f83f31`), lido pelo parser do K5 na versão do PR #45, antes da mudança do BD-3 (`backend/src/modules/ingestion/domain/instruments-file.ts`), com o COTAHIST de 30/10 para os FIIs.
@@ -339,3 +371,17 @@ Das 36 que entram, 33 gravam: AXIA17G, AXIA19G e AXIA21G têm o sufixo `G` e con
 - [GLOS] B3, Glossário do InstrumentsConsolidatedFile, 02/02/2024, campo 47 `SpcfctnCd` (não traz a tabela de códigos): `https://b3.com.br/data/files/52/74/1E/14/4BA6D8103152D4C8AC094EA8/Glossario%20InstrumentsConsolidatedFile%202024.pdf`
 
 Decisões do usuário (25/11/2026, nota do BD-3 na D64): (1) entram só as classes de ação; CPA, REC, TPR e as linhas `DIA LIVR` (`TAXA*`) ficam fora do catálogo, e o K5 passa a ignorá-las sem contar como rejeição (mudança do parser feita no próprio BD-3: `instruments-file.ts` e testes); (2) o formato do ticker não muda (`^[A-Z0-9]{4}[0-9]{1,2}$`): AXIA17G, AXIA19G, AXIA21G, as 15 ações com sufixo B (14 do balcão organizado) e os 3 BDR seguem rejeitados por formato, e o balcão organizado fica para o S2. Com o parser novo, o Cadastro de 30/10 dá +33 ações, zero rejeição por classe e 21 rejeições por formato do ticker.
+
+Operações do seed fora da faixa do pregão (achado F17): 54 das 58 operações em ativos da B3 com cotação no dia têm `unit_price` fora do intervalo `low`–`high` do pregão (massa fictícia do handoff; mais uma, PETR4 em 14/03/2026, é num sábado, sem pregão). As operações não mudam (decisão da usuária; o BK-3 e o E2E conferem custo e lucro). Na "Longo prazo" (demo@carteirab3.dev), 7 das 9 operações em ativos da B3:
+
+| Ativo | Operação | Data | Preço | Faixa do pregão |
+|---|---|---|---|---|
+| WEGE3 | compra | 05/01/2026 | 36,00 | 48,05–48,86 |
+| MXRF11 | compra | 08/01/2026 | 10,10 | 9,50–9,54 |
+| ITSA4 | compra | 20/01/2026 | 9,85 | 11,87–12,13 |
+| WEGE3 | venda | 10/02/2026 | 46,55 | 52,02–53,98 |
+| MXRF11 | venda | 22/05/2026 | 9,88 | 9,89–9,92 |
+| PETR4 | venda | 02/06/2026 | 38,00 | 41,44–41,98 |
+| BOVA11 | compra | 28/10/2026 | 118,30 | 167,16–172,11 |
+
+A compra de PETR4 de 05/01/2026 (29,95) está dentro da faixa (29,73–30,77); a de 14/03/2026 (36,00) é num sábado. **Efeito no K7:** no dia de cada operação, o valor de mercado (quantidade × fechamento) se afasta do custo pela diferença entre o fechamento e o preço lançado, e a TWR mostra um salto que não é variação de mercado (ex.: BOVA11, 20 cotas a 118,30 contra fechamento de 168,47 em 28/10/2026, ≈ R$ 1.003 de ganho no próprio dia); a compra de sábado é avaliada pelo fechamento anterior (13/03/2026). A decisão fica com a usuária.
