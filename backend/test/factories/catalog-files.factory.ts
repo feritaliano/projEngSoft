@@ -6,8 +6,9 @@ const FIXTURES = resolve(__dirname, '..', 'fixtures');
 /**
  * Reduced excerpts of the real B3 files of 30/10/2026 (Latin-1, as published; F9), read the same way as the command.
  * Cadastro de Instrumentos ("Final"): seed assets of every class, non-seed assets (MGLU3, HGBS11), funds that are not
- * FIIs (SNAG11, a FIAGRO; 003H11, a FII without trades that day), an odd-lot row (PETR4F), an option (PETRK1), share
- * classes outside share_class (BCEE5 PNA*, TAXA0L DIA) and, as the last line, RADL3 cut by hand after 7 fields.
+ * FIIs (SNAG11, a FIAGRO; 003H11, a FII without trades that day), share classes added by D64 (BCEE5 PNA*, EQPA7 PNC,
+ * PCEM11 PRB), SHARES rows that are not shares (TAXA0L DIA, CTBA11B CPA), an odd-lot row (PETR4F), an option (PETRK1)
+ * and, as the last line, RADL3 cut by hand after 7 fields.
  * COTAHIST: header, KNRI11 and HGBS11 (CODBDI 12), PETR4 (02), SNAG11 (14) and trailer.
  */
 export const INSTRUMENTS_SAMPLE = readB3File(

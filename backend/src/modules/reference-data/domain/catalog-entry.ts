@@ -1,7 +1,8 @@
 import type { AssetType } from '../../operations/domain/asset-type';
 
 /** Same values as the share_class enum of the database. */
-export type ShareClass = 'ON' | 'PN' | 'PNA' | 'PNB' | 'UNIT';
+export type ShareClass =
+  'ON' | 'PN' | 'PNA' | 'PNB' | 'PNC' | 'PND' | 'PNV' | 'PRA' | 'PRB' | 'UNIT';
 
 /** Same values as the bdr_program enum: DRN unsponsored; DR1, DR2, DR3 sponsored levels; DRE BDR of an ETF (D50). */
 export const BDR_PROGRAMS = ['DRN', 'DR1', 'DR2', 'DR3', 'DRE'] as const;

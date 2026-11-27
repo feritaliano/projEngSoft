@@ -32,7 +32,7 @@ Registro tipo 01, layout `SeriesHistoricas_Layout.pdf`. Preços em `V99`: 13 dí
 | `TOTNEG` (148–152) | `trades_count` |
 | `CODISI` (231–242) | conferência de `assets.isin` |
 | `CODBDI` (11–12), `TPMERC` (25–27) | filtro: mercado à vista (`TPMERC` 010) e classe (seção 3.1) |
-| `ESPECI` (40–49) | conferência de `assets.share_class` (ON, PN, PNA, PNB, UNT → UNIT) e `assets.bdr_program` (DRN, DR1, DR2, DR3, DRE) |
+| `ESPECI` (40–49) | conferência de `assets.share_class` (ON, PN, PNA, PNB, PNC, PND, PNV, PRA, PRB, UNT → UNIT; seção 7) e `assets.bdr_program` (DRN, DR1, DR2, DR3, DRE) |
 | `FATCOT` (211–217) | divisor do preço; não é gravado |
 
 ### 2.2 Cadastro de Instrumentos → `assets` (Ativo) e `issuers` (Emissor)
@@ -43,7 +43,7 @@ Filtro `MktNm = EQUITY-CASH`. Pular a primeira linha (status do arquivo).
 | `TckrSymb` | `assets.ticker` |
 | `ISIN` | `assets.isin` |
 | `SctyCtgyNm` | `assets.type`: SHARES e UNIT → STOCK; ETF EQUITIES e ETF FOREIGN INDEX → ETF; BDR → BDR; FUNDS → FII **só** se for FII (F7) |
-| `SpcfctnCd` (ex.: `PN      N2`, `UNT     N2`, `DRN ED`) | `assets.share_class` (primeiro token) e `assets.bdr_program` |
+| `SpcfctnCd` (ex.: `PN      N2`, `UNT     N2`, `DRN ED`) | `assets.share_class` (primeiro token, sem o "\*" de lote de mil; CPA, REC e TPR fora do catálogo, seção 7) e `assets.bdr_program` |
 | `TradgEndDt` (`9999-12-31` = negociável) | `assets.is_active` |
 | `CrpnNm` | `issuers.name` |
 | `CFICd`, `CorpGovnLvlNm`, `MktCptlstn` | não gravados |
@@ -284,3 +284,58 @@ Baixadas em 13/11/2026 para `data/raw/` (fora do Git), cada uma na própria past
 | `b3-empresas/supplement_{BBAS,ITSA,ITUB,KLBN}.json` | `https://sistemaswebb3-listados.b3.com.br/listedCompaniesProxy/CompanyCall/GetListedSupplementCompany/<base64>`, com o base64 de `{"issuingCompany":"<código>","language":"pt-br"}` (o mesmo endpoint dos arquivos 4a–4c) | 12/11/2026 22:40 | BBAS `6dd58623893be3c5b3bbde815c1c71022e33217f6d1f76e9776fb6d75bf5b4ff`; ITSA `3fe45778c1e45be344d9062250198fb0d2105050c322ac8988f91dc12d8e4ede`; ITUB `3c561a6b1540b54b4570f546e7e6203a26f00132ad998f4c67684a3c647e100c`; KLBN `3e2299699d92d9906493bd625b87e6dff815072485c475995d481d972506be2f` | 1 emissor cada | `corporate_events` (`stockDividends`) de BBAS3, ITSA4, ITUB4 e KLBN11 |
 
 Também usados, já baixados antes: informe mensal de FII de 2026 (arquivo extra da seção 1; `fii_monthly_reports`), CSV do Tesouro (arquivo 6; `fixed_income_prices`), `listedCompaniesProxy` (arquivos 4a–4c) e `b3-empresas/supplement_{BBAS,ITSA,ITUB,KLBN}.json` (`corporate_events`), Cadastro de Instrumentos de 30/10/2026 (nome do emissor do FII Opportunity, `FTCE11`). Custo atribuído das bonificações (F15): edital da AGE do Bradesco de 10/03/2022 (R$ 4,128165265), aviso aos acionistas da Itaúsa de 15/12/2025 (R$ 11,370033972) e fato relevante do Itaú Unibanco de 18/12/2025 (R$ 40,00).
+
+## 7. Classes de ação fora de `share_class` (BD-3, D64)
+
+Arquivo: `data/raw/b3-instrumentos/InstrumentsConsolidatedFile_20261030.csv` ("Status do Arquivo: Final", 89.059 linhas, SHA-256 `74948058ca4a26d9890a86e9cb6f82688c367f32cc57daebeba96c77a9f83f31`), lido pelo parser do K5 (`backend/src/modules/ingestion/domain/instruments-file.ts`, sem alteração) com o COTAHIST de 30/10 para os FIIs.
+
+### 7.1 As 497 rejeições do K5
+
+| Motivo | Linhas |
+|---|---|
+| `DIA LIVR`: `TAXA0L`, `TAXA16`…`TAXA365` e `TAXA16L`…`TAXA99L`, "TAXA DE FINANCIAMENTO" (categoria SHARES, `PricFctr` 1), não são ações | 435 |
+| Classe de ação fora do domínio (tabela 7.2) | 44 |
+| Ticker fora do formato B3 (`^[A-Z0-9]{4}[0-9]{1,2}$`): 15 ações com sufixo `B`, 14 delas do balcão organizado (`MB`) (ex.: `EQMA3B`, `ORNA4B`) e 3 BDR (`O2RI`, `VC99`, `Z9HH`) | 18 |
+| **Total** | **497** |
+
+As "62 rejeitadas por classe" do PR #45 são 497 − 435 = 44 + 18: o número junta as de classe com as de formato do ticker.
+
+### 7.2 Linhas SHARES com classe fora do domínio (primeiro token de `SpcfctnCd`)
+
+| Classe no arquivo | Linhas | Tickers | Decisão |
+|---|---|---|---|
+| PNA\* | 9 | BCEE5, CNRT5, COCN5, ESSE5, FGRT5, GPLA5, HOAM5, KALS5, MTNR5 | PNA (já existe) |
+| PNB\* | 8 | DTEN6, FAEL6, HOAM6, MTAL6, NODA6, SANY6, SDRM6, STAL6 | PNB (já existe) |
+| PNC | 5 | AXIA7, EQPA7, AXIA17G, AXIA19G, AXIA21G | PNC (novo) |
+| PNC\* | 5 | CPCH7, CPNO7, FAEL7, MTNR7, SVPH7 | PNC (novo) |
+| PND\* | 1 | RIBC8 | PND (novo) |
+| PNV | 1 | DANA11 | PNV (novo) |
+| PRA | 1 | OBTC11 | PRA (novo) |
+| PRB | 6 | PCEM11, PCEM13, PCEM14, PCEM15, PCEM16, PCEM17 | PRB (novo) |
+| CPA | 6 | CTBA11B, MCRJ11B, PMSP11B, PMSP12B, PMSP13B, PMSP14B | fora do catálogo |
+| REC | 1 | MGRI15 | fora do catálogo |
+| TPR | 1 | PSVM11 | fora do catálogo |
+| **Total** | **44** | | 36 entram, 8 ficam fora |
+
+Das 36 que entram, 33 gravam: AXIA17G, AXIA19G e AXIA21G têm o sufixo `G` e continuam rejeitadas pelo formato do ticker (no K5 e no CHECK `assets_ticker_check`). Simulado com o parser do K5 aceitando as classes novas e tirando o "\*": 2.261 → 2.294 entradas; rejeitadas = 435 `DIA` + 8 (CPA, REC, TPR) + 21 de ticker; com a decisão (1) abaixo, só as 21 de ticker. O Cadastro de 12/11 (`fontes-poc/`, "Parcial") tem as mesmas classes (PNC com 2 linhas sem "\*").
+
+### 7.3 Significado dos códigos e fontes
+
+| Código | Significado | Fonte |
+|---|---|---|
+| PNC, PND | Preferencial nominativa classe C, D | [EN] p. 6; [PT] p. 9; [MPO] p. 135 |
+| PNV | Preferencial nominativa com direito a voto | [EN] p. 7 |
+| PRA, PRB | Preferencial nominativa classe A, B resgatável | [EN] p. 7 |
+| "\*" depois da classe | Cotação por lote de mil, mesma classe (os 23 papéis SHARES com "\*" colado na classe têm `PricFctr` = 1000) | [LEG] |
+| P, MB, NM, N1, N2, ATZ, ED, EJ… | Sufixos de direitos diferenciados, balcão organizado, segmento de governança e situação: não são classe | [LEG]; [EN] |
+| CPA | CEPAC, Certificado de Potencial Adicional de Construção (título de prefeitura negociado no balcão) | [PT] p. 8 |
+| REC | Recibo de subscrição | [EN] p. 7 |
+| TPR | Título perpétuo com remuneração por royalties | [EN] p. 7 |
+
+- [EN] B3, "File Layout – Historical Quotations (COTAHIST.AAAA.TXT)", 17/04/2017 rev. 01, "ESPECI TABLE", p. 6–7: `https://www.b3.com.br/data/files/65/50/AD/26/29C8B51095EE46B5790D8AA8/HistoricalQuotations_B3.pdf`
+- [PT] B3, "Layout do Arquivo – Cotações Históricas", v2.0 de 05/10/2020, "TABELA DE ESPECI", p. 8–9 (termina em PNE; incompleta): `https://www.b3.com.br/data/files/33/67/B9/50/D84057102C784E47AC094EA8/SeriesHistoricas_Layout.pdf`
+- [LEG] Legenda da página "Empresas listadas" da B3 (`"(*) Cotação por lote de mil"`, `(MB) Cia. Balcão Org. Tradicional`, NM, N1, N2): `https://sistemaswebb3-listados.b3.com.br/listedCompaniesPage/assets/i18n/pt-br.json`
+- [MPO] B3, Manual de Procedimentos Operacionais de Negociação, 01/07/2026, p. 135: `https://www.b3.com.br/data/files/0D/83/A3/5C/C7D1F910ADC36BE9AC094EA8/MPO%20de%20Negociacao%20da%20B3.pdf`
+- [GLOS] B3, Glossário do InstrumentsConsolidatedFile, 02/02/2024, campo 47 `SpcfctnCd` (não traz a tabela de códigos): `https://b3.com.br/data/files/52/74/1E/14/4BA6D8103152D4C8AC094EA8/Glossario%20InstrumentsConsolidatedFile%202024.pdf`
+
+Decisões do usuário (25/11/2026, nota do BD-3 na D64): (1) entram só as classes de ação; CPA, REC, TPR e as linhas `DIA LIVR` (`TAXA*`) ficam fora do catálogo, e o K5 passa a ignorá-las sem contar como rejeição (mudança do parser, do agente de backend); (2) o formato do ticker não muda (`^[A-Z0-9]{4}[0-9]{1,2}$`): AXIA17G, AXIA19G, AXIA21G, as 15 ações com sufixo B (balcão organizado) e os 3 BDR seguem rejeitados por formato, e o balcão organizado fica para o S2. Com o parser novo, o Cadastro de 30/10 dá +33 ações, zero rejeição por classe e 21 rejeições por formato do ticker.

@@ -454,7 +454,7 @@ Tipo e nulidade lidos do banco migrado. *Nulo* = coluna que aceita nulo (atribut
 | Operacao.tipo | `operation_type` | COMPRA → BUY; VENDA → SELL |
 | Emissor.tipo | `issuer_kind` | EMPRESA → COMPANY; FUNDO → FUND; ESTRANGEIRO → FOREIGN; GOVERNO → GOVERNMENT (D50) |
 | Ativo.tipo / AlocacaoAlvo.classe | `asset_type` | ACAO → STOCK; FII; ETF; BDR; RENDA_FIXA → FIXED_INCOME; CRIPTO → CRYPTO (D50) |
-| Ativo.classe | `share_class` | ON; PN; PNA; PNB; UNIT |
+| Ativo.classe | `share_class` | ON; PN; PNA; PNB; PNC; PND; PNV; PRA; PRB; UNIT (seção 3.1) |
 | Ativo.programa_bdr | `bdr_program` | DRN; DR1; DR2; DR3; DRE (códigos da B3, D50) |
 | IndiceEconomico.codigo | `index_code` | CDI; SELIC; IPCA; IBOV; IGPM (D50) |
 | IndiceEconomico.periodicidade | `index_periodicity` | DIARIA → DAILY; MENSAL → MONTHLY |
@@ -472,6 +472,20 @@ Tipo e nulidade lidos do banco migrado. *Nulo* = coluna que aceita nulo (atribut
 | AlertaPreco.direcao | `price_direction` | ACIMA → ABOVE; ABAIXO → BELOW |
 | FiltroSalvo.direcao_ordenacao | `sort_direction` | ASC; DESC |
 | Meta.tipo | `goal_type` | PATRIMONIO → NET_WORTH; RENDA_MENSAL → MONTHLY_INCOME (D50) |
+
+### 3.1 Classe da ação (`share_class`)
+
+Códigos da B3 (campo `ESPECI` do COTAHIST; primeiro token de `SpcfctnCd` no Cadastro de Instrumentos). O "\*" depois da classe indica cotação por lote de mil e não muda a classe (PNA\* = PNA); sufixos como P, MB, NM, N1, N2 e ATZ também não são classe. CEPAC (CPA), recibo de subscrição (REC) e título perpétuo (TPR) não são ações e ficam fora do catálogo. Fontes completas em `fontes-poc.md`, seção 7.3.
+
+| Valor | Significado | Fonte |
+|---|---|---|
+| ON | Ordinária nominativa | Layout do COTAHIST, tabela ESPECI |
+| PN | Preferencial nominativa | idem |
+| PNA, PNB | Preferencial nominativa classe A, B | idem |
+| PNC, PND | Preferencial nominativa classe C, D (BD-3, D64) | layout EN p. 6, PT p. 9; MPO de Negociação da B3, p. 135 |
+| PNV | Preferencial nominativa com direito a voto (BD-3, D64) | layout EN p. 7 |
+| PRA, PRB | Preferencial nominativa classe A, B resgatável (BD-3, D64) | layout EN p. 7 |
+| UNIT | Certificado de depósito de ações (UNT no arquivo da B3) | idem |
 
 ## 4. Colunas físicas sem atributo correspondente no ER
 

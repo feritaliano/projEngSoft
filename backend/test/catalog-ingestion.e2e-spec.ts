@@ -20,7 +20,7 @@ const SEED = 'database/sql/inserts.sql';
 const TELEFONICA_ID = '00000000-0000-0000-0000-000000000418';
 const KINEA_RENDA_ID = '00000000-0000-0000-0000-000000000425';
 /** Tickers of the excerpt that are not in the seed. */
-const OUTSIDE_SEED = ['HGBS11', 'MGLU3'];
+const OUTSIDE_SEED = ['BCEE5', 'EQPA7', 'HGBS11', 'MGLU3', 'PCEM11'];
 
 describe('Catalog load from the B3 files (integration, K5, D59)', () => {
   let app: NestFastifyApplication;
@@ -47,9 +47,15 @@ describe('Catalog load from the B3 files (integration, K5, D59)', () => {
 
   const assetsOf = (tickers: string[]) =>
     prisma.$queryRaw<
-      { ticker: string; type: string; issuer: string; kind: string }[]
+      {
+        ticker: string;
+        type: string;
+        shareClass: string | null;
+        issuer: string;
+        kind: string;
+      }[]
     >`
-      SELECT a.ticker, a.type::text, i.name AS issuer, i.kind::text AS kind
+      SELECT a.ticker, a.type::text, a.share_class::text AS "shareClass", i.name AS issuer, i.kind::text AS kind
       FROM assets a JOIN issuers i ON i.id = a.issuer_id
       WHERE a.ticker = ANY(${tickers}::text[]) ORDER BY a.ticker`;
 
@@ -74,22 +80,45 @@ describe('Catalog load from the B3 files (integration, K5, D59)', () => {
     const report = await load();
 
     expect(await duplicatedIssuerNames()).toEqual([]);
-    // Only the two assets outside the seed (and their issuers) are new; every seed row, ELET3 included
+    // Only the five assets outside the seed (and their issuers) are new; every seed row, ELET3 included
     // (is_active = false, not in the file), keeps its id, columns and xmin.
-    expect(report).toMatchObject({ issuersCreated: 2, assetsWritten: 2 });
+    expect(report).toMatchObject({ issuersCreated: 5, assetsWritten: 5 });
     expect(await snapshot()).toEqual(expect.arrayContaining(seed));
-    expect(await snapshot()).toHaveLength(seed.length + 4);
+    expect(await snapshot()).toHaveLength(seed.length + 10);
     expect(await assetsOf(OUTSIDE_SEED)).toEqual([
+      {
+        ticker: 'BCEE5',
+        type: 'STOCK',
+        shareClass: 'PNA',
+        issuer: 'BANCO BESA S/A',
+        kind: 'COMPANY',
+      },
+      {
+        ticker: 'EQPA7',
+        type: 'STOCK',
+        shareClass: 'PNC',
+        issuer: 'EQUATORIAL PARA DISTRIBUIDORA DE ENERGIA S.A.',
+        kind: 'COMPANY',
+      },
       {
         ticker: 'HGBS11',
         type: 'FII',
+        shareClass: null,
         issuer: 'HEDGE BRASIL SHOPPING FII RESP LIM',
         kind: 'FUND',
       },
       {
         ticker: 'MGLU3',
         type: 'STOCK',
+        shareClass: 'ON',
         issuer: 'MAGAZINE LUIZA S.A.',
+        kind: 'COMPANY',
+      },
+      {
+        ticker: 'PCEM11',
+        type: 'STOCK',
+        shareClass: 'PRB',
+        issuer: 'PORTO PECEM GERACAO ENERGIA S/A',
         kind: 'COMPANY',
       },
     ]);
@@ -121,12 +150,8 @@ describe('Catalog load from the B3 files (integration, K5, D59)', () => {
 
     const second = await load();
 
-    expect(first).toMatchObject({ issuersCreated: 14, assetsWritten: 15 });
-    expect(first.rejected.map((line) => line.ticker)).toEqual([
-      'BCEE5',
-      'TAXA0L',
-      'RADL3',
-    ]);
+    expect(first).toMatchObject({ issuersCreated: 17, assetsWritten: 18 });
+    expect(first.rejected.map((line) => line.ticker)).toEqual(['RADL3']);
     expect(second).toMatchObject({ issuersCreated: 0, assetsWritten: 0 });
     expect(await snapshot()).toEqual(loaded);
   });
@@ -147,17 +172,17 @@ describe('Catalog load from the B3 files (integration, K5, D59)', () => {
     expect(report.conflicts).toEqual([
       { ticker: 'MGLU3', isin: 'BRMGLUACNOR2', existingTicker: 'MGLU4' },
     ]);
-    expect(report.assetsWritten).toBe(14);
+    expect(report.assetsWritten).toBe(17);
     expect(await prisma.asset.count({ where: { ticker: 'MGLU3' } })).toBe(0);
   });
 
   it('keeps one issuer per name and one asset per ticker under 40 simultaneous loads (revisão de 12/11)', async () => {
     const reports = await Promise.all(Array.from({ length: 40 }, () => load()));
 
-    expect(reports.reduce((sum, r) => sum + r.assetsWritten, 0)).toBe(15);
-    expect(reports.reduce((sum, r) => sum + r.issuersCreated, 0)).toBe(14);
+    expect(reports.reduce((sum, r) => sum + r.assetsWritten, 0)).toBe(18);
+    expect(reports.reduce((sum, r) => sum + r.issuersCreated, 0)).toBe(17);
     expect(await duplicatedIssuerNames()).toEqual([]);
-    expect(await prisma.asset.count()).toBe(15);
+    expect(await prisma.asset.count()).toBe(18);
   });
 
   it('updates an existing asset whose trading ended and keeps its id and issuer (D59, TradgEndDt)', async () => {

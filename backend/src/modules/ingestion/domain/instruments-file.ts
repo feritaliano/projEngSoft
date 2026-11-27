@@ -24,7 +24,19 @@ type Column = (typeof COLUMNS)[number];
 const TICKER = /^[A-Z0-9]{4}[0-9]{1,2}$/;
 const ISIN = /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/;
 const ISSUER_NAME_MAX_LENGTH = 150;
-const STOCK_CLASSES = new Set(['ON', 'PN', 'PNA', 'PNB']);
+const STOCK_CLASSES = new Set([
+  'ON',
+  'PN',
+  'PNA',
+  'PNB',
+  'PNC',
+  'PND',
+  'PNV',
+  'PRA',
+  'PRB',
+]);
+/** SHARES rows that are not shares (D64): CEPAC, subscription receipt, perpetual bond and the TAXA* financing rates. */
+const NOT_SHARES = new Set(['CPA', 'REC', 'TPR', 'DIA']);
 /** TradgEndDt of an instrument still traded. */
 const OPEN_ENDED = '9999-12-31';
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -67,15 +79,19 @@ function classify(
   fiiTickers: ReadonlySet<string>,
 ): Classification | string | null {
   switch (category) {
-    case 'SHARES':
-      return STOCK_CLASSES.has(specification)
+    case 'SHARES': {
+      // "*" after the class (PNA*) means quoted per thousand shares: the same class (COTAHIST, ESPECI table).
+      const shareClass = specification.replace(/\*$/, '');
+      if (NOT_SHARES.has(shareClass)) return null;
+      return STOCK_CLASSES.has(shareClass)
         ? {
             type: 'STOCK',
-            shareClass: specification as Classification['shareClass'],
+            shareClass: shareClass as Classification['shareClass'],
             bdrProgram: null,
             issuerKind: 'COMPANY',
           }
         : `share class ${specification} is not in share_class`;
+    }
     case 'UNIT':
       return {
         type: 'STOCK',

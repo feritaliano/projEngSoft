@@ -107,7 +107,7 @@ Além das 36 tabelas do ER, o sistema precisa de objetos nos schemas `ops` e `an
 
 - `ops.user_sessions`: `id` uuid, `user_id` → `public.users` (ON DELETE CASCADE), `family_id` uuid (cadeia de rotação; reuso de token revoga a família), `token_hash` único (SHA-256 do refresh token; o token nunca é gravado), `expires_at`, `revoked_at` nulo, `created_at`. Índices por `user_id` e `family_id`. Estrutura registrada no D39 (`token_hash` em `char(64)` hexadecimal; CHECK de formato e `expires_at > created_at`); testes em `database/tests/ops-constraints.sql`.
 - Com `multiSchema`, todos os modelos existentes ganham `@@schema("public")`; a migration gerada não pode alterar nada em `public` (conferir com `db:ddl` e diff do `ddl.sql`).
-- `ops.ingestion_runs`, `ops.staging_*`, `ops.import_rows` e o schema `analytics` ficam para as etapas que os usam (S2, S3, S9).
+- `ops.ingestion_runs` entrou no BD-3 (migration `20261125000000_bd3_share_class_ingestion_runs`; testes em `database/tests/ops-constraints.sql`). `ops.staging_*`, `ops.import_rows` e o schema `analytics` ficam para as etapas que os usam (S2, S3, S9).
 
 ## Entregáveis da disciplina de BD
 

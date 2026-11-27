@@ -71,7 +71,7 @@ flowchart LR
 | Zona | Onde | Conteúdo | Regras |
 |---|---|---|---|
 | **Bronze** | Volume em disco (`data/raw/`), fora do banco | Arquivos exatamente como baixados (ZIP, CSV, TXT) | Imutável. Nome com fonte, data de referência e hash SHA-256. Todo dado externo do banco pode ser reconstruído a partir daqui. |
-| **ops** | Schema `ops` | `ingestion_runs` (fonte, arquivo, hash, data de referência, status, linhas lidas/gravadas/rejeitadas, erro), tabelas `staging_*` UNLOGGED, `import_rows` (linhas da planilha B3 antes da confirmação), `user_sessions` (refresh tokens com hash) | Técnico. **Fora do ER.** Staging é truncável. |
+| **ops** | Schema `ops` | `ingestion_runs` (fonte, arquivo, hash, data de referência, status RUNNING/SUCCEEDED/FAILED, linhas lidas/gravadas/rejeitadas, erro, início e fim; no máximo uma RUNNING por fonte; BD-3), tabelas `staging_*` UNLOGGED, `import_rows` (linhas da planilha B3 antes da confirmação), `user_sessions` (refresh tokens com hash) | Técnico. **Fora do ER.** Staging é truncável. |
 | **Prata (núcleo)** | Schema `public` | As entidades do domínio (seção 4) | **Tudo em `public` está no ER, e nada fora de `public` está no ER.** Integridade por FK, CHECK e UNIQUE. É a fonte da verdade. |
 | **Ouro** | Schema `analytics` | Tabelas de cache e materialized views derivadas | Pode ser apagado e reconstruído a qualquer momento (D17). Nunca é fonte da verdade. **Fora do ER.** Só o worker escreve. |
 
@@ -100,7 +100,7 @@ São 36 tabelas: 34 entidades (2 delas especializações de `assets`: `fixed_inc
 | **Catálogo** |||||
 | 6 | `sectors` | name | autorrelacionamento N:1 sectors (pai) | UNIQUE (parent_id, name); profundidade máxima 3. Classificação setorial da B3; o nível (setor → subsetor → segmento) é a profundidade e não é coluna (D32) |
 | 7 | `issuers` | name, kind {COMPANY, FUND, FOREIGN}, cnpj, cvm_code | N:1 sectors (segmento, nulo permitido) | cnpj UNIQUE quando não nulo; cvm_code UNIQUE quando não nulo. É a ponte entre CVM (cnpj/cvm_code) e B3 (ticker) |
-| 8 | `assets` | ticker, isin, type {STOCK, FII, ETF, BDR}, share_class {ON, PN, PNA, PNB, UNIT} (nulo fora de ações), is_active | N:1 issuers | ticker UNIQUE + CHECK de formato; isin UNIQUE. O ISIN protege contra troca de ticker na ingestão do COTAHIST |
+| 8 | `assets` | ticker, isin, type {STOCK, FII, ETF, BDR}, share_class {ON, PN, PNA, PNB, PNC, PND, PNV, PRA, PRB, UNIT} (nulo fora de ações; BD-3), is_active | N:1 issuers | ticker UNIQUE + CHECK de formato; isin UNIQUE. O ISIN protege contra troca de ticker na ingestão do COTAHIST |
 | **Mercado** |||||
 | 9 | `quotes` | quote_date, open, high, low, close, volume, trades_count | N:1 assets | **PK (asset_id, quote_date)**; CHECK preços > 0, low ≤ high. Preço **não ajustado**, como publicado pela B3 |
 | 10 | `economic_indexes` | code {CDI, SELIC, IPCA, IBOV}, name, periodicity {DAILY, MONTHLY}, unit {RATE_PERCENT, POINTS}, source | — | code UNIQUE |

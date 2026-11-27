@@ -64,5 +64,50 @@ DO $$ BEGIN
   RAISE NOTICE 'ok  exclusão de usuário remove as sessões';
 END $$;
 
+-- ---------------------------------------------------------------- ingestion_runs (BD-3, D64)
+-- execução em andamento, uma com sucesso do mesmo arquivo (o hash não é único: recarga a partir do bronze) e uma que
+-- falhou antes de baixar o arquivo
+INSERT INTO ops.ingestion_runs (id, source, file_name, file_sha256, reference_date) VALUES
+  ('ffffffff-0000-0000-0000-000000000a01', 'B3_COTAHIST', 'COTAHIST_D30102026.ZIP', encode(sha256('cotahist-3010'::bytea), 'hex'), '2026-10-30');
+INSERT INTO ops.ingestion_runs (source, file_name, file_sha256, reference_date, status, rows_read, rows_written, rows_rejected, finished_at) VALUES
+  ('B3_COTAHIST', 'COTAHIST_D30102026.ZIP', encode(sha256('cotahist-3010'::bytea), 'hex'), '2026-10-30', 'SUCCEEDED', 10, 8, 2, now());
+INSERT INTO ops.ingestion_runs (source, status, error, finished_at) VALUES
+  ('B3_INSTRUMENTS', 'FAILED', 'HTTP 404: file not published yet', now());
+
+DO $$ DECLARE r ops.ingestion_runs; BEGIN
+  SELECT * INTO r FROM ops.ingestion_runs WHERE id = 'ffffffff-0000-0000-0000-000000000a01';
+  IF r.status <> 'RUNNING' OR r.rows_read <> 0 OR r.finished_at IS NOT NULL OR r.started_at IS NULL THEN
+    RAISE EXCEPTION 'FALHOU padrões da execução nova';
+  END IF;
+  RAISE NOTICE 'ok  execução nova começa RUNNING, com contagens zeradas e início do banco';
+END $$;
+
+SELECT pg_temp.expect_error('duas execuções em andamento da mesma fonte',
+  $q$INSERT INTO ops.ingestion_runs (source) VALUES ('B3_COTAHIST')$q$, '23505');
+SELECT pg_temp.expect_error('fonte fora do formato de código',
+  $q$INSERT INTO ops.ingestion_runs (source) VALUES ('b3 cotahist')$q$, '23514');
+SELECT pg_temp.expect_error('hash de arquivo em maiúsculas',
+  $q$INSERT INTO ops.ingestion_runs (source, file_sha256) VALUES ('BCB_SGS', upper(encode(sha256('x'::bytea), 'hex')))$q$, '23514');
+SELECT pg_temp.expect_error('contagem de linhas negativa',
+  $q$INSERT INTO ops.ingestion_runs (source, rows_rejected) VALUES ('BCB_SGS', -1)$q$, '23514');
+SELECT pg_temp.expect_error('execução em andamento com fim',
+  $q$INSERT INTO ops.ingestion_runs (source, finished_at) VALUES ('BCB_SGS', now())$q$, '23514');
+SELECT pg_temp.expect_error('execução encerrada sem fim',
+  $q$INSERT INTO ops.ingestion_runs (source, status, error) VALUES ('BCB_SGS', 'FAILED', 'erro')$q$, '23514');
+SELECT pg_temp.expect_error('falha sem erro',
+  $q$INSERT INTO ops.ingestion_runs (source, status, finished_at) VALUES ('BCB_SGS', 'FAILED', now())$q$, '23514');
+SELECT pg_temp.expect_error('sucesso com erro',
+  $q$INSERT INTO ops.ingestion_runs (source, file_name, file_sha256, reference_date, status, error, finished_at) VALUES ('BCB_SGS', 'a.json', encode(sha256('y'::bytea), 'hex'), '2026-10-30', 'SUCCEEDED', 'erro', now())$q$, '23514');
+SELECT pg_temp.expect_error('sucesso sem hash do arquivo',
+  $q$INSERT INTO ops.ingestion_runs (source, file_name, reference_date, status, finished_at) VALUES ('BCB_SGS', 'a.json', '2026-10-30', 'SUCCEEDED', now())$q$, '23514');
+SELECT pg_temp.expect_error('status fora do domínio',
+  $q$INSERT INTO ops.ingestion_runs (source, status) VALUES ('BCB_SGS', 'SKIPPED')$q$, '22P02');
+
+-- a órfã de um worker que caiu é fechada como FAILED; depois a fonte aceita nova execução
+UPDATE ops.ingestion_runs SET status = 'FAILED', error = 'interrupted', finished_at = now()
+  WHERE id = 'ffffffff-0000-0000-0000-000000000a01';
+INSERT INTO ops.ingestion_runs (source) VALUES ('B3_COTAHIST');
+DO $$ BEGIN RAISE NOTICE 'ok  fonte aceita nova execução depois de fechar a anterior'; END $$;
+
 ROLLBACK;
 \echo 'Todos os testes de restrição de ops passaram.'
