@@ -12,7 +12,7 @@
 -- operações 0013xx, proventos recebidos 0014xx, categorias de IR 0015xx, apurações 0016xx, DARF 0017xx,
 -- demonstrações 0018xx, informes mensais de FII 0019xx, informes trimestrais 0020xx, documentos 0021xx,
 -- eventos corporativos 0022xx, indicadores 0023xx, alertas 0024xx, telas salvas 0025xx.
--- Ordem das seções: 1. catálogo (BD-1, primeiro corte do P1: o que o S1 lê) → 2. mercado (D59, PF e P1-2) →
+-- Ordem das seções: 1. catálogo (BD-1, primeiro corte do P1: o que o S1 lê) → 2. mercado (D59, PF e P1-2; histórico de 02/01/2025 a 12/11/2026 em 2.12 e 2.13, BD-4) →
 -- 3. imposto de renda (P0) → 4. usuários → 5. acompanhamento e planejamento (P1-2).
 -- Nas seções 2 a 5, a linha acha o pai pela chave natural (ISIN, ticker, CNPJ, código, e-mail, nome da carteira) com
 -- LEFT JOIN: se o pai não existir, a FK vem nula e o INSERT falha no NOT NULL, em vez de pular a linha em silêncio (a
@@ -1892,8 +1892,8 @@ FROM (VALUES
 LEFT JOIN economic_indexes e ON e.code = 'IBOV'
 ON CONFLICT DO NOTHING;
 
--- 2.13 quotes: histórico diário de 02/01/2025 a 12/11/2026 (BD-4, D64), 466 pregões, dos 21 ativos da B3 das carteiras
--- do seed e do roteiro de demonstração (VIVT3). Mesmo mapeamento de 2.4 (mercado à vista, TPMERC 010; preços = campo ÷ 100 ÷
+-- 2.13 quotes: histórico diário de 02/01/2025 a 12/11/2026 (BD-4, D64), 466 pregões, de 21 ativos: os 20 da B3 nas
+-- carteiras do seed e a VIVT3 do roteiro de demonstração. Mesmo mapeamento de 2.4 (mercado à vista, TPMERC 010; preços = campo ÷ 100 ÷
 -- FATCOT, e FATCOT = 1 em todas as linhas; volume = VOLTOT ÷ 100; ISIN conferido com o do seed em cada linha).
 -- Fonte: B3, COTAHIST anual, https://bvmf.bmfbovespa.com.br/InstDados/SerHist/COTAHIST_A2025.ZIP e COTAHIST_A2026.ZIP
 --   (data/raw/b3-cotahist/; SHA-256 no fontes-poc.md, seção 6.2). Sem ajuste por provento, desdobramento ou grupamento
@@ -12173,23 +12173,25 @@ LEFT JOIN users u ON u.email = v.email
 LEFT JOIN seed_asset_key k ON k.key = v.asset
 ON CONFLICT DO NOTHING;
 
--- Alertas: disparado quando o fechamento de uma cotação de 2.4 cruza o alvo (ABOVE: close >= alvo; BELOW: close <= alvo).
+-- Alertas: cruza o alvo o fechamento com close >= alvo (ABOVE) ou close <= alvo (BELOW), nas cotações de 2.4 e 2.13.
+-- Nenhum alerta nasce cruzado (o último fechamento antes do dia da criação não cruza); o disparado guarda o primeiro
+-- fechamento que cruza, do pregão do dia da criação em diante; o ativo não tem nenhum (seed-check, seção 9).
 INSERT INTO price_alerts (id, user_id, asset_id, target_price, direction, created_at, triggered_at, triggered_quote_date)
 SELECT v.id::uuid, u.id, k.id, v.target_price::numeric, v.direction::price_direction, v.created_at::timestamptz,
        v.triggered_at::timestamptz, v.triggered_quote_date::date
 FROM (VALUES
-  ('00000000-0000-0000-0000-000000002401', 'demo@carteirab3.dev', 'PETR4', '45.00', 'BELOW', '2026-11-01 09:00:00-03', '2026-11-12 18:30:00-03', '2026-11-12'), -- close 44,70
-  ('00000000-0000-0000-0000-000000002402', 'demo@carteirab3.dev', 'WEGE3', '50.00', 'ABOVE', '2026-10-15 20:00:00-03', '2026-11-12 18:30:00-03', '2026-11-12'), -- 48,36 em 30/10; 51,65
+  ('00000000-0000-0000-0000-000000002401', 'demo@carteirab3.dev', 'PETR4', '45.00', 'BELOW', '2026-11-01 09:00:00-03', '2026-11-10 18:30:00-03', '2026-11-10'), -- 45,19 em 09/11; 44,95
+  ('00000000-0000-0000-0000-000000002402', 'demo@carteirab3.dev', 'WEGE3', '51.65', 'ABOVE', '2026-10-15 20:00:00-03', '2026-11-12 18:30:00-03', '2026-11-12'), -- máx. 51,61 antes; 51,65
   ('00000000-0000-0000-0000-000000002403', 'demo@carteirab3.dev', 'HGLG11', '140.00', 'BELOW', '2026-09-20 11:00:00-03', NULL, NULL),
-  ('00000000-0000-0000-0000-000000002404', 'bruno.almeida@example.com', 'VALE3', '63.00', 'ABOVE', '2026-10-20 19:00:00-03', '2026-11-12 18:30:00-03', '2026-11-12'), -- 63,95
+  ('00000000-0000-0000-0000-000000002404', 'bruno.almeida@example.com', 'VALE3', '63.00', 'ABOVE', '2026-10-29 19:00:00-03', '2026-11-06 18:30:00-03', '2026-11-06'), -- 61,38 em 28/10; 64,04
   ('00000000-0000-0000-0000-000000002405', 'bruno.almeida@example.com', 'ITUB4', '37.00', 'BELOW', '2026-10-06 08:00:00-03', NULL, NULL),
   ('00000000-0000-0000-0000-000000002406', 'carla.souza@example.com', 'MXRF11', '8.90', 'BELOW', '2026-10-01 10:00:00-03', '2026-10-30 18:30:00-03', '2026-10-30'), -- 8,88
-  ('00000000-0000-0000-0000-000000002407', 'carla.souza@example.com', 'KNRI11', '160.00', 'ABOVE', '2026-06-09 09:00:00-03', NULL, NULL),
-  ('00000000-0000-0000-0000-000000002408', 'diego.ferreira@example.com', 'AAPL34', '95.00', 'ABOVE', '2026-10-25 21:00:00-03', '2026-11-12 18:30:00-03', '2026-11-12'), -- 93,86 em 30/10; 100,12
-  ('00000000-0000-0000-0000-000000002409', 'diego.ferreira@example.com', 'NVDC34', '20.00', 'BELOW', '2026-11-03 22:00:00-03', '2026-11-12 18:30:00-03', '2026-11-12'), -- 19,53
+  ('00000000-0000-0000-0000-000000002407', 'carla.souza@example.com', 'KNRI11', '170.00', 'ABOVE', '2026-06-09 09:00:00-03', NULL, NULL), -- máx. 165,98 depois
+  ('00000000-0000-0000-0000-000000002408', 'diego.ferreira@example.com', 'AAPL34', '100.00', 'ABOVE', '2026-10-25 21:00:00-03', '2026-11-12 18:30:00-03', '2026-11-12'), -- máx. 98,61 antes; 100,12
+  ('00000000-0000-0000-0000-000000002409', 'diego.ferreira@example.com', 'NVDC34', '19.60', 'BELOW', '2026-11-03 22:00:00-03', '2026-11-12 18:30:00-03', '2026-11-12'), -- mín. 19,90 antes; 19,53
   ('00000000-0000-0000-0000-000000002410', 'gabriela.martins@example.com', 'BOVA11', '170.00', 'ABOVE', '2026-11-05 07:00:00-03', NULL, NULL),
-  ('00000000-0000-0000-0000-000000002411', 'gabriela.martins@example.com', 'BBAS3', '16.00', 'BELOW', '2026-10-20 12:00:00-03', '2026-11-12 18:30:00-03', '2026-11-12'), -- 16,47 em 30/10; 15,48
-  ('00000000-0000-0000-0000-000000002412', 'gabriela.martins@example.com', 'TAEE11', '40.00', 'ABOVE', '2026-10-01 12:00:00-03', '2026-11-12 18:30:00-03', '2026-11-12'), -- 39,59 em 30/10; 41,57
+  ('00000000-0000-0000-0000-000000002411', 'gabriela.martins@example.com', 'BBAS3', '16.00', 'BELOW', '2026-10-20 12:00:00-03', '2026-11-12 18:30:00-03', '2026-11-12'), -- mín. 16,19 antes; 15,48
+  ('00000000-0000-0000-0000-000000002412', 'gabriela.martins@example.com', 'TAEE11', '46.00', 'ABOVE', '2026-10-01 12:00:00-03', '2026-10-09 18:30:00-03', '2026-10-09'), -- 45,63 em 08/10; 46,45
   ('00000000-0000-0000-0000-000000002413', 'isabela.nunes@example.com', 'BTC', '450000.00', 'ABOVE', '2026-10-10 10:00:00-03', NULL, NULL) -- cripto: sem cotação em quotes
 ) AS v (id, email, asset, target_price, direction, created_at, triggered_at, triggered_quote_date)
 LEFT JOIN users u ON u.email = v.email

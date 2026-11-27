@@ -2,8 +2,9 @@
 -- Uso no CI: roda depois de cada uma das duas execuções do seed e as contagens têm de ser iguais (idempotência).
 -- Aborta (RAISE) se faltar uma regra do seed; no fim, lista as contagens de todas as tabelas de public.
 -- As contas de posição, preço médio e IR seguem database/docs/memoria-calculo.md (seções 4 e 7).
--- As conferências de IR, proventos recebidos, eventos e telas salvas olham só os usuários do seed (demo@carteirab3.dev
--- e @example.com), para não falhar num banco de desenvolvimento com usuários criados pela tela.
+-- As conferências de IR, proventos recebidos, eventos, telas salvas, alertas e histórico de cotações olham só os
+-- usuários do seed (demo@carteirab3.dev e @example.com), para não falhar num banco de desenvolvimento com usuários
+-- criados pela tela.
 
 -- 1. Catálogo (BD-1): 6 classes, especializações, massa do handoff e corretoras sem nome repetido.
 DO $$
@@ -266,7 +267,8 @@ BEGIN
     RAISE EXCEPTION 'seed: compensação de prejuízo, imposto ou DARF inconsistente'; END IF;
 END $$;
 
--- 9. Planejamento e acompanhamento: carteira ideal soma 100%; alerta disparado só com fechamento que cruza o alvo.
+-- 9. Planejamento e acompanhamento: carteira ideal soma 100%; alerta disparado só com fechamento que cruza o alvo e,
+-- nos do seed, no primeiro cruzamento depois da criação.
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM target_allocations GROUP BY portfolio_id HAVING sum(target_percent) <> 1) THEN
@@ -278,6 +280,22 @@ BEGIN
                                  AND CASE a.direction WHEN 'ABOVE' THEN q.close >= a.target_price
                                                       ELSE q.close <= a.target_price END))) THEN
     RAISE EXCEPTION 'seed: alerta disparado sem cotação que cruze o alvo'; END IF;
+  -- Alertas do seed contra o histórico até 12/11/2026 (BD-4): nenhum nasce cruzado (último fechamento antes do dia da
+  -- criação); o disparado guarda o primeiro fechamento que cruza, do dia da criação em diante; o ativo não tem nenhum.
+  IF EXISTS (
+      WITH a AS (
+        SELECT a.*, (a.created_at AT TIME ZONE 'America/Sao_Paulo')::date AS created_on
+        FROM price_alerts a JOIN users u ON u.id = a.user_id
+        WHERE u.email = 'demo@carteirab3.dev' OR u.email LIKE '%@example.com')
+      SELECT 1 FROM a
+      WHERE (SELECT CASE a.direction WHEN 'ABOVE' THEN q.close >= a.target_price ELSE q.close <= a.target_price END
+             FROM quotes q WHERE q.asset_id = a.asset_id AND q.quote_date < a.created_on
+             ORDER BY q.quote_date DESC LIMIT 1)
+         OR a.triggered_quote_date IS DISTINCT FROM
+            (SELECT min(q.quote_date) FROM quotes q
+             WHERE q.asset_id = a.asset_id AND q.quote_date BETWEEN a.created_on AND '2026-11-12'
+               AND CASE a.direction WHEN 'ABOVE' THEN q.close >= a.target_price ELSE q.close <= a.target_price END)) THEN
+    RAISE EXCEPTION 'seed: alerta criado já cruzado, ativo com cruzamento ou disparo fora do primeiro cruzamento'; END IF;
 END $$;
 
 -- 10. Histórico (BD-4, D64), de 02/01/2025 ao último pregão do seed (12/11/2026). Calendário de pregões = datas do

@@ -41,7 +41,7 @@
 - [ ] **03/12, G-S2b:** gráficos não prontos → ficam os números.
 - [ ] **04/12:** nada do S1 muda depois desta data.
 - [ ] **FECHO** (04–06/12): E2E, axe e teclado nas telas novas, README, roteiro de demonstração, tag `s1`.
-- [ ] **Você:** se o BD-4 ou o K7 listarem desdobramento ou grupamento na janela do histórico de algum ativo do seed, decidir no mesmo dia (sem o E1, o evento distorce valor e rentabilidade).
+- [x] **Você:** se o BD-4 ou o K7 listarem desdobramento ou grupamento na janela do histórico de algum ativo do seed, decidir no mesmo dia (sem o E1, o evento distorce valor e rentabilidade). **Decidido em 26/11/2026: seed sem mudança, aviso para o K7 em fontes-poc.md 6.2.**
 
 ## 4. Decisões e conferências suas (antes de 06/12)
 - [ ] Responder às decisões B1, B3, B4, B9 e M8 de `claude/prompts-correcao-s1.md` (PL4).
