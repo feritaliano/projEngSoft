@@ -5,7 +5,7 @@
 -- price_alerts), ou sem alvo quando a PK já é a chave natural (cotações, preços, itens de lista): ticker, CNPJ, código do índice, nome do tipo de título, (pai, nome) do
 -- setor, (tipo, vencimento) do título. Linha cuja chave natural pode ser nula (corretora ou emissor sem CNPJ, setor de
 -- primeiro nível, ativo de renda fixa sem ticker) é filtrada com NOT EXISTS sobre a mesma chave, porque NULL não
--- conflita no UNIQUE. Assim, o K5 pode fazer upsert pelo ticker/ISIN depois do seed, e o seed depois do K5, sem duplicar:
+-- conflita no UNIQUE. Assim, o K5 pode fazer upsert pelo ticker depois do seed, e o seed depois do K5, sem duplicar:
 -- a linha que referencia emissor, que a carga também grava, acha o pai pela chave natural, nunca só pelo UUID fixo (BD-2).
 -- Faixas de UUID (último grupo): proventos 0000xx, corretoras 0001xx, setores 0003xx, emissores 0004xx, ativos 0005xx,
 -- tipos de título 0006xx, índices econômicos 0009xx, usuários 0010xx, carteiras 0011xx, lotes de importação 0012xx,
@@ -16,7 +16,7 @@
 -- 3. imposto de renda (P0) → 4. usuários → 5. acompanhamento e planejamento (P1-2).
 -- Nas seções 2 a 5, a linha acha o pai pela chave natural (ISIN, ticker, CNPJ, código, e-mail, nome da carteira) com
 -- LEFT JOIN: se o pai não existir, a FK vem nula e o INSERT falha no NOT NULL, em vez de pular a linha em silêncio (a
--- seção 1 usa o UUID fixo do pai que só o seed grava (setor, índice, tipo de título) e acha o emissor
+-- seção 1 usa o UUID fixo do pai que só o seed grava (setor, índice, tipo de título, ativo de renda fixa) e acha o emissor
 -- pelo CNPJ ou pelo nome (seed_issuer); crypto_assets usa JOIN, e o seed-check acusa cripto sem a especialização). Exceções, com FK que
 -- aceita nulo, conferidas pelo database/tests/seed-check.sql: operations.import_batch_id (lote confirmado com tantas
 -- operações quanto linhas), tax_assessments.darf_id (imposto devido > 0 se e só se há DARF) e
@@ -214,7 +214,8 @@ ON CONFLICT (name) DO NOTHING;
 -- COTAHIST de 02/01/2025 (https://bvmf.bmfbovespa.com.br/InstDados/SerHist/COTAHIST_D02012025.ZIP,
 -- data/raw/b3-cotahist/); is_active = false (ativo fora de negociação, caso de LEFT JOIN).
 -- Chave natural: ticker (UNIQUE). O emissor (UUID do seed na coluna issuer_id) é achado pelo CNPJ, ou pelo nome quando
--- o emissor não tem CNPJ: a carga do K5 pode tê-lo criado antes, com outro id. Sem emissor, o INSERT falha no NOT NULL.
+-- o emissor não tem CNPJ: a carga do K5 pode tê-lo criado antes, com outro id. Sem emissor, o INSERT falha no CHECK
+-- assets_issuer_check (só cripto fica sem emissor), mesmo quando o ticker já existe.
 INSERT INTO assets (id, issuer_id, ticker, isin, type, share_class, bdr_program, is_active)
 SELECT v.id::uuid, i.id, v.ticker, v.isin, v.type::asset_type, v.share_class::share_class,
        v.bdr_program::bdr_program, v.is_active

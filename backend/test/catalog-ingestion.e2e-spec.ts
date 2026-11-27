@@ -116,11 +116,46 @@ describe('Catalog load from the B3 files (integration, K5, D59)', () => {
     await load();
     // Only ids, names and tickers: the seed fills cnpj, cvm_code and sector_id of an issuer the load created.
     const loaded = await identities();
+    const axia3 = await prisma.asset.findUniqueOrThrow({
+      where: { ticker: 'AXIA3' },
+    });
 
+    await runSqlFile(SEED);
+    const once = await snapshot();
     await runSqlFile(SEED);
 
     expect(await duplicatedIssuerNames()).toEqual([]);
     expect(await identities()).toEqual(expect.arrayContaining(loaded));
+    expect(await snapshot()).toEqual(once);
+    // The seed fills the issuers the load created (values of inserts.sql); ELET3 joins the issuer of AXIA3 by CNPJ.
+    expect(
+      await prisma.$queryRaw`
+        SELECT a.ticker, i.id::text AS issuer_id, i.cnpj, i.cvm_code, i.sector_id::text
+        FROM assets a JOIN issuers i ON i.id = a.issuer_id
+        WHERE a.ticker IN ('PETR4', 'AURA33', 'AXIA3', 'ELET3') ORDER BY a.ticker`,
+    ).toEqual([
+      {
+        ticker: 'AURA33',
+        issuer_id: expect.any(String),
+        cnpj: null,
+        cvm_code: null,
+        sector_id: '00000000-0000-0000-0000-000000000306',
+      },
+      ...['AXIA3', 'ELET3'].map((ticker) => ({
+        ticker,
+        issuer_id: axia3.issuerId,
+        cnpj: '00001180000126',
+        cvm_code: '2437',
+        sector_id: '00000000-0000-0000-0000-000000000324',
+      })),
+      {
+        ticker: 'PETR4',
+        issuer_id: expect.any(String),
+        cnpj: '33000167000101',
+        cvm_code: '9512',
+        sector_id: '00000000-0000-0000-0000-000000000303',
+      },
+    ]);
   });
 
   it('changes no row when the same files are loaded again, and ignores invalid lines without failing the batch (D27, arquitetura 6.3)', async () => {

@@ -50,7 +50,7 @@ npm --prefix backend run ingest:catalog -- --file data/raw/b3-instrumentos/Instr
 - Upsert por chave natural, uma transação por lote de 500: emissor pelo nome (só criado, nunca alterado: CNPJ, código CVM e setor do seed ficam), ativo pelo ticker. Rodar de novo com os mesmos arquivos não muda nenhuma linha.
 - Linha inválida (campos faltando, classe fora de `share_class`, ticker ou ISIN fora do formato) é registrada no log e ignorada; ativo cujo ISIN já pertence a outro ticker é pulado e registrado.
 - Fora do K5 (S2): cotações, desativar ativos que saíram do arquivo, `ops.ingestion_runs` e agendamento. FII sem negócio no dia do COTAHIST fica fora.
-- Seed e carga rodam em qualquer ordem (BD-2): o seed reaproveita o emissor (pelo CNPJ ou pelo nome) e o ativo (pelo ticker) que a carga já criou, sem mudar o id. `test/catalog-ingestion.e2e-spec.ts` testa as duas ordens.
+- Seed e carga rodam em qualquer ordem (BD-2): o seed reaproveita o emissor que a carga criou (pelo nome), sem mudar o id, e preenche nele CNPJ, código CVM e setor; o ativo que a carga criou (pelo ticker) fica como está. `test/catalog-ingestion.e2e-spec.ts` testa as duas ordens.
 
 ## Dados de demonstração
 `npm run db:seed` (na raiz) carrega o catálogo e usuários fictícios. Usuário `demo@carteirab3.dev`, senha `demo-carteira-2026` (só desenvolvimento), com as carteiras "Longo prazo", "Dividendos" e "Testes FII". O teste `test/seed.e2e-spec.ts` carrega o seed num banco do Testcontainers e confere essas carteiras pela API.
