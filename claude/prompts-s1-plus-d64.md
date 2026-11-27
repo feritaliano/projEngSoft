@@ -132,6 +132,7 @@ Faça:
 3. B11: evolução do patrimônio e do valor investido ao longo do tempo.
 4. B10: TWR total e de 12 meses (cotas diárias, com os fluxos nas datas das operações), sem proventos (S6), comparado com CDI e IPCA acumulados e com o Ibovespa nos mesmos períodos.
 5. A ordem das classes da D63 passa a usar o valor de mercado.
+6. Operação com preço fora da faixa do pregão é normal (decisão da usuária, 27/11/2026; database/docs/fontes-poc.md, F17): vale o preço executado. Na compra, no fim do pregão, o ganho ou a perda do dia é quantidade × (fechamento − preço executado) e a rentabilidade é (fechamento − preço executado) ÷ preço executado (compra a 10, fechamento a 12 = +20% no dia); na venda, o preço executado é o valor de saída e o lucro realizado segue a RN06. Não ajuste nem filtre essas operações; a TWR do dia da operação inclui esse ganho.
 Tudo calculado na leitura, em Decimal, sem coluna nova (D4, D17); DerivedValue com insumos em todo número (B13).
 Pronto quando:
 - E2E sobre o seed (BD-4): "Longo prazo" com valor de mercado no último pregão do seed; isolamento com dados de dois usuários ao mesmo tempo; dia sem pregão usa o fechamento anterior.
