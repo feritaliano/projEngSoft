@@ -44,14 +44,10 @@ describe('LoadCatalog (K5, D59)', () => {
     expect(writer.batches).toHaveLength(1);
     expect(report).toEqual({
       reportDate: '2026-10-30',
-      entriesByType: { STOCK: 6, FII: 2, ETF: 2, BDR: 5 },
+      entriesByType: { STOCK: 9, FII: 2, ETF: 2, BDR: 5 },
       issuersCreated: 1,
-      assetsWritten: 15,
-      rejected: [
-        expect.objectContaining({ ticker: 'BCEE5' }),
-        expect.objectContaining({ ticker: 'TAXA0L' }),
-        expect.objectContaining({ ticker: 'RADL3' }),
-      ],
+      assetsWritten: 18,
+      rejected: [expect.objectContaining({ ticker: 'RADL3' })],
       conflicts: [
         { ticker: 'MGLU3', isin: 'BRMGLUACNOR2', existingTicker: 'MGLU4' },
       ],

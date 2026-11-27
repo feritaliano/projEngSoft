@@ -184,6 +184,7 @@ Notação: `Tabela (__chave primária__, *chave estrangeira*, atributo)`.
 - **FK:** id_emissor → Emissor(id_emissor)
 - **Regra aplicada:** Entidade forte → tabela própria; o identificador vira PK. R09 emite (1:N) → FK `id_emissor` no lado N, referenciando Emissor. Opcional (aceita nulo), porque a cardinalidade mínima do lado 1 é 0 (cripto não tem emissor). Superclasse da especialização em TituloRendaFixa e Criptoativo (3.33, 3.35).
 - Desde a D3 (D50), `ticker`, `isin` e `id_emissor` são obrigatórios ou não conforme o tipo (CHECK no DDL; modelo ER, seção 4); `programa_bdr` só no BDR.
+- `classe` só na ação, com o domínio ON, PN, PNA, PNB, PNC, PND, PNV, PRA, PRB, UNIT (tipo enumerado `share_class`; PNC a PRB desde o BD-3, D64). Significado e fonte de cada valor no glossário, seção 3.1.
 
 ### 3.9 Cotacao (Cotação)
 

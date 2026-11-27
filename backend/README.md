@@ -48,7 +48,7 @@ npm --prefix backend run ingest:catalog -- --file data/raw/b3-instrumentos/Instr
 - Os caminhos são relativos ao diretório de onde o `npm` foi chamado (da pasta `backend`, `../data/raw/...`). Os dois arquivos ficam em `data/raw/` (fora do Git; URLs em `database/docs/fontes-poc.md`).
 - Só aceita o Cadastro com "Status do Arquivo: Final" (F5) e arquivos do mesmo dia. Os arquivos vêm em Latin-1 e são lidos assim (F9).
 - Upsert por chave natural, uma transação por lote de 500: emissor pelo nome (só criado, nunca alterado: CNPJ, código CVM e setor do seed ficam), ativo pelo ticker. Rodar de novo com os mesmos arquivos não muda nenhuma linha.
-- Linha inválida (campos faltando, classe fora de `share_class`, ticker ou ISIN fora do formato) é registrada no log e ignorada; ativo cujo ISIN já pertence a outro ticker é pulado e registrado.
+- Linha inválida (campos faltando, classe fora de `share_class`, ticker ou ISIN fora do formato) é registrada no log e ignorada; ativo cujo ISIN já pertence a outro ticker é pulado e registrado. O "*" depois da classe (cotação por lote de mil, ex.: `PNA*`) é a mesma classe; linhas da categoria de ações que não são ações (CEPAC, recibo de subscrição, título perpétuo e as taxas de financiamento `TAXA*`) ficam fora sem rejeição (D64).
 - Fora do K5 (S2): cotações, desativar ativos que saíram do arquivo, `ops.ingestion_runs` e agendamento. FII sem negócio no dia do COTAHIST fica fora.
 - Seed e carga rodam em qualquer ordem (BD-2): o seed reaproveita o emissor que a carga criou (pelo nome), sem mudar o id, e preenche nele CNPJ, código CVM e setor; o ativo que a carga criou (pelo ticker) fica como está. `test/catalog-ingestion.e2e-spec.ts` testa as duas ordens.
 

@@ -222,6 +222,11 @@ CREATE TYPE public.share_class AS ENUM (
     'PN',
     'PNA',
     'PNB',
+    'PNC',
+    'PND',
+    'PNV',
+    'PRA',
+    'PRB',
     'UNIT'
 );
 

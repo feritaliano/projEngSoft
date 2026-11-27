@@ -12,7 +12,7 @@ const parse = (lines: string[], fiis: ReadonlySet<string> = NO_FII) =>
   parseInstrumentsFile(instrumentsFile(lines), fiis);
 
 describe('parseInstrumentsFile (K5, D59)', () => {
-  it('reads the catalog classes of the real excerpt and leaves out odd lot, options and funds that are not FIIs (F7)', () => {
+  it('reads the catalog classes of the real excerpt (PNA*, PNC and PRB included, D64) and leaves out odd lot, options, funds that are not FIIs (F7), CEPAC and financing rates', () => {
     const { fiiTickers } = parseCotahistFiis(COTAHIST_SAMPLE);
 
     const file = parseInstrumentsFile(INSTRUMENTS_SAMPLE, fiiTickers);
@@ -32,6 +32,9 @@ describe('parseInstrumentsFile (K5, D59)', () => {
       AXIA3: 'STOCK ON COMPANY',
       KLBN11: 'STOCK UNIT COMPANY',
       MGLU3: 'STOCK ON COMPANY',
+      BCEE5: 'STOCK PNA COMPANY',
+      EQPA7: 'STOCK PNC COMPANY',
+      PCEM11: 'STOCK PRB COMPANY',
       KNRI11: 'FII  FUND',
       HGBS11: 'FII  FUND',
       BOVA11: 'ETF  FUND',
@@ -71,21 +74,53 @@ describe('parseInstrumentsFile (K5, D59)', () => {
     });
   });
 
-  it('rejects the invalid lines of the real excerpt with line and reason, and keeps the others', () => {
+  it('rejects the invalid lines of the real excerpt with line and reason, and leaves out CEPAC and financing rate rows without rejecting them (D64)', () => {
     const file = parseInstrumentsFile(INSTRUMENTS_SAMPLE, NO_FII);
 
     expect(file.rejected).toEqual([
+      { line: 27, ticker: 'RADL3', reason: 'has 7 fields, expected 52' },
+    ]);
+  });
+
+  // Literal copy of the share_class enum without UNIT: the domain may not import the generated Prisma client (ESLint).
+  it.each(['ON', 'PN', 'PNA', 'PNB', 'PNC', 'PND', 'PNV', 'PRA', 'PRB'])(
+    'reads every share class of the database enum: %s (D64)',
+    (shareClass) => {
+      const file = parse([
+        instrumentLine({ SpcfctnCd: `${shareClass}      N1` }),
+      ]);
+
+      expect(file.entries.map((e) => e.shareClass)).toEqual([shareClass]);
+      expect(file.rejected).toEqual([]);
+    },
+  );
+
+  it('reads a class quoted per thousand as the same class, whether the "*" comes attached or apart, and leaves out the rows that are not shares (D64)', () => {
+    const file = parse([
+      instrumentLine({ SpcfctnCd: 'ON *    NM' }),
+      ...['CPA', 'REC', 'TPR', 'DIA LIVR'].map((specification, index) =>
+        instrumentLine({
+          TckrSymb: `WXYZ${index + 3}`,
+          ISIN: `BRWXYZACNOR${index}`,
+          SpcfctnCd: specification,
+        }),
+      ),
+      instrumentLine({
+        TckrSymb: 'ABCD7',
+        ISIN: 'BRABCDACNPX1',
+        SpcfctnCd: 'PNX*',
+      }),
+    ]);
+
+    expect(file.entries.map((e) => [e.ticker, e.shareClass])).toEqual([
+      ['ABCD3', 'ON'],
+    ]);
+    expect(file.rejected).toEqual([
       {
-        line: 20,
-        ticker: 'BCEE5',
-        reason: 'share class PNA* is not in share_class',
+        line: 8,
+        ticker: 'ABCD7',
+        reason: 'share class PNX* is not in share_class',
       },
-      {
-        line: 21,
-        ticker: 'TAXA0L',
-        reason: 'share class DIA is not in share_class',
-      },
-      { line: 24, ticker: 'RADL3', reason: 'has 7 fields, expected 52' },
     ]);
   });
 
