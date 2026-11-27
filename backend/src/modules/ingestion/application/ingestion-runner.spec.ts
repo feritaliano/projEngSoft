@@ -3,6 +3,7 @@ import {
   FakeSourceLocks,
   InMemoryIngestionRuns,
 } from '../../../../test/fakes/ingestion-fakes';
+import { LocalDate } from '../../../shared/domain/local-date';
 import type { SourceFile } from '../domain/ingestion-run';
 import {
   type Acquired,
@@ -16,9 +17,10 @@ const FILE: SourceFile = {
   name: 'f.zip',
   sha256: 'a'.repeat(64),
 };
+const day = (iso: string) => LocalDate.parse(iso);
 const LOADED: Loaded = {
   kind: 'LOADED',
-  referenceDate: '2026-11-25',
+  referenceDate: day('2026-11-25'),
   rowsRead: 10,
   rowsWritten: 7,
   rowsRejected: 1,
@@ -70,7 +72,7 @@ describe('IngestionRunner (arquitetura 6.3, BD-3)', () => {
         end: {
           status: 'SUCCEEDED',
           file: FILE,
-          referenceDate: '2026-11-25',
+          referenceDate: day('2026-11-25'),
           rowsRead: 10,
           rowsWritten: 7,
           rowsRejected: 1,
@@ -81,7 +83,10 @@ describe('IngestionRunner (arquitetura 6.3, BD-3)', () => {
   });
 
   it('records NO_FILE with the reference date when the source has no file (not published, no trading)', async () => {
-    const outcome = await run({ kind: 'NO_FILE', referenceDate: '2026-11-20' });
+    const outcome = await run({
+      kind: 'NO_FILE',
+      referenceDate: day('2026-11-20'),
+    });
 
     expect(outcome).toMatchObject({
       status: 'NO_FILE',
@@ -89,7 +94,7 @@ describe('IngestionRunner (arquitetura 6.3, BD-3)', () => {
     });
     expect(runs.runs[0].end).toEqual({
       status: 'NO_FILE',
-      referenceDate: '2026-11-20',
+      referenceDate: day('2026-11-20'),
     });
     expect(isRetryable(outcome)).toBe(true);
   });
@@ -97,23 +102,27 @@ describe('IngestionRunner (arquitetura 6.3, BD-3)', () => {
   it('records NO_FILE when the file has no data for the run (e.g. the IBOV without the day)', async () => {
     const outcome = await run(
       { kind: 'FILE', file: FILE },
-      { kind: 'NO_DATA', referenceDate: '2026-11-25' },
+      { kind: 'NO_DATA', referenceDate: day('2026-11-25') },
     );
 
     expect(outcome).toMatchObject({ status: 'NO_FILE', file: 'f.zip' });
     expect(runs.runs[0].end).toEqual({
       status: 'NO_FILE',
-      referenceDate: '2026-11-25',
+      referenceDate: day('2026-11-25'),
       file: FILE,
     });
   });
 
-  it('does not load again a downloaded file already loaded (same hash, D27)', async () => {
-    await run({ kind: 'FILE', file: FILE, skipIfLoaded: true });
+  it('does not load again a downloaded file already loaded for the same date (same hash, D27)', async () => {
+    await run({ kind: 'FILE', file: FILE, skipIfLoadedFor: day('2026-11-25') });
     const load = jest.fn();
     const outcome = await runner.run('B3_COTAHIST', {
       acquire: () =>
-        Promise.resolve({ kind: 'FILE', file: FILE, skipIfLoaded: true }),
+        Promise.resolve({
+          kind: 'FILE',
+          file: FILE,
+          skipIfLoadedFor: day('2026-11-25'),
+        }),
       load,
     });
 
@@ -125,6 +134,20 @@ describe('IngestionRunner (arquitetura 6.3, BD-3)', () => {
       referenceDate: '2026-11-25',
     });
     expect(isRetryable(outcome)).toBe(false);
+  });
+
+  it('loads the same file asked for another date, so the load checks decide (e.g. the file of yesterday today)', async () => {
+    await run({ kind: 'FILE', file: FILE, skipIfLoadedFor: day('2026-11-25') });
+    const outcome = await run(
+      { kind: 'FILE', file: FILE, skipIfLoadedFor: day('2026-11-26') },
+      { kind: 'NO_DATA', referenceDate: day('2026-11-26') },
+    );
+
+    expect(outcome).toMatchObject({
+      status: 'NO_FILE',
+      alreadyLoaded: false,
+      referenceDate: '2026-11-26',
+    });
   });
 
   it('loads a local file again even when it was loaded before (reprocess)', async () => {
@@ -162,6 +185,20 @@ describe('IngestionRunner (arquitetura 6.3, BD-3)', () => {
     });
 
     expect(outcome.error).toBe('boom');
+  });
+
+  it.each([
+    ['an Error without message', new TypeError(''), 'TypeError'],
+    ['an empty text', '', 'Unknown error'],
+  ])('never records an empty error: %s', async (_case, thrown, text) => {
+    const outcome = await runner.run('B3_COTAHIST', {
+      // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- non-Error rejections are under test
+      acquire: () => Promise.reject(thrown),
+      load: () => Promise.resolve(LOADED),
+    });
+
+    expect(outcome.error).toBe(text);
+    expect(runs.runs[0].end).toMatchObject({ status: 'FAILED', error: text });
   });
 
   it('answers BUSY without recording a run when another process holds the lock', async () => {

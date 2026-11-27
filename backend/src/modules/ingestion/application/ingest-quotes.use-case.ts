@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { LocalDate } from '../../../shared/domain/local-date';
+import { LocalDate } from '../../../shared/domain/local-date';
 import { weekdaysBetween } from '../domain/business-days';
 import { SourceFileError } from '../domain/instruments-file';
 import {
@@ -46,7 +46,7 @@ export class IngestQuotes {
             'The COTAHIST has no quote of a catalog asset in the cash market',
           );
         }
-        return loaded(report, report.lastDate);
+        return loaded(report, LocalDate.parse(report.lastDate));
       },
     });
     return { outcome, report };
@@ -54,7 +54,8 @@ export class IngestQuotes {
 
   /**
    * The daily COTAHIST of a trading day, downloaded to the bronze zone. Not published (404: not yet, or no trading that
-   * day) ends as NO_FILE; a file already loaded ends as SUCCEEDED without loading.
+   * day) ends as NO_FILE; the file already loaded for this day ends as SUCCEEDED without loading. A file of another day
+   * (the B3 still serving yesterday's) fails on its header.
    */
   async forDay(day: LocalDate): Promise<QuotesRun> {
     let report: QuotesLoadReport | undefined;
@@ -62,17 +63,17 @@ export class IngestQuotes {
     const outcome = await this.runner.run(SOURCE, {
       acquire: async () => {
         const download = await this.sources.cotahistDaily(day);
-        if (!download) return { kind: 'NO_FILE', referenceDate: date };
+        if (!download) return { kind: 'NO_FILE', referenceDate: day };
         const file = await this.raw.save(
           COTAHIST_FOLDER,
           Number(date.slice(0, 4)),
           download,
         );
-        return { kind: 'FILE', file, skipIfLoaded: true };
+        return { kind: 'FILE', file, skipIfLoadedFor: day };
       },
       load: async (file) => {
         report = await this.read(file, date);
-        return loaded(report, date);
+        return loaded(report, day);
       },
     });
     return { outcome, report };
@@ -95,7 +96,7 @@ export class IngestQuotes {
   }
 }
 
-function loaded(report: QuotesLoadReport, referenceDate: string): Loaded {
+function loaded(report: QuotesLoadReport, referenceDate: LocalDate): Loaded {
   return {
     kind: 'LOADED',
     referenceDate,

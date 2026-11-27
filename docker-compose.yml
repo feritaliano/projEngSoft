@@ -83,7 +83,8 @@ services:
     env_file: .env
     environment:
       DATABASE_HOST: postgres
-      # Bronze da ingestão diária (K6): os arquivos baixados ficam no data/raw da máquina, fora do Git.
+      # Bronze da ingestão diária (K6): os arquivos baixados ficam no data/raw da máquina, fora do Git. No Linux, crie
+      # data/raw antes de subir e dê escrita ao uid 1000: o contêiner grava como o usuário node.
       RAW_DATA_DIR: /app/data/raw
     volumes:
       - ./data/raw:/app/data/raw

@@ -227,8 +227,8 @@ describe('Market data ingestion (integration, K6, D64)', () => {
       ]);
     });
 
-    it('closes as FAILED a RUNNING run left by a worker that stopped', async () => {
-      await prisma.$executeRaw`INSERT INTO ops.ingestion_runs (source) VALUES ('B3_COTAHIST')`;
+    it('closes as FAILED a RUNNING run left by a worker that stopped, only of its own source', async () => {
+      await prisma.$executeRaw`INSERT INTO ops.ingestion_runs (source) VALUES ('B3_COTAHIST'), ('B3_IBOV')`;
 
       await quotes.forDay(day('2026-11-25'));
 
@@ -237,6 +237,9 @@ describe('Market data ingestion (integration, K6, D64)', () => {
       ).toEqual([
         ['FAILED', ORPHAN_RUN_ERROR],
         ['SUCCEEDED', null],
+      ]);
+      expect((await runsOf('B3_IBOV')).map((r) => r.status)).toEqual([
+        'RUNNING',
       ]);
     });
 
@@ -271,7 +274,10 @@ describe('Market data ingestion (integration, K6, D64)', () => {
 
       expect((await runsOf('B3_COTAHIST'))[0].error).toBe('bad "" field');
       await expect(
-        runs.finish(id, { status: 'NO_FILE', referenceDate: '2026-11-25' }),
+        runs.finish(id, {
+          status: 'NO_FILE',
+          referenceDate: day('2026-11-25'),
+        }),
       ).rejects.toThrow('is no longer RUNNING');
     });
 
@@ -313,21 +319,54 @@ describe('Market data ingestion (integration, K6, D64)', () => {
       const before = await snapshot();
       const second = await load();
 
+      // The seed (BD-4) has CDI and IBOV up to 12/11 and the IPCA of 08–10/2026, equal to the fixture.
       expect(first.map((o) => [o.source, o.status, o.rowsWritten])).toEqual([
         ['BCB_SGS_CDI', 'SUCCEEDED', 4],
-        ['BCB_SGS_IPCA', 'SUCCEEDED', 3],
-        // 23–26/11; the seed has the IBOV up to 12/11.
+        ['BCB_SGS_IPCA', 'SUCCEEDED', 0],
         ['B3_IBOV', 'SUCCEEDED', 4],
       ]);
       expect(second.map((o) => o.rowsWritten)).toEqual([0, 0, 0]);
       expect(await snapshot()).toEqual(before);
-      expect((await valuesOf('IPCA')).at(0)).toEqual({
-        date: '2026-08-01',
-        value: '-0.32000000',
-      });
       expect((await valuesOf('IBOV')).at(-1)).toEqual({
         date: '2026-11-26',
         value: '176799.84000000',
+      });
+    });
+
+    it('leaves the real IPCA of the seed untouched and writes only a value that differs', async () => {
+      const ipcaRows = () =>
+        prisma.$queryRaw<unknown[]>`
+          SELECT v.xmin::text, v.reference_date::text, v.value::text FROM index_values v
+          JOIN economic_indexes e ON e.id = v.economic_index_id WHERE e.code = 'IPCA' ORDER BY 2`;
+      const seed = await ipcaRows();
+
+      const equal = await indexes.sgs(
+        'IPCA',
+        day('2026-08-01'),
+        day('2026-11-27'),
+      );
+
+      expect(equal.rowsWritten).toBe(0);
+      expect(await ipcaRows()).toEqual(seed);
+
+      await prisma.$executeRaw`
+        UPDATE index_values SET value = 9.99
+        WHERE reference_date = '2026-10-01'
+          AND economic_index_id = (SELECT id FROM economic_indexes WHERE code = 'IPCA')`;
+      const changed = await indexes.sgs(
+        'IPCA',
+        day('2026-08-01'),
+        day('2026-11-27'),
+      );
+
+      expect(changed).toMatchObject({
+        status: 'SUCCEEDED',
+        alreadyLoaded: false,
+        rowsWritten: 1,
+      });
+      expect((await valuesOf('IPCA')).at(-1)).toEqual({
+        date: '2026-10-01',
+        value: '0.14000000',
       });
     });
 
@@ -352,7 +391,9 @@ describe('Market data ingestion (integration, K6, D64)', () => {
     await prisma.$executeRaw`
       INSERT INTO ops.ingestion_runs (source, status, reference_date, started_at, finished_at, file_name, file_sha256, error)
       VALUES ('B3_COTAHIST', 'NO_FILE', '2026-01-01', '2026-01-02', '2026-01-02', NULL, NULL, NULL),
-             ('B3_COTAHIST', 'SUCCEEDED', '2026-01-05', '2026-01-05', '2026-01-05', 'old.zip', ${'b'.repeat(64)}, NULL)`;
+             ('B3_COTAHIST', 'FAILED', NULL, '2026-01-03', '2026-01-03', NULL, NULL, 'fetch failed'),
+             ('B3_COTAHIST', 'SUCCEEDED', '2026-01-05', '2026-01-05', '2026-01-05', 'old.zip', ${'b'.repeat(64)}, NULL),
+             ('B3_COTAHIST', 'NO_FILE', '2026-11-20', '2026-11-20', '2026-11-20', NULL, NULL, NULL)`;
 
     const outcomes = await app.get(DailyIngestion).run(day('2026-11-25'));
 
@@ -362,9 +403,13 @@ describe('Market data ingestion (integration, K6, D64)', () => {
       ['BCB_SGS_CDI', 'SUCCEEDED'],
       ['BCB_SGS_IPCA', 'SUCCEEDED'],
     ]);
-    expect((await runsOf('B3_COTAHIST')).map((r) => r.status)).toEqual([
-      'SUCCEEDED',
-      'SUCCEEDED',
+    // Old NO_FILE and FAILED gone; the old SUCCEEDED (idempotency key) and the recent NO_FILE stay.
+    expect(
+      (await runsOf('B3_COTAHIST')).map((r) => [r.status, r.referenceDate]),
+    ).toEqual([
+      ['SUCCEEDED', '2026-01-05'],
+      ['NO_FILE', '2026-11-20'],
+      ['SUCCEEDED', '2026-11-25'],
     ]);
   });
 });

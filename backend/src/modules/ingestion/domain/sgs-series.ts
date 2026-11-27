@@ -19,6 +19,7 @@ export function parseSgsSeries(text: string): IndexPoint[] {
   if (!Array.isArray(items)) {
     throw new SourceFileError('The SGS response is not a list of values');
   }
+  const dates = new Set<string>();
   return items.map((item: unknown, index): IndexPoint => {
     const { data, valor } = (item ?? {}) as Record<string, unknown>;
     const match = typeof data === 'string' ? BR_DATE.exec(data) : null;
@@ -29,6 +30,10 @@ export function parseSgsSeries(text: string): IndexPoint[] {
         `The SGS value ${index + 1} is not { data: "DD/MM/AAAA", valor: "<decimal>" }: ${JSON.stringify(item)}`,
       );
     }
+    if (dates.has(date)) {
+      throw new SourceFileError(`The SGS response has ${date} twice`);
+    }
+    dates.add(date);
     return { date, value: valor };
   });
 }

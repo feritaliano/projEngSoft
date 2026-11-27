@@ -29,6 +29,7 @@ export function parseIbovYear(text: string): IbovYear {
   }
   const year = Number(title[1]);
   const points: IndexPoint[] = [];
+  const dates = new Set<string>();
   for (const line of lines.slice(2)) {
     const cells = line.split(';').map((cell) => cell.trim());
     if (!/^\d{1,2}$/.test(cells[0])) continue;
@@ -42,6 +43,10 @@ export function parseIbovYear(text: string): IbovYear {
           `The IBOV file has "${cell}" on day ${day} of month ${month}: not a closing value of a real date`,
         );
       }
+      if (dates.has(date)) {
+        throw new SourceFileError(`The IBOV file has ${date} twice`);
+      }
+      dates.add(date);
       points.push({
         date,
         value: cell.replaceAll('.', '').replace(',', '.'),

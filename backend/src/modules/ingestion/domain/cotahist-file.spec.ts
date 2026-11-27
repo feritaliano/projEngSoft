@@ -83,6 +83,15 @@ describe('parseCotahistQuote (K6, fontes-poc 2.1)', () => {
     expect(parseCotahistQuote(line)).toBeNull();
   });
 
+  it('refuses a quotation factor of zero (every price would be infinite)', () => {
+    const line = cotahistLine('PETR4');
+    const zero = `${line.slice(0, 210)}0000000${line.slice(217)}`;
+
+    expect(() => parseCotahistQuote(zero)).toThrow(
+      'The COTAHIST record of PETR4 has a quotation factor (FATCOT) of zero',
+    );
+  });
+
   it('refuses a cut record', () => {
     expect(() =>
       parseCotahistQuote(cotahistLine('PETR4').slice(0, 200)),
@@ -113,7 +122,6 @@ describe('quoteProblem (CHECKs of quotes)', () => {
 
   it.each([
     [{ low: '0' }, 'price not positive'],
-    [{ close: 'Infinity' }, 'price not positive'],
     [{ open: '42' }, 'price outside low–high'],
     [{ close: '40' }, 'price outside low–high'],
   ])('refuses %o', (change, problem) => {

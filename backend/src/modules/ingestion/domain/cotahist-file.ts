@@ -109,6 +109,12 @@ export function parseCotahistQuote(line: string): CotahistQuote | null {
     );
   }
   const factor = new Decimal(digits(line, 211, 217));
+  if (factor.isZero()) {
+    // Every price would be infinite.
+    throw new SourceFileError(
+      `The COTAHIST record of ${tickerOf(line)} has a quotation factor (FATCOT) of zero`,
+    );
+  }
   const price = (start: number, end: number) =>
     new Decimal(digits(line, start, end)).div(100).div(factor).toFixed();
   return {
@@ -125,8 +131,7 @@ export function parseCotahistQuote(line: string): CotahistQuote | null {
 }
 
 /**
- * Why a quote cannot be stored (the CHECKs of quotes: prices > 0, open and close within low and high), or null. A
- * factor of zero would make every price infinite; it is caught here too.
+ * Why a quote cannot be stored (the CHECKs of quotes: prices > 0, open and close within low and high), or null.
  */
 export function quoteProblem(quote: CotahistQuote): string | null {
   const [open, high, low, close] = [
@@ -135,7 +140,7 @@ export function quoteProblem(quote: CotahistQuote): string | null {
     quote.low,
     quote.close,
   ].map((value) => new Decimal(value));
-  if (![open, high, low, close].every((p) => p.isFinite() && p.gt(0))) {
+  if (![open, high, low, close].every((p) => p.gt(0))) {
     return 'price not positive';
   }
   const within = (p: Decimal) => p.gte(low) && p.lte(high);

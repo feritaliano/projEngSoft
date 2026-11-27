@@ -33,8 +33,9 @@ const baseEnvSchema = z.object({
 });
 
 export const workerEnvSchema = baseEnvSchema.extend({
-  // Bronze zone (arquitetura 3.1): files as downloaded. A relative path is taken from the repository root; in Docker,
-  // the worker mounts a volume there.
+  // Bronze zone (arquitetura 3.1), read by the worker and the ingest:* commands: files as downloaded, saved as
+  // <folder>/<year>/<name>_<sha256>.<ext>. A relative path is taken from the repository root; docker-compose.yml sets
+  // /app/data/raw, the volume of ./data/raw.
   RAW_DATA_DIR: z
     .string()
     .min(1)
@@ -49,7 +50,8 @@ export const workerEnvSchema = baseEnvSchema.extend({
       'must be HH:MM between 18:00 and 23:59 (São Paulo time)',
     )
     .default('21:30'),
-  // A source without the file of the day (NO_FILE) or that failed is tried again this many minutes later...
+  // A source that did not end SUCCEEDED (NO_FILE, FAILED or BUSY: another run of it in progress) is tried again this
+  // many minutes later...
   INGESTION_RETRY_INTERVAL_MINUTES: z.coerce
     .number()
     .int()

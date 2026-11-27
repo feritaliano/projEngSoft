@@ -1,5 +1,5 @@
 import { LocalDate } from '../../../shared/domain/local-date';
-import { HttpMarketSources } from './http-market-sources';
+import { HttpMarketSources, readCapped } from './http-market-sources';
 
 const day = (iso: string) => LocalDate.parse(iso);
 
@@ -25,7 +25,10 @@ describe('HttpMarketSources (D59 public sources)', () => {
 
     expect(fetchMock).toHaveBeenCalledWith(
       'https://bvmf.bmfbovespa.com.br/InstDados/SerHist/COTAHIST_D25112026.ZIP',
-      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      expect.objectContaining({
+        signal: expect.any(AbortSignal),
+        redirect: 'error',
+      }),
     );
     expect(file?.fileName).toBe('COTAHIST_D25112026.ZIP');
     expect(Buffer.from(file!.bytes).toString()).toBe('zip bytes');
@@ -115,5 +118,44 @@ describe('HttpMarketSources (D59 public sources)', () => {
     expect(
       await sources.sgsSeries('CDI', day('2026-11-21'), day('2026-11-22')),
     ).toBeNull();
+  });
+
+  describe('readCapped (a huge answer never exhausts the worker)', () => {
+    it('refuses a body announced larger than the limit', async () => {
+      const response = new Response('12345', {
+        headers: { 'content-length': '5' },
+      });
+
+      await expect(readCapped(response, 4)).rejects.toThrow(
+        'The answer is larger than 4 bytes',
+      );
+    });
+
+    it('refuses a body that grows past the limit without announcing its size', async () => {
+      const chunks = ['abc', 'def'].map((text) =>
+        new TextEncoder().encode(text),
+      );
+      const body = new ReadableStream<Uint8Array>({
+        pull(controller) {
+          const chunk = chunks.shift();
+          if (chunk) controller.enqueue(chunk);
+          else controller.close();
+        },
+      });
+
+      await expect(readCapped(new Response(body), 4)).rejects.toThrow(
+        'The answer is larger than 4 bytes',
+      );
+    });
+
+    it('reads a body within the limit', async () => {
+      expect(
+        Buffer.from(await readCapped(new Response('abcd'), 4)).toString(),
+      ).toBe('abcd');
+    });
+
+    it('reads an empty body', async () => {
+      expect(await readCapped(new Response(null), 4)).toHaveLength(0);
+    });
   });
 });

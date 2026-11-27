@@ -38,4 +38,12 @@ describe('parseSgsSeries (BCB SGS, K6)', () => {
   ])('refuses %s', (_case, text) => {
     expect(() => parseSgsSeries(text)).toThrow(/The SGS value 1 is not/);
   });
+
+  it('refuses a date twice (index_values takes distinct dates)', () => {
+    const twice =
+      '[{"data":"02/11/2026","valor":"0.1"},{"data":"02/11/2026","valor":"0.2"}]';
+    expect(() => parseSgsSeries(twice)).toThrow(
+      'The SGS response has 2026-11-02 twice',
+    );
+  });
 });

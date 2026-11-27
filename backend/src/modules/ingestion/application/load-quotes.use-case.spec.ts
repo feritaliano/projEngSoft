@@ -149,4 +149,18 @@ describe('LoadQuotes (K6, D64)', () => {
 
     expect(report).toMatchObject({ read: 0, firstDate: null, lastDate: null });
   });
+
+  it('writes the prices of a quote with FATCOT 100 already divided by the factor', async () => {
+    writer = new InMemoryQuoteWriter({
+      IBOV11: { assetId: 'ibov11', isin: 'BRIBOVINDM18' },
+    });
+    load = new LoadQuotes(writer);
+
+    await load.execute(linesOf([HEADER, cotahistLine('IBOV11'), TRAILER]));
+
+    expect(writer.rows.get('ibov11|2026-11-25')).toMatchObject({
+      open: '1667.28',
+      close: '1667.28',
+    });
+  });
 });

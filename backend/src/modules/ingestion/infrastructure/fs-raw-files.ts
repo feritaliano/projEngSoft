@@ -40,8 +40,9 @@ async function* splitLines(stream: Readable): AsyncIterable<string> {
 }
 
 /**
- * The bronze zone on disk (arquitetura 3.1) under RAW_DATA_DIR: files exactly as downloaded, immutable, named with the
- * SHA-256 so two versions of a file never overwrite each other.
+ * The bronze zone on disk (arquitetura 3.1) under RAW_DATA_DIR: files as downloaded, immutable, named with the SHA-256 so
+ * two versions of a file never overwrite each other. The one exception is the IBOV CSV, saved decoded from the base64 of
+ * the answer, as the Download button of the B3 page delivers it (HttpMarketSources.ibovYear).
  */
 @Injectable()
 export class FsRawFiles extends RawFiles {

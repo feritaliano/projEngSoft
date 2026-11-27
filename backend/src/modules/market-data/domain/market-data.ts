@@ -20,6 +20,8 @@ export interface QuotedAsset {
 
 /** Indexes loaded by the ingestion (K6, D64): CDI and IPCA from the BCB SGS, Ibovespa from the B3. */
 export type MarketIndexCode = 'CDI' | 'IPCA' | 'IBOV';
+/** The indexes of the BCB SGS. */
+export type SgsIndexCode = Exclude<MarketIndexCode, 'IBOV'>;
 
 /** A value of an index on a date (index_values); YYYY-MM-DD and a plain decimal string. */
 export interface IndexPoint {
@@ -35,7 +37,7 @@ export abstract class QuoteWriter {
   abstract upsert(rows: readonly QuoteRow[]): Promise<number>;
 }
 
-/** Port: writes index values by (index, date); same return as QuoteWriter.upsert. */
+/** Port: writes index values by (index, date), points of distinct dates; same return as QuoteWriter.upsert. */
 export abstract class IndexValueWriter {
   abstract upsert(
     code: MarketIndexCode,

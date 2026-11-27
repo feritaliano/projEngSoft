@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { LocalDate } from '../../../shared/domain/local-date';
+import type { SgsIndexCode } from '../../market-data/domain/market-data';
 import { type Download, MarketSources } from '../domain/ingestion-run';
 import { SourceFileError } from '../domain/instruments-file';
 
@@ -9,12 +10,36 @@ const COTAHIST_URL = 'https://bvmf.bmfbovespa.com.br/InstDados/SerHist/';
 const IBOV_URL =
   'https://sistemaswebb3-listados.b3.com.br/indexStatisticsProxy/IndexCall/GetDownloadPortfolioDay/';
 const SGS_URL = 'https://api.bcb.gov.br/dados/serie/bcdata.sgs.';
-const SGS_SERIES = { CDI: 12, IPCA: 433 } as const;
+const SGS_SERIES: Record<SgsIndexCode, number> = { CDI: 12, IPCA: 433 };
 const TIMEOUT_MS = 120_000;
+/** Largest answer read: the annual COTAHIST has about 105 MB, a daily one under 1 MB. A bigger body is refused. */
+export const MAX_DOWNLOAD_BYTES = 200 * 1024 * 1024;
 const BASE64 = /^[A-Za-z0-9+/]*={0,2}$/;
 
 /** YYYY-MM-DD → [DD, MM, YYYY]. */
 const parts = (day: LocalDate) => day.toString().split('-').reverse();
+
+/** The body, refused past the limit (by Content-Length, then by counting), so a huge answer cannot exhaust memory. */
+export async function readCapped(
+  response: Response,
+  limit = MAX_DOWNLOAD_BYTES,
+): Promise<Uint8Array> {
+  const tooBig = () =>
+    new SourceFileError(`The answer is larger than ${limit} bytes`);
+  if (Number(response.headers.get('content-length')) > limit) {
+    await response.body?.cancel();
+    throw tooBig();
+  }
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for await (const chunk of response.body ?? []) {
+    size += chunk.length;
+    // Leaving the loop cancels the stream.
+    if (size > limit) throw tooBig();
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks);
+}
 
 /**
  * The public sources of D59 over HTTPS (no aggregator, no real-time quote). 404 means the source has no data (file not
@@ -47,7 +72,7 @@ export class HttpMarketSources extends MarketSources {
   }
 
   async sgsSeries(
-    code: 'CDI' | 'IPCA',
+    code: SgsIndexCode,
     from: LocalDate,
     to: LocalDate,
   ): Promise<Download | null> {
@@ -67,14 +92,16 @@ export class HttpMarketSources extends MarketSources {
 
   private async get(url: string): Promise<Uint8Array | null> {
     let response: Response;
-    let bytes: ArrayBuffer;
+    let bytes: Uint8Array;
     try {
       response = await fetch(url, {
         signal: AbortSignal.timeout(TIMEOUT_MS),
         headers: { 'user-agent': 'carteira-b3-worker' },
+        // The sources are fixed hosts; a redirect elsewhere is refused, not followed.
+        redirect: 'error',
       });
       if (response.status === 404) return null;
-      bytes = await response.arrayBuffer();
+      bytes = await readCapped(response);
     } catch (error) {
       // "fetch failed" alone says nothing in ops.ingestion_runs.error: add the URL and the network code.
       const cause = (error as { cause?: { code?: string } }).cause?.code;
@@ -88,6 +115,6 @@ export class HttpMarketSources extends MarketSources {
       const body = Buffer.from(bytes).toString('utf8').slice(0, 300);
       throw new Error(`GET ${url} answered HTTP ${response.status}: ${body}`);
     }
-    return new Uint8Array(bytes);
+    return bytes;
   }
 }

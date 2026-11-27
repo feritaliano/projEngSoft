@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import {
   CDI_TEXT,
   COTAHIST_DAILY_TXT,
+  cotahistLine,
   IBOV_TEXT,
   IPCA_TEXT,
 } from '../../../../test/factories/market-files.factory';
@@ -17,11 +18,12 @@ import {
   InMemoryRawFiles,
 } from '../../../../test/fakes/ingestion-fakes';
 import { LocalDate } from '../../../shared/domain/local-date';
+import type { QuotedAsset } from '../../market-data/domain/market-data';
 import { DailyIngestion } from './daily-ingestion.use-case';
 import { IngestIndexes } from './ingest-indexes.use-case';
 import { IngestQuotes } from './ingest-quotes.use-case';
 import { IngestionRunner } from './ingestion-runner';
-import { LoadQuotes } from './load-quotes.use-case';
+import { LoadQuotes, QUOTES_BATCH_SIZE } from './load-quotes.use-case';
 
 const day = (iso: string) => LocalDate.parse(iso);
 const COTAHIST_TEXT = readFileSync(COTAHIST_DAILY_TXT, 'latin1');
@@ -156,6 +158,54 @@ describe('K6 ingestion use cases (fakes, no database)', () => {
         'The COTAHIST has no quote of a catalog asset in the cash market',
       );
     });
+
+    it('a failure in the second batch is FAILED with the first batch kept; the next run writes only the rest', async () => {
+      // QUOTES_BATCH_SIZE + 1 quotes of 25/11 for as many catalog assets.
+      const [header, ...rest] = COTAHIST_TEXT.split('\n');
+      const trailer = rest.find((l) => l.startsWith('99'))!;
+      const petr4 = cotahistLine('PETR4');
+      const catalog: Record<string, QuotedAsset> = {};
+      const lines = Array.from({ length: QUOTES_BATCH_SIZE + 1 }, (_, i) => {
+        const ticker = `T${String(i).padStart(4, '0')}3`;
+        catalog[ticker] = { assetId: ticker, isin: 'BRPETRACNPR6' };
+        return `${petr4.slice(0, 12)}${ticker.padEnd(12)}${petr4.slice(24)}`;
+      });
+      const writer = new InMemoryQuoteWriter(catalog);
+      const upsert = writer.upsert.bind(writer);
+      jest
+        .spyOn(writer, 'upsert')
+        .mockImplementationOnce(upsert)
+        .mockRejectedValueOnce(new Error('connection lost'));
+      const big = new IngestQuotes(
+        new IngestionRunner(new FakeSourceLocks(), runs),
+        sources,
+        raw,
+        new LoadQuotes(writer),
+      );
+      sources.answers.set(
+        'cotahist:2026-11-25',
+        download(
+          'COTAHIST_D25112026.ZIP',
+          [header, ...lines, trailer].join('\n'),
+        ),
+      );
+
+      const failed = await big.forDay(day('2026-11-25'));
+
+      expect(failed.outcome).toMatchObject({
+        status: 'FAILED',
+        error: 'connection lost',
+      });
+      expect(writer.rows.size).toBe(QUOTES_BATCH_SIZE);
+
+      const retried = await big.forDay(day('2026-11-25'));
+
+      expect(retried.outcome).toMatchObject({
+        status: 'SUCCEEDED',
+        alreadyLoaded: false,
+        rowsWritten: 1,
+      });
+    });
   });
 
   describe('IngestIndexes', () => {
@@ -267,6 +317,33 @@ describe('K6 ingestion use cases (fakes, no database)', () => {
           'sgs:IPCA:2026-07-29:2026-11-26',
         ]),
       );
+    });
+
+    it('on the first trading day of a year, asks for the new IBOV file and the SGS window across the years', async () => {
+      sources.answers.set('sgs:CDI', download('cdi.json', CDI_TEXT, 'utf8'));
+
+      const ibov = await indexes.daily('B3_IBOV', day('2027-01-04'));
+      const cdi = await indexes.daily('BCB_SGS_CDI', day('2027-01-04'));
+
+      expect(sources.calls).toContain('ibov:2027');
+      expect(ibov).toMatchObject({
+        status: 'NO_FILE',
+        referenceDate: '2027-01-04',
+      });
+      expect(sources.calls).toContain('sgs:CDI:2026-12-05:2027-01-04');
+      expect(cdi.file).toMatch(/^bcb-sgs\/2027\//);
+    });
+
+    it('loads the same IBOV file again (no skip by hash): the upsert keeps it idempotent', async () => {
+      await indexes.ibov(day('2026-11-01'), day('2026-11-30'));
+      const again = await indexes.ibov(day('2026-11-01'), day('2026-11-30'));
+
+      expect(again).toMatchObject({
+        status: 'SUCCEEDED',
+        alreadyLoaded: false,
+        rowsRead: 4,
+        rowsWritten: 0,
+      });
     });
   });
 

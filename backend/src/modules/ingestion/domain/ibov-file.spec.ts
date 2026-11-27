@@ -52,4 +52,12 @@ describe('parseIbovYear (B3 index page, K6)', () => {
       /^The IBOV file has ".*" on day \d+ of month \d+/,
     );
   });
+
+  it('refuses a day row twice (index_values takes distinct dates)', () => {
+    const [title, header] = IBOV_TEXT.split(/\r?\n/);
+    const rows = ['24;;190.745,02', '24;;190.000,00'];
+    expect(() => parseIbovYear([title, header, ...rows].join('\n'))).toThrow(
+      'The IBOV file has 2026-02-24 twice',
+    );
+  });
 });

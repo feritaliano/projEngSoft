@@ -1,6 +1,10 @@
 import type { LocalDate } from '../../../shared/domain/local-date';
+import type { SgsIndexCode } from '../../market-data/domain/market-data';
 
-/** Source codes of ops.ingestion_runs (CHECK ingestion_runs_source_check): one run per execution and source (BD-3). */
+/**
+ * Source codes of ops.ingestion_runs, one run per execution and source (BD-3). The table only checks the format
+ * (CHECK ingestion_runs_source_check: upper case, digits and _); the list of sources lives here.
+ */
 export const DAILY_SOURCES = [
   'B3_COTAHIST',
   'B3_IBOV',
@@ -21,14 +25,14 @@ export type RunEnd =
   | {
       readonly status: 'SUCCEEDED';
       readonly file: SourceFile;
-      readonly referenceDate: string;
+      readonly referenceDate: LocalDate;
       readonly rowsRead: number;
       readonly rowsWritten: number;
       readonly rowsRejected: number;
     }
   | {
       readonly status: 'NO_FILE';
-      readonly referenceDate: string;
+      readonly referenceDate: LocalDate;
       readonly file?: SourceFile;
     }
   | {
@@ -49,7 +53,7 @@ export abstract class IngestionRuns {
   abstract loadedReferenceDate(
     source: IngestionSource,
     sha256: string,
-  ): Promise<string | null>;
+  ): Promise<LocalDate | null>;
 
   abstract finish(runId: string, end: RunEnd): Promise<void>;
 
@@ -83,7 +87,7 @@ export abstract class MarketSources {
 
   /** JSON of an SGS series between two dates (CDI: 12; IPCA: 433). */
   abstract sgsSeries(
-    code: 'CDI' | 'IPCA',
+    code: SgsIndexCode,
     from: LocalDate,
     to: LocalDate,
   ): Promise<Download | null>;

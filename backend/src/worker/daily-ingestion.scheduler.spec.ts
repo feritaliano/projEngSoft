@@ -198,7 +198,7 @@ describe('DailyIngestionScheduler (K6, fake clock)', () => {
     ]);
   });
 
-  it('a repeated file ends SUCCEEDED without loading, so it is not tried again', async () => {
+  it('the COTAHIST of yesterday served again today never ends SUCCEEDED with the old date', async () => {
     start('2026-11-25T21:00:00-03:00');
     await advanceTo('2026-11-25T21:30:00-03:00');
     // The next weekday the B3 still serves the file of 25/11 under the name of 26/11: same hash.
@@ -207,16 +207,44 @@ describe('DailyIngestionScheduler (K6, fake clock)', () => {
       sources.answers.get('cotahist:2026-11-25')!,
     );
 
-    await advanceTo('2026-11-26T21:30:00-03:00');
+    await advanceTo('2026-11-26T22:00:00-03:00');
 
     const cotahist = runs.runs.filter((r) => r.source === 'B3_COTAHIST');
-    expect(cotahist.map((r) => r.status)).toEqual(['SUCCEEDED', 'SUCCEEDED']);
+    expect(cotahist.map((r) => r.status)).toEqual([
+      'SUCCEEDED',
+      'FAILED',
+      'FAILED',
+    ]);
     expect(cotahist[1].end).toMatchObject({
-      rowsRead: 0,
-      rowsWritten: 0,
-      referenceDate: '2026-11-25',
+      error: 'The COTAHIST of 2026-11-26 has the header of 2026-11-25',
     });
-    expect(ranDays().filter(([d]) => d === '2026-11-26')).toHaveLength(1);
+    expect(ranDays().filter(([d]) => d === '2026-11-26')).toEqual([
+      ['2026-11-26', 'all'],
+      ['2026-11-26', ['B3_COTAHIST']],
+    ]);
+  });
+
+  it('the IBOV file of yesterday, the same bytes today, ends NO_FILE and is tried again', async () => {
+    start('2026-11-26T21:00:00-03:00');
+    await advanceTo('2026-11-26T21:30:00-03:00');
+
+    await advanceTo('2026-11-27T22:00:00-03:00');
+
+    const ibov = runs.runs.filter((r) => r.source === 'B3_IBOV');
+    expect(
+      ibov.map((r) => [
+        r.status,
+        r.end && 'referenceDate' in r.end && String(r.end.referenceDate),
+      ]),
+    ).toEqual([
+      ['SUCCEEDED', '2026-11-26'],
+      ['NO_FILE', '2026-11-27'],
+      ['NO_FILE', '2026-11-27'],
+    ]);
+    expect(ranDays().filter(([d]) => d === '2026-11-27')[1]).toEqual([
+      '2026-11-27',
+      ['B3_COTAHIST', 'B3_IBOV'],
+    ]);
   });
 
   it('a new trading day replaces the retries of the previous one', async () => {

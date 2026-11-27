@@ -61,7 +61,8 @@ export class DailyIngestionScheduler implements OnApplicationBootstrap {
       'Next daily ingestion',
     );
     this.setTimeout(DAILY_TIMEOUT, next.at.getTime() - now.getTime(), () => {
-      // A new trading day replaces the retries of the previous one: its reprocess is `npm run ingest:quotes -- --from`.
+      // A new trading day replaces the retries of the previous one; what they missed is reprocessed with
+      // `npm run ingest:quotes -- --from ... --to ...` and `npm run ingest:indexes -- --from ... --to ...`.
       this.clear(RETRY_TIMEOUT);
       // Started before scheduling the next day, so a failure there never costs today's run.
       const run = this.attempt(next.day, undefined, 1);

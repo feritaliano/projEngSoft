@@ -102,11 +102,14 @@ carteira-b3/
 │   ├── src/
 │   │   ├── main.api.ts              processo HTTP (D24)
 │   │   ├── main.worker.ts           agendador, ingestão, refresh do ouro (D24)
+│   │   ├── main.ingest-*.ts         comandos do worker: ingest:catalog (K5), ingest:quotes e ingest:indexes (K6)
+│   │   ├── ingest-command.ts        inicialização comum dos comandos ingest:quotes e ingest:indexes
+│   │   ├── worker/                  agendamento do worker (atualização diária de cotações e índices, K6)
 │   │   ├── config/                  schema zod do env, validado no boot
 │   │   ├── generated/prisma/        gerado por npm run db:generate (fora do Git)
 │   │   ├── shared/                  módulo shared: Money/Decimal, Ticker, DerivedValue, erros, problem+json, paginação
 │   │   └── modules/
-│   │       └── <modulo>/            auth, users, reference-data, portfolios, operations (S1); demais por etapa
+│   │       └── <modulo>/            auth, users, reference-data, portfolios, operations, ingestion (S1); market-data (S1+, D64); demais por etapa
 │   │           ├── domain/
 │   │           ├── application/
 │   │           ├── infrastructure/

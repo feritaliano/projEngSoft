@@ -7,6 +7,7 @@ import {
   type QuotedAsset,
   QuoteWriter,
   type QuoteRow,
+  type SgsIndexCode,
 } from '../../src/modules/market-data/domain/market-data';
 import {
   type Download,
@@ -46,8 +47,9 @@ export class InMemoryIngestionRuns extends IngestionRuns {
   loadedReferenceDate(
     source: IngestionSource,
     sha256: string,
-  ): Promise<string | null> {
-    const run = this.runs.find(
+  ): Promise<LocalDate | null> {
+    // The latest successful load, as PrismaIngestionRuns.
+    const run = this.runs.findLast(
       (r) =>
         r.source === source &&
         r.end?.status === 'SUCCEEDED' &&
@@ -107,7 +109,7 @@ export class FakeMarketSources extends MarketSources {
   }
 
   sgsSeries(
-    code: 'CDI' | 'IPCA',
+    code: SgsIndexCode,
     from: LocalDate,
     to: LocalDate,
   ): Promise<Download | null> {

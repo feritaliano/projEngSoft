@@ -7,7 +7,7 @@ import {
   IngestionRuns,
 } from '../domain/ingestion-run';
 import { IngestIndexes } from './ingest-indexes.use-case';
-import type { RunOutcome } from './ingestion-runner';
+import { errorText, type RunOutcome } from './ingestion-runner';
 import { IngestQuotes } from './ingest-quotes.use-case';
 
 /** NO_FILE and FAILED runs older than this are deleted by the daily ingestion (ops tables are cleaned, revisão 12/11). */
@@ -49,7 +49,7 @@ export class DailyIngestion {
           rowsWritten: 0,
           rowsRejected: 0,
           alreadyLoaded: false,
-          error: error instanceof Error ? error.message : String(error),
+          error: errorText(error),
           elapsedMs: 0,
         });
       }

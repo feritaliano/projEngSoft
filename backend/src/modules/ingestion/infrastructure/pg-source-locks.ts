@@ -9,7 +9,7 @@ import {
   SourceLocks,
 } from '../domain/ingestion-run';
 
-/** Advisory lock key of a source; namespaced so it never meets the catalog load's lock (K5). */
+/** Advisory lock key of a source; namespaced ("ingestion:") so it is distinct from the catalog load's key (K5). */
 const lockKey = (source: IngestionSource) => `ingestion:${source}`;
 
 /**

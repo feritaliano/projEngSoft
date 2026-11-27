@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
+import { LocalDate } from '../../../shared/domain/local-date';
 import { PrismaService } from '../../../shared/infrastructure/prisma/prisma.service';
+import { utcMidnight } from '../domain/business-days';
 import {
   type IngestionSource,
   IngestionRuns,
@@ -9,7 +11,6 @@ import {
 export const ORPHAN_RUN_ERROR =
   'The worker stopped before finishing this run (closed by the next run of the source)';
 
-const asDate = (iso: string) => new Date(`${iso}T00:00:00Z`);
 const MAX_ERROR_LENGTH = 2000;
 
 /** Error texts may quote bytes of a file: PostgreSQL refuses NUL in TEXT, and a whole line is enough. */
@@ -22,13 +23,13 @@ function endColumns(end: RunEnd) {
   switch (end.status) {
     case 'SUCCEEDED':
       return {
-        referenceDate: asDate(end.referenceDate),
+        referenceDate: utcMidnight(end.referenceDate),
         rowsRead: end.rowsRead,
         rowsWritten: end.rowsWritten,
         rowsRejected: end.rowsRejected,
       };
     case 'NO_FILE':
-      return { referenceDate: asDate(end.referenceDate) };
+      return { referenceDate: utcMidnight(end.referenceDate) };
     case 'FAILED':
       return { error: sanitizedError(end.error) };
   }
@@ -62,13 +63,16 @@ export class PrismaIngestionRuns extends IngestionRuns {
   async loadedReferenceDate(
     source: IngestionSource,
     sha256: string,
-  ): Promise<string | null> {
+  ): Promise<LocalDate | null> {
     const run = await this.prisma.ingestionRun.findFirst({
       where: { source, fileSha256: sha256, status: 'SUCCEEDED' },
+      orderBy: { startedAt: 'desc' },
       select: { referenceDate: true },
     });
     // SUCCEEDED always has a reference date (CHECK ingestion_runs_succeeded_check).
-    return run?.referenceDate?.toISOString().slice(0, 10) ?? null;
+    return run?.referenceDate
+      ? LocalDate.parse(run.referenceDate.toISOString().slice(0, 10))
+      : null;
   }
 
   async finish(runId: string, end: RunEnd): Promise<void> {
