@@ -70,7 +70,7 @@ flowchart LR
 
 | Zona | Onde | Conteúdo | Regras |
 |---|---|---|---|
-| **Bronze** | Volume em disco (`data/raw/`), fora do banco | Arquivos exatamente como baixados (ZIP, CSV, TXT) | Imutável. Nome com fonte, data de referência e hash SHA-256. Todo dado externo do banco pode ser reconstruído a partir daqui. |
+| **Bronze** | Volume em disco (`data/raw/`, variável `RAW_DATA_DIR`), fora do banco | Arquivos exatamente como baixados (ZIP, CSV, TXT, JSON); exceção: o CSV do Ibovespa é gravado já decodificado do base64 da resposta, como o botão "Download" da página o entrega | Imutável. Caminho `<fonte>/<ano>/<nome>_<sha256>.<ext>` (ex.: `b3-cotahist/2026/COTAHIST_D25112026_<sha256>.ZIP`; o nome traz a data de referência). Os dados externos carregados pela ingestão podem ser recarregados a partir daqui (seção 6.3). |
 | **ops** | Schema `ops` | `ingestion_runs` (fonte, arquivo, hash, data de referência, status RUNNING/SUCCEEDED/FAILED/NO_FILE, linhas lidas/gravadas/rejeitadas, erro, início e fim; no máximo uma RUNNING por fonte; BD-3), tabelas `staging_*` UNLOGGED, `import_rows` (linhas da planilha B3 antes da confirmação), `user_sessions` (refresh tokens com hash) | Técnico. **Fora do ER.** Staging é truncável. |
 | **Prata (núcleo)** | Schema `public` | As entidades do domínio (seção 4) | **Tudo em `public` está no ER, e nada fora de `public` está no ER.** Integridade por FK, CHECK e UNIQUE. É a fonte da verdade. |
 | **Ouro** | Schema `analytics` | Tabelas de cache e materialized views derivadas | Pode ser apagado e reconstruído a qualquer momento (D17). Nunca é fonte da verdade. **Fora do ER.** Só o worker escreve. |
@@ -193,18 +193,20 @@ flowchart TD
 ```
 Registro da execução (`ops.ingestion_runs`, BD-3): a linha abre como RUNNING logo depois do lock, com início, e fecha em SUCCEEDED, FAILED (com o erro: rede, parse, banco) ou NO_FILE, com fim. NO_FILE: arquivo do pregão ainda não publicado ou dia sem pregão (404), com reference_date; não é falha e o worker tenta de novo. Arquivo, hash e data de referência são preenchidos depois do download e são obrigatórios em SUCCEEDED (a data de referência também em NO_FILE). No máximo uma RUNNING por fonte (índice único parcial); uma RUNNING de worker que caiu é fechada como FAILED por quem obtém o lock.
 
+No K6 (S1+, D64), o fluxo acima fica mais curto: o arquivo baixado é gravado no bronze antes da conferência do hash (gravar de novo o mesmo arquivo não muda nada, porque o nome traz o hash); não há `staging_*`: as linhas são validadas no parser e vão direto ao upsert do núcleo, em lotes de 5.000 por transação; não há refresh do ouro nem avaliação de `price_alerts` (S2 e S10). O pulo por hash só vale quando o arquivo já foi carregado para a mesma data pedida; o arquivo do Ibovespa nunca é pulado (é o mesmo arquivo até a B3 acrescentar o dia; o upsert o mantém idempotente). Além de 404, NO_FILE também cobre o arquivo do Ibovespa que ainda não traz o dia pedido e a consulta ao SGS sem valor no período. Código: `backend/README.md`, seção "Cotações e índices".
+
 Propriedades obrigatórias:
 - **Idempotente:** reprocessar o mesmo arquivo não muda nada (hash + `ON CONFLICT DO UPDATE` por chave natural).
-- **Reconstruível:** o núcleo externo pode ser apagado e recarregado a partir do bronze.
+- **Reconstruível:** as tabelas que a ingestão carrega de arquivo (`quotes` e `index_values` no K6; `issuers` e `assets` do K5, a partir dos arquivos em `data/raw/`) podem ser apagadas e recarregadas a partir do bronze com os comandos `ingest:*`; o que vem do seed (dados de referência e de demonstração) volta com o seed.
 - **Rastreável:** cada dado externo exibido informa fonte e data de referência.
 
 | Fonte | Tabelas alimentadas | Frequência | Chave natural do upsert |
 |---|---|---|---|
 | B3 Cadastro de Instrumentos (`InstrumentsConsolidatedFile`) + lista de empresas / classificação setorial (D59) | sectors, issuers, assets | Carga única no S1 (K5, sem cotações nem desativação); semanal a partir do S2 | sector (parent, name); issuer cnpj; asset isin/ticker |
 | CVM cadastro de companhias | issuers (cvm_code, situação) | Semanal | cnpj |
-| B3 COTAHIST (diário + anual para carga inicial) | quotes | Diária, após publicação (horário a confirmar) | (asset_id, quote_date) |
-| BCB SGS | index_values (CDI, Selic, IPCA) | Diária / mensal | (index, date) |
-| B3, página de dados históricos e estatísticas dos índices (Ibovespa, D59) | index_values (IBOV) | Diária | (index, date); a prova de conceito confere se o COTAHIST também traz o índice |
+| B3 COTAHIST (diário + anual para carga inicial) | quotes | Diária, de segunda a sexta às 21:30 (o `Last-Modified` dos arquivos diários de 03/11 a 26/11/2026 ficou entre 20:25 e 21:18 BRT; feriado e fim de semana respondem 404) | (asset_id, quote_date) |
+| BCB SGS | index_values (CDI e IPCA no K6; Selic e IGP-M depois) | Diária / mensal | (index, date) |
+| B3, página de dados históricos e estatísticas dos índices (Ibovespa, D59) | index_values (IBOV) | Diária | (index, date). A linha IBOV11 do COTAHIST não serve: registra negócios com o índice, não o índice calculado (`database/docs/fontes-poc.md`, seção 3.2) |
 | CVM DFP/ITR | financial_statements, statement_lines | Semanal (reprocessa o ano corrente) | documento: (issuer, period_end); linha: (documento, scope, account_code) |
 | CVM informe mensal FII | fii_monthly_reports | Mensal | (issuer, month) |
 | CVM informe trimestral estruturado FII (`inf_trimestral_fii_imovel`) | fii_quarterly_reports, fii_report_properties | Semanal (a CVM atualiza com reapresentações) | informe: (issuer cnpj, reference_date); itens: substituídos em bloco quando chega versão maior (item_number = ordem no arquivo). Área e taxas chegam como texto e são normalizadas |
@@ -257,7 +259,7 @@ Camadas por módulo (`domain` / `application` / `infrastructure` / `presentation
 | `portfolios` | Carteiras e propriedade | portfolios | S1 |
 | `operations` | Operações, `PositionCalculator`, posição, totais | operations | S1 |
 | `imports` | Planilha B3 | import_batches, ops.import_rows, operations (via serviço de `operations`) | S9 |
-| `market-data` | Cotações, índices, valor de mercado, alocação, rentabilidade do ativo | quotes, economic_indexes, index_values | S2 |
+| `market-data` | Cotações, índices, valor de mercado, alocação, rentabilidade do ativo. No S1+ (D64): portas `QuoteWriter` e `IndexValueWriter` (escritas só pela ingestão) e `LatestCloseDate` (data do último fechamento, para o K7 e o K8) | quotes, index_values (economic_indexes só via seed) | S1+ (K6, K7, K8); resto no S2 |
 | `corporate-actions` | Eventos corporativos na linha do tempo do `PositionCalculator` | corporate_events | **S2: registro manual (D29)**; S6: fonte automática |
 | `fundamentals` | Demonstrações, trimestres, indicadores, FIIs (informes mensal e trimestral), comunicados | financial_statements, statement_lines, fii_monthly_reports, fii_quarterly_reports, fii_report_properties, corporate_filings, analytics.* | S3, S8 |
 | `screening` | Ranking, filtros salvos, comparador | saved_screens, screen_criteria | S4 |
@@ -268,7 +270,7 @@ Camadas por módulo (`domain` / `application` / `infrastructure` / `presentation
 | `watchlist` | Favoritos e alertas | watchlist_items, price_alerts | S10 |
 | `planning` | Carteira ideal e metas (D43) | tabelas definidas na D3 | S10 |
 | `fixed-income`, `crypto` | Títulos de renda fixa e criptoativos (D44): catálogo, operações e posição com quantidade fracionária no S1 (D55, no módulo `operations` e no catálogo de `reference-data`); preços pelos adapters da ingestão no S11 | tabelas definidas na D3 | S11 |
-| `ingestion` | Orquestração: agenda, locks, bronze, runs. Cada fonte é um adapter na `infrastructure` do módulo dono, implementando a porta `SourceIngestor` | ops.ingestion_runs, ops.staging_* | S2 |
+| `ingestion` | Orquestração: agenda (no worker), locks, bronze, runs, parsers e downloads das fontes. As linhas do núcleo vão pelas portas do módulo dono da tabela: `CatalogWriter` (`reference-data`), `QuoteWriter` e `IndexValueWriter` (`market-data`) | ops.ingestion_runs (ops.staging_* quando houver) | S1 (K5, catálogo), S1+ (K6, cotações e índices); demais fontes por etapa |
 
 Regras:
 - **Cada tabela tem exatamente um módulo dono de escrita** (coluna acima). Outro módulo só lê via serviço exportado.
