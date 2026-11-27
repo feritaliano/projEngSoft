@@ -290,15 +290,11 @@ DECLARE missing text;
 BEGIN
   CREATE TEMP TABLE seed_trading_days ON COMMIT DROP AS
     SELECT DISTINCT quote_date AS d FROM quotes WHERE quote_date BETWEEN '2025-01-02' AND '2026-11-12';
+  -- Com o IBOV em todo pregão (conferido abaixo), 466 datas dos dois lados tornam os calendários iguais.
   IF (SELECT count(*) FROM seed_trading_days) <> 466
-     OR EXISTS ((SELECT d FROM seed_trading_days
-                 EXCEPT SELECT v.reference_date FROM index_values v JOIN economic_indexes e ON e.id = v.economic_index_id
-                        WHERE e.code = 'IBOV' AND v.reference_date BETWEEN '2025-01-02' AND '2026-11-12')
-                UNION ALL
-                (SELECT v.reference_date FROM index_values v JOIN economic_indexes e ON e.id = v.economic_index_id
-                 WHERE e.code = 'IBOV' AND v.reference_date BETWEEN '2025-01-02' AND '2026-11-12'
-                 EXCEPT SELECT d FROM seed_trading_days)) THEN
-    RAISE EXCEPTION 'seed: calendário de pregões diferente de 466 dias ou do IBOV'; END IF;
+     OR (SELECT count(*) FROM index_values v JOIN economic_indexes e ON e.id = v.economic_index_id
+         WHERE e.code = 'IBOV' AND v.reference_date BETWEEN '2025-01-02' AND '2026-11-12') <> 466 THEN
+    RAISE EXCEPTION 'seed: calendário de pregões ou do IBOV diferente de 466 dias'; END IF;
   SELECT a.ticker || ' ' || c.d INTO missing
   FROM (SELECT DISTINCT o.asset_id FROM operations o
           JOIN portfolios p ON p.id = o.portfolio_id JOIN users u ON u.id = p.user_id
