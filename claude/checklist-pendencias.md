@@ -15,9 +15,9 @@
 ## 2. Caminho crítico do S1+ (D64; prioridade do backend até 30/11 e do banco até 27/11)
 - [ ] **Você: DOC** (25/11): mesclar o PR da D64.
 - [ ] **Agentes de banco e de backend: BD-2 + BK-5** (25–26/11), um PR: seed depois do K5 (A-1), teste trocado, imagem fixa (N6), actions (N7).
-- [ ] **Agente de banco: BD-3** (25–26/11): domínio de `share_class` para as 62 ações rejeitadas pelo K5 e `ops.ingestion_runs`.
+- [ ] **Agente de banco: BD-3** (25–26/11): domínio de `share_class` para as +33 ações que o K5 passa a gravar (BD-3; 62 = 44 por classe + 18 por formato do ticker; das 44, 8 não são ações (CPA, REC, TPR) e 3 têm ticker fora do formato (AXIA17G, AXIA19G, AXIA21G)) e `ops.ingestion_runs`.
 - [ ] **Agente de banco: BD-4** (26–27/11): histórico de cotações e de CDI, IPCA e IBOV no seed.
-- [ ] **Agente de backend: K6** (25–27/11): ingestão diária no worker (COTAHIST, BCB, IBOV) e K5 com as 62 ações.
+- [ ] **Agente de backend: K6** (25–27/11): ingestão diária no worker (COTAHIST, BCB, IBOV).
 - [ ] **Agente de backend: contrato da API** do K7 e do K8, **mesclado até 26/11**. Se não sair, você é avisado no mesmo dia.
 - [ ] **Agente de backend: K7** (B8, B9, B10, B11) e **K8** (C2, C3), 26–30/11. **K7 mesclado até 30/11**; senão, aviso no mesmo dia.
 ## 2. Agora (até 30/11)

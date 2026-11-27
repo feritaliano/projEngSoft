@@ -67,6 +67,19 @@ SELECT pg_temp.expect_error('ticker fora do formato B3',
   $q$INSERT INTO assets (issuer_id, ticker, isin, type) VALUES ('00000000-0000-0000-0000-000000000401', 'petr4', 'BRPETRACNOR9', 'STOCK')$q$, '23514');
 SELECT pg_temp.expect_error('classe de ação em FII',
   $q$INSERT INTO assets (issuer_id, ticker, isin, type, share_class) VALUES ('00000000-0000-0000-0000-000000000401', 'XPLG11', 'BRXPLGCTF000', 'FII', 'ON')$q$, '23514');
+-- classes de ação do BD-3 (D64): ticker e ISIN do Cadastro de Instrumentos de 30/10/2026; o emissor é o do teste
+INSERT INTO assets (issuer_id, ticker, isin, type, share_class) VALUES
+  ('00000000-0000-0000-0000-000000000401', 'EQPA7', 'BREQPAACNPC0', 'STOCK', 'PNC'),
+  ('00000000-0000-0000-0000-000000000401', 'RIBC8', 'BRRIBCACNPD3', 'STOCK', 'PND'),
+  ('00000000-0000-0000-0000-000000000401', 'DANA11', 'BRDANAACNV18', 'STOCK', 'PNV'),
+  ('00000000-0000-0000-0000-000000000401', 'OBTC11', 'BROBTCARNPA1', 'STOCK', 'PRA'),
+  ('00000000-0000-0000-0000-000000000401', 'PCEM11', 'BRPCEMZ01PB5', 'STOCK', 'PRB');
+DO $$ BEGIN RAISE NOTICE 'ok  classes PNC, PND, PNV, PRA e PRB aceitas em ação'; END $$;
+-- CEPAC fica fora do catálogo; o "*" (cotação por lote de mil) não é classe e sai na leitura do arquivo
+SELECT pg_temp.expect_error('CEPAC não é classe de ação',
+  $q$INSERT INTO assets (issuer_id, ticker, isin, type, share_class) VALUES ('00000000-0000-0000-0000-000000000401', 'PMSP11', 'BRPMSPCPA000', 'STOCK', 'CPA')$q$, '22P02');
+SELECT pg_temp.expect_error('classe com o asterisco de lote de mil',
+  $q$INSERT INTO assets (issuer_id, ticker, isin, type, share_class) VALUES ('00000000-0000-0000-0000-000000000401', 'BCEE5', 'BRBCEEACNPA0', 'STOCK', 'PNA*')$q$, '22P02');
 SELECT pg_temp.expect_error('setor pai de si mesmo',
   $q$UPDATE sectors SET parent_id = id WHERE id = '00000000-0000-0000-0000-000000000301'$q$, '23514');
 SELECT pg_temp.expect_error('cotação com mínima acima da máxima',
@@ -113,7 +126,8 @@ DO $$ BEGIN
   IF (SELECT count(*) FROM portfolios) <> 0 OR (SELECT count(*) FROM operations) <> 0 OR (SELECT count(*) FROM saved_screens) <> 0 THEN
     RAISE EXCEPTION 'FALHOU cascata da exclusão de usuário';
   END IF;
-  IF (SELECT count(*) FROM assets) <> 2 THEN RAISE EXCEPTION 'FALHOU catálogo afetado pela exclusão de usuário'; END IF;
+  -- PETR4, B3SA3 e as 5 classes do BD-3
+  IF (SELECT count(*) FROM assets) <> 7 THEN RAISE EXCEPTION 'FALHOU catálogo afetado pela exclusão de usuário'; END IF;
   RAISE NOTICE 'ok  exclusão de usuário em cascata, catálogo preservado';
 END $$;
 

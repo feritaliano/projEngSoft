@@ -32,7 +32,7 @@ Convenções no diagrama:
 | 5 | Operacao | **id_operacao**, tipo {COMPRA, VENDA}, data_pregao, quantidade, preco_unitario, custos, sequencia |
 | 6 | Setor | **id_setor**, nome. O nível (setor, subsetor, segmento) é a profundidade na hierarquia e não é armazenado |
 | 7 | Emissor | **id_emissor**, nome, tipo {EMPRESA, FUNDO, ESTRANGEIRO, GOVERNO}, cnpj (0,1, único), codigo_cvm (0,1, único). GOVERNO = Tesouro Nacional (D50) |
-| 8 | Ativo | **id_ativo**, ticker (0,1, único), isin (0,1, único), tipo {ACAO, FII, ETF, BDR, RENDA_FIXA, CRIPTO}, classe {ON, PN, PNA, PNB, UNIT} (0,1), negociado, programa_bdr {DRN, DR1, DR2, DR3, DRE} (0,1). Obrigatoriedade de ticker, ISIN, emissor e programa por tipo na seção 4 |
+| 8 | Ativo | **id_ativo**, ticker (0,1, único), isin (0,1, único), tipo {ACAO, FII, ETF, BDR, RENDA_FIXA, CRIPTO}, classe {ON, PN, PNA, PNB, PNC, PND, PNV, PRA, PRB, UNIT} (0,1; PNC a PRB desde o BD-3, D64), negociado, programa_bdr {DRN, DR1, DR2, DR3, DRE} (0,1). Obrigatoriedade de ticker, ISIN, emissor e programa por tipo na seção 4 |
 | 9 | Cotacao (fraca de Ativo) | **data** (identificador parcial), abertura, maxima, minima, fechamento, volume, negocios |
 | 10 | IndiceEconomico | **id_indice**, codigo {CDI, SELIC, IPCA, IBOV, IGPM} (único), nome, periodicidade {DIARIA, MENSAL}, unidade {TAXA_PERCENTUAL, PONTOS}, fonte. IGPM entra como indexador do Tesouro IGPM+ (D50) |
 | 11 | ValorIndice (fraca de IndiceEconomico) | **data_referencia** (identificador parcial), valor |
