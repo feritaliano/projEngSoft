@@ -182,6 +182,12 @@ src/modules/<modulo>/
 - Mudança de endpoint atualiza o `backend/README.md` no mesmo PR.
 - Commits por passo dentro do PR (teste, implementação, contrato), todos em Conventional Commits; um PR por tarefa do plano.
 
+## Regras da auditoria final do S1 (23/11/2026)
+- Teste que fixa um defeito conhecido só entra com tarefa no plano, dono e data; tarefa com critério de pronto fixado como falha não é marcada como concluída.
+
+## Regras da revisão final do S1 (23/11/2026)
+- A imagem do PostgreSQL dos testes com banco (Testcontainers) é a mesma fixada por digest no CI e no `docker-compose.yml`; quem atualiza uma atualiza todas.
+
 ## Regras de comunicação
 - Português (pt-BR). Código, identificadores e commits em inglês (Conventional Commits).
 - Sucinto, sem introduções, elogios ou emojis. Justifique decisões em 1–3 frases.

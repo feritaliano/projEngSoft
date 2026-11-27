@@ -15,6 +15,10 @@ const PRISMA_CLI = join(
   'index.js',
 );
 
+// Same image pinned by digest as the CI jobs database and e2e and the docker-compose.yml; update the four together.
+const POSTGRES_IMAGE =
+  'postgres:16.15@sha256:f9a7b9ebf6f56201f949db745e47bc423c0f0f8294bafe991cc10bf74b029657';
+
 declare global {
   var __POSTGRES_CONTAINER__: StartedPostgreSqlContainer | undefined;
 }
@@ -30,7 +34,7 @@ export default async function globalSetup(): Promise<void> {
     );
   }
 
-  const container = await new PostgreSqlContainer('postgres:16')
+  const container = await new PostgreSqlContainer(POSTGRES_IMAGE)
     .withDatabase('carteira_e2e')
     .withUsername('carteira')
     .withPassword('e2e-only-password')
