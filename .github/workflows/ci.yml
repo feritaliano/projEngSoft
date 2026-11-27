@@ -19,7 +19,7 @@ jobs:
     services:
       postgres:
         # Fixada por digest, igual ao docker-compose.yml: a tag postgres:16 passou a 16.16 em 13/11/2026,
-        # que grava pg_attver em attoptions e mudava o ddl.sql gerado. Atualizar os três juntos (este job, o e2e e o docker-compose.yml).
+        # que grava pg_attver em attoptions e mudava o ddl.sql gerado. Atualizar os quatro juntos (este job, o e2e, o docker-compose.yml e o backend/test/global-setup.ts).
         image: postgres:16.15@sha256:f9a7b9ebf6f56201f949db745e47bc423c0f0f8294bafe991cc10bf74b029657
         env:
           POSTGRES_USER: carteira
@@ -36,9 +36,9 @@ jobs:
       DATABASE_URL: postgresql://carteira:ci-only-password@localhost:5432/carteira_dev
       SHADOW_DATABASE_URL: postgresql://carteira:ci-only-password@localhost:5432/carteira_shadow
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
@@ -107,9 +107,9 @@ jobs:
       CORS_ORIGIN: http://localhost:4200
       JWT_ACCESS_SECRET: ci-only-secret-with-at-least-32-characters
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
@@ -223,7 +223,7 @@ jobs:
     runs-on: ubuntu-24.04
     services:
       postgres:
-        # Mesma imagem fixada do job database e do docker-compose.yml; atualizar os três juntos.
+        # Mesma imagem fixada do job database, do docker-compose.yml e do backend/test/global-setup.ts; atualizar os quatro juntos.
         image: postgres:16.15@sha256:f9a7b9ebf6f56201f949db745e47bc423c0f0f8294bafe991cc10bf74b029657
         env:
           POSTGRES_USER: carteira

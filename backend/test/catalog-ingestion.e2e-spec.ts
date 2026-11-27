@@ -45,6 +45,14 @@ describe('Catalog load from the B3 files (integration, K5, D59)', () => {
     prisma.$queryRaw<{ name: string }[]>`
       SELECT name FROM issuers GROUP BY name HAVING count(*) > 1`;
 
+  /** Id and natural key (issuer name, asset ticker) of every row. */
+  const identities = () =>
+    prisma.$queryRaw<{ id: string; key: string | null }[]>`
+      SELECT id::text, name AS key FROM issuers
+      UNION ALL
+      SELECT id::text, ticker FROM assets
+      ORDER BY 1`;
+
   const assetsOf = (tickers: string[]) =>
     prisma.$queryRaw<
       {
@@ -133,15 +141,50 @@ describe('Catalog load from the B3 files (integration, K5, D59)', () => {
     ]);
   });
 
-  // Known gap of the seed, not of the load (correction prompt for the database agent in the K5 PR): the seed skips an
-  // issuer whose name already exists, then inserts ELET3 with the fixed id of its own AXIA issuer. When the seed
-  // accepts issuers created by the load, replace this test by: seed runs, no duplicated issuer, no duplicated asset.
-  it('pins the seed failure after the load until the seed reuses existing issuers (K5 → seed)', async () => {
+  it('runs the seed on top of the load without duplicating issuers and keeps the loaded ids (K5 → seed, BD-2)', async () => {
     await load();
+    // Only ids, names and tickers: the seed fills cnpj, cvm_code and sector_id of an issuer the load created.
+    const loaded = await identities();
+    const axia3 = await prisma.asset.findUniqueOrThrow({
+      where: { ticker: 'AXIA3' },
+    });
 
-    await expect(runSqlFile(SEED)).rejects.toThrow(
-      /violates foreign key constraint "assets_issuer_id_fkey"/,
-    );
+    await runSqlFile(SEED);
+    const once = await snapshot();
+    await runSqlFile(SEED);
+
+    expect(await duplicatedIssuerNames()).toEqual([]);
+    expect(await identities()).toEqual(expect.arrayContaining(loaded));
+    expect(await snapshot()).toEqual(once);
+    // The seed fills the issuers the load created (values of inserts.sql); ELET3 joins the issuer of AXIA3 by CNPJ.
+    expect(
+      await prisma.$queryRaw`
+        SELECT a.ticker, i.id::text AS issuer_id, i.cnpj, i.cvm_code, i.sector_id::text
+        FROM assets a JOIN issuers i ON i.id = a.issuer_id
+        WHERE a.ticker IN ('PETR4', 'AURA33', 'AXIA3', 'ELET3') ORDER BY a.ticker`,
+    ).toEqual([
+      {
+        ticker: 'AURA33',
+        issuer_id: expect.any(String),
+        cnpj: null,
+        cvm_code: null,
+        sector_id: '00000000-0000-0000-0000-000000000306',
+      },
+      ...['AXIA3', 'ELET3'].map((ticker) => ({
+        ticker,
+        issuer_id: axia3.issuerId,
+        cnpj: '00001180000126',
+        cvm_code: '2437',
+        sector_id: '00000000-0000-0000-0000-000000000324',
+      })),
+      {
+        ticker: 'PETR4',
+        issuer_id: expect.any(String),
+        cnpj: '33000167000101',
+        cvm_code: '9512',
+        sector_id: '00000000-0000-0000-0000-000000000303',
+      },
+    ]);
   });
 
   it('changes no row when the same files are loaded again, and ignores invalid lines without failing the batch (D27, arquitetura 6.3)', async () => {

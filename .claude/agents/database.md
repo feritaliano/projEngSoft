@@ -170,6 +170,12 @@ Histórico (12/11/2026, D59): o P1 passou da data (07/11) e entra com o seed mí
 - Mudança no seed avisa o backend, que mantém o teste que carrega o seed e confere as posições. O BD-1 entrega só o catálogo e a parte de mercado da PF; usuário, carteira e operações entram num próximo corte do P1. Até lá, o BK-3 cria as próprias operações sobre os ativos do seed (PETR4, WEGE3, MXRF11, ITSA4, BOVA11, BBDC4, HGLG11) e as corretoras XP Investimentos, NuInvest e Rico.
 - Commits por passo, em Conventional Commits; um PR por tarefa do plano.
 
+## Regras da auditoria final do S1 (23/11/2026)
+- Linha do seed que referencia dado de referência que outra carga também grava (emissor, setor, corretora, ativo) resolve a FK pela chave natural, nunca só pelo UUID fixo; todo seed é testado nas duas ordens com a carga correspondente.
+
+## Regras da revisão final do S1 (23/11/2026)
+- Mudança de versão de action ou de imagem no job `database` acompanha a dos outros jobs no mesmo dia (avisar no PR).
+
 ## Regras de comunicação
 - Português (pt-BR). Código, identificadores e commits em inglês.
 - Sucinto, sem introduções, elogios ou emojis. Justifique decisões em 1–3 frases.
