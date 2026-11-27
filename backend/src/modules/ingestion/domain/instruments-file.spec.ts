@@ -82,6 +82,19 @@ describe('parseInstrumentsFile (K5, D59)', () => {
     ]);
   });
 
+  // Literal copy of the share_class enum without UNIT: the domain may not import the generated Prisma client (ESLint).
+  it.each(['ON', 'PN', 'PNA', 'PNB', 'PNC', 'PND', 'PNV', 'PRA', 'PRB'])(
+    'reads every share class of the database enum: %s (D64)',
+    (shareClass) => {
+      const file = parse([
+        instrumentLine({ SpcfctnCd: `${shareClass}      N1` }),
+      ]);
+
+      expect(file.entries.map((e) => e.shareClass)).toEqual([shareClass]);
+      expect(file.rejected).toEqual([]);
+    },
+  );
+
   it('reads a class quoted per thousand as the same class, whether the "*" comes attached or apart, and leaves out the rows that are not shares (D64)', () => {
     const file = parse([
       instrumentLine({ SpcfctnCd: 'ON *    NM' }),

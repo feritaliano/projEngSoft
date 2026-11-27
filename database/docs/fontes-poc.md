@@ -43,7 +43,7 @@ Filtro `MktNm = EQUITY-CASH`. Pular a primeira linha (status do arquivo).
 | `TckrSymb` | `assets.ticker` |
 | `ISIN` | `assets.isin` |
 | `SctyCtgyNm` | `assets.type`: SHARES e UNIT → STOCK; ETF EQUITIES e ETF FOREIGN INDEX → ETF; BDR → BDR; FUNDS → FII **só** se for FII (F7) |
-| `SpcfctnCd` (ex.: `PN      N2`, `UNT     N2`, `DRN ED`) | `assets.share_class` (primeiro token, sem o "\*" de lote de mil; CPA, REC e TPR fora do catálogo, seção 7) e `assets.bdr_program` |
+| `SpcfctnCd` (ex.: `PN      N2`, `UNT     N2`, `DRN ED`) | `assets.share_class` (primeiro token, sem o "\*" de lote de mil; CPA, REC, TPR e DIA (taxas `TAXA*`) fora do catálogo, seção 7) e `assets.bdr_program` |
 | `TradgEndDt` (`9999-12-31` = negociável) | `assets.is_active` |
 | `CrpnNm` | `issuers.name` |
 | `CFICd`, `CorpGovnLvlNm`, `MktCptlstn` | não gravados |
@@ -287,7 +287,7 @@ Também usados, já baixados antes: informe mensal de FII de 2026 (arquivo extra
 
 ## 7. Classes de ação fora de `share_class` (BD-3, D64)
 
-Arquivo: `data/raw/b3-instrumentos/InstrumentsConsolidatedFile_20261030.csv` ("Status do Arquivo: Final", 89.059 linhas, SHA-256 `74948058ca4a26d9890a86e9cb6f82688c367f32cc57daebeba96c77a9f83f31`), lido pelo parser do K5 (`backend/src/modules/ingestion/domain/instruments-file.ts`, sem alteração) com o COTAHIST de 30/10 para os FIIs.
+Arquivo: `data/raw/b3-instrumentos/InstrumentsConsolidatedFile_20261030.csv` ("Status do Arquivo: Final", 89.059 linhas, SHA-256 `74948058ca4a26d9890a86e9cb6f82688c367f32cc57daebeba96c77a9f83f31`), lido pelo parser do K5 na versão do PR #45, antes da mudança do BD-3 (`backend/src/modules/ingestion/domain/instruments-file.ts`), com o COTAHIST de 30/10 para os FIIs.
 
 ### 7.1 As 497 rejeições do K5
 
@@ -338,4 +338,4 @@ Das 36 que entram, 33 gravam: AXIA17G, AXIA19G e AXIA21G têm o sufixo `G` e con
 - [MPO] B3, Manual de Procedimentos Operacionais de Negociação, 01/07/2026, p. 135: `https://www.b3.com.br/data/files/0D/83/A3/5C/C7D1F910ADC36BE9AC094EA8/MPO%20de%20Negociacao%20da%20B3.pdf`
 - [GLOS] B3, Glossário do InstrumentsConsolidatedFile, 02/02/2024, campo 47 `SpcfctnCd` (não traz a tabela de códigos): `https://b3.com.br/data/files/52/74/1E/14/4BA6D8103152D4C8AC094EA8/Glossario%20InstrumentsConsolidatedFile%202024.pdf`
 
-Decisões do usuário (25/11/2026, nota do BD-3 na D64): (1) entram só as classes de ação; CPA, REC, TPR e as linhas `DIA LIVR` (`TAXA*`) ficam fora do catálogo, e o K5 passa a ignorá-las sem contar como rejeição (mudança do parser, do agente de backend); (2) o formato do ticker não muda (`^[A-Z0-9]{4}[0-9]{1,2}$`): AXIA17G, AXIA19G, AXIA21G, as 15 ações com sufixo B (balcão organizado) e os 3 BDR seguem rejeitados por formato, e o balcão organizado fica para o S2. Com o parser novo, o Cadastro de 30/10 dá +33 ações, zero rejeição por classe e 21 rejeições por formato do ticker.
+Decisões do usuário (25/11/2026, nota do BD-3 na D64): (1) entram só as classes de ação; CPA, REC, TPR e as linhas `DIA LIVR` (`TAXA*`) ficam fora do catálogo, e o K5 passa a ignorá-las sem contar como rejeição (mudança do parser feita no próprio BD-3: `instruments-file.ts` e testes); (2) o formato do ticker não muda (`^[A-Z0-9]{4}[0-9]{1,2}$`): AXIA17G, AXIA19G, AXIA21G, as 15 ações com sufixo B (14 do balcão organizado) e os 3 BDR seguem rejeitados por formato, e o balcão organizado fica para o S2. Com o parser novo, o Cadastro de 30/10 dá +33 ações, zero rejeição por classe e 21 rejeições por formato do ticker.

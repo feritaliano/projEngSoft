@@ -71,7 +71,7 @@ flowchart LR
 | Zona | Onde | Conteúdo | Regras |
 |---|---|---|---|
 | **Bronze** | Volume em disco (`data/raw/`), fora do banco | Arquivos exatamente como baixados (ZIP, CSV, TXT) | Imutável. Nome com fonte, data de referência e hash SHA-256. Todo dado externo do banco pode ser reconstruído a partir daqui. |
-| **ops** | Schema `ops` | `ingestion_runs` (fonte, arquivo, hash, data de referência, status RUNNING/SUCCEEDED/FAILED, linhas lidas/gravadas/rejeitadas, erro, início e fim; no máximo uma RUNNING por fonte; BD-3), tabelas `staging_*` UNLOGGED, `import_rows` (linhas da planilha B3 antes da confirmação), `user_sessions` (refresh tokens com hash) | Técnico. **Fora do ER.** Staging é truncável. |
+| **ops** | Schema `ops` | `ingestion_runs` (fonte, arquivo, hash, data de referência, status RUNNING/SUCCEEDED/FAILED/NO_FILE, linhas lidas/gravadas/rejeitadas, erro, início e fim; no máximo uma RUNNING por fonte; BD-3), tabelas `staging_*` UNLOGGED, `import_rows` (linhas da planilha B3 antes da confirmação), `user_sessions` (refresh tokens com hash) | Técnico. **Fora do ER.** Staging é truncável. |
 | **Prata (núcleo)** | Schema `public` | As entidades do domínio (seção 4) | **Tudo em `public` está no ER, e nada fora de `public` está no ER.** Integridade por FK, CHECK e UNIQUE. É a fonte da verdade. |
 | **Ouro** | Schema `analytics` | Tabelas de cache e materialized views derivadas | Pode ser apagado e reconstruído a qualquer momento (D17). Nunca é fonte da verdade. **Fora do ER.** Só o worker escreve. |
 
@@ -177,17 +177,22 @@ sequenceDiagram
 flowchart TD
   S[Agendador no worker] --> L{pg_try_advisory_lock da fonte}
   L -- ocupado --> X[sai]
-  L -- livre --> D[Baixa arquivo]
+  L -- livre --> R[ingestion_runs RUNNING; órfã anterior da fonte fechada como FAILED]
+  R --> D[Baixa arquivo; grava arquivo, hash e data de referência na execução]
+  R -. arquivo não publicado ou dia sem pregão .-> NF[ingestion_runs NO_FILE com a data de referência]
   D --> H{hash já processado com sucesso?}
-  H -- sim --> X
-  H -- não --> B[Grava em bronze + ingestion_runs RUNNING]
+  H -- sim --> SK[ingestion_runs SUCCEEDED sem gravar linhas]
+  H -- não --> B[Grava em bronze]
   B --> P[Parse → staging_* via COPY]
   P --> V[Valida: formato, domínio, FKs resolvíveis; rejeitadas registradas]
   V --> U[Upsert no núcleo por chave natural, em transação]
   U --> G[Refresh do ouro afetado]
   G --> A[Pós-processamento: avalia price_alerts após cotações]
-  A --> OK[ingestion_runs SUCCEEDED]
+  A --> OK[ingestion_runs SUCCEEDED com as contagens]
+  R -. erro em qualquer passo .-> F[ingestion_runs FAILED com o erro]
 ```
+Registro da execução (`ops.ingestion_runs`, BD-3): a linha abre como RUNNING logo depois do lock, com início, e fecha em SUCCEEDED, FAILED (com o erro: rede, parse, banco) ou NO_FILE, com fim. NO_FILE: arquivo do pregão ainda não publicado ou dia sem pregão (404), com reference_date; não é falha e o worker tenta de novo. Arquivo, hash e data de referência são preenchidos depois do download e são obrigatórios em SUCCEEDED (a data de referência também em NO_FILE). No máximo uma RUNNING por fonte (índice único parcial); uma RUNNING de worker que caiu é fechada como FAILED por quem obtém o lock.
+
 Propriedades obrigatórias:
 - **Idempotente:** reprocessar o mesmo arquivo não muda nada (hash + `ON CONFLICT DO UPDATE` por chave natural).
 - **Reconstruível:** o núcleo externo pode ser apagado e recarregado a partir do bronze.

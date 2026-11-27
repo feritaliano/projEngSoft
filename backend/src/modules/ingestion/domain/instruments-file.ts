@@ -80,7 +80,8 @@ function classify(
 ): Classification | string | null {
   switch (category) {
     case 'SHARES': {
-      // "*" after the class (PNA*) means quoted per thousand shares: the same class (COTAHIST, ESPECI table).
+      // "*" after the class (PNA*) means quoted per thousand shares, the same class
+      // (B3 "Empresas listadas" legend; fontes-poc.md, section 7.3).
       const shareClass = specification.replace(/\*$/, '');
       if (NOT_SHARES.has(shareClass)) return null;
       return STOCK_CLASSES.has(shareClass)

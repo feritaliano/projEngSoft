@@ -4,7 +4,7 @@
 -- ADD VALUE roda dentro da transação da migration no PostgreSQL 12+; nada aqui usa os valores novos.
 
 -- AlterEnum
--- Fontes: layout do COTAHIST da B3 (tabela ESPECI) e legenda da página "Empresas listadas"; database/docs/fontes-poc.md, seção 7.
+-- Fontes: layout do COTAHIST da B3 (tabela ESPECI), legenda da página "Empresas listadas" e MPO de Negociação da B3; database/docs/fontes-poc.md, seção 7.3.
 ALTER TYPE "public"."share_class" ADD VALUE 'PNC' BEFORE 'UNIT';
 ALTER TYPE "public"."share_class" ADD VALUE 'PND' BEFORE 'UNIT';
 ALTER TYPE "public"."share_class" ADD VALUE 'PNV' BEFORE 'UNIT';
@@ -12,7 +12,7 @@ ALTER TYPE "public"."share_class" ADD VALUE 'PRA' BEFORE 'UNIT';
 ALTER TYPE "public"."share_class" ADD VALUE 'PRB' BEFORE 'UNIT';
 
 -- CreateEnum
-CREATE TYPE "ops"."ingestion_status" AS ENUM ('RUNNING', 'SUCCEEDED', 'FAILED');
+CREATE TYPE "ops"."ingestion_status" AS ENUM ('RUNNING', 'SUCCEEDED', 'FAILED', 'NO_FILE');
 
 -- CreateTable
 CREATE TABLE "ops"."ingestion_runs" (
@@ -51,11 +51,15 @@ ALTER TABLE "ops"."ingestion_runs" ADD CONSTRAINT "ingestion_runs_rows_check" CH
 -- e finished_at pode vir do da aplicação (mesma razão da D39)
 ALTER TABLE "ops"."ingestion_runs" ADD CONSTRAINT "ingestion_runs_finished_at_check" CHECK (("status" = 'RUNNING') = ("finished_at" IS NULL));
 
--- Erro só (e sempre) na execução que falhou
+-- Erro só (e sempre) na execução que falhou. NO_FILE (arquivo ainda não publicado ou dia sem pregão) não é falha: sem erro
 ALTER TABLE "ops"."ingestion_runs" ADD CONSTRAINT "ingestion_runs_error_check" CHECK (("status" = 'FAILED') = ("error" IS NOT NULL));
 
 -- Execução com sucesso identifica o arquivo: é o que torna o hash a chave da idempotência
 ALTER TABLE "ops"."ingestion_runs" ADD CONSTRAINT "ingestion_runs_succeeded_check" CHECK ("status" <> 'SUCCEEDED' OR ("file_name" IS NOT NULL AND "file_sha256" IS NOT NULL AND "reference_date" IS NOT NULL));
+
+-- NO_FILE registra o pregão-alvo que ficou sem arquivo (404 do COTAHIST, série sem dado no dia); o worker tenta de novo.
+-- Fim e ausência de erro já vêm de finished_at_check e error_check
+ALTER TABLE "ops"."ingestion_runs" ADD CONSTRAINT "ingestion_runs_no_file_check" CHECK ("status" <> 'NO_FILE' OR "reference_date" IS NOT NULL);
 
 -- No máximo uma execução em andamento por fonte. O advisory lock do backend é a trava principal; este índice segura o
 -- caso em que ele falha (outro processo sem o lock). Uma linha RUNNING de um worker que caiu fica órfã: quem obtém o

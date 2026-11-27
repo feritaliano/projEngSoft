@@ -57,7 +57,7 @@ enum AssetType {
 
 // Classe da ação como publicada pela B3 (COTAHIST, campo ESPECI; cadastro de instrumentos, SpcfctnCd, primeiro token
 // sem o "*" de cotação por lote de mil): PNC, PND = preferencial classe C, D; PNV = preferencial com direito a voto;
-// PRA, PRB = preferencial resgatável classe A, B (BD-3, D64; glossario.md, seção 3).
+// PRA, PRB = preferencial resgatável classe A, B (BD-3, D64; glossario.md, seção 3.1).
 enum ShareClass {
   ON
   PN
@@ -870,14 +870,19 @@ enum IngestionStatus {
   RUNNING
   SUCCEEDED
   FAILED
+  NO_FILE
 
   @@map("ingestion_status")
   @@schema("ops")
 }
 
 // Uma execução da ingestão de uma fonte externa (arquitetura, 6.3; D24, BD-3). O worker grava RUNNING com o advisory
-// lock da fonte e fecha em SUCCEEDED ou FAILED. Mesmo arquivo (source + file_sha256 com SUCCEEDED) não é regravado.
-// Arquivo, hash e data de referência são nulos só em execução que falhou antes de baixar ou ler o arquivo.
+// lock da fonte e fecha em SUCCEEDED, FAILED (erro real: rede, parse, banco) ou NO_FILE (arquivo do pregão ainda não
+// publicado ou dia sem pregão, com reference_date e sem erro; não é falha e o worker tenta de novo). O worker pula
+// arquivo já processado (source + file_sha256 com SUCCEEDED; índice ingestion_runs_source_file_sha256_idx). O hash não
+// é único: o reprocesso a partir do bronze grava outra execução do mesmo arquivo. Arquivo e hash são obrigatórios só em
+// SUCCEEDED (CHECK ingestion_runs_succeeded_check) e a data de referência em SUCCEEDED e NO_FILE (também
+// ingestion_runs_no_file_check); ficam nulos enquanto a execução não leu o arquivo e na que falhou antes disso.
 model IngestionRun {
   id            String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   source        String          @db.VarChar(40)

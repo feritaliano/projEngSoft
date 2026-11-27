@@ -65,14 +65,18 @@ DO $$ BEGIN
 END $$;
 
 -- ---------------------------------------------------------------- ingestion_runs (BD-3, D64)
--- execução em andamento, uma com sucesso do mesmo arquivo (o hash não é único: recarga a partir do bronze) e uma que
--- falhou antes de baixar o arquivo
+-- Fontes TEST_*: o db:test roda no carteira_dev, onde o worker grava as fontes reais; uma RUNNING real daria um falso 23505.
+-- execução em andamento, uma com sucesso do mesmo arquivo (o hash não é único: recarga a partir do bronze), uma que
+-- falhou antes de baixar o arquivo e uma de pregão sem arquivo publicado (NO_FILE)
 INSERT INTO ops.ingestion_runs (id, source, file_name, file_sha256, reference_date) VALUES
-  ('ffffffff-0000-0000-0000-000000000a01', 'B3_COTAHIST', 'COTAHIST_D30102026.ZIP', encode(sha256('cotahist-3010'::bytea), 'hex'), '2026-10-30');
+  ('ffffffff-0000-0000-0000-000000000a01', 'TEST_COTAHIST', 'COTAHIST_D30102026.ZIP', encode(sha256('cotahist-3010'::bytea), 'hex'), '2026-10-30');
 INSERT INTO ops.ingestion_runs (source, file_name, file_sha256, reference_date, status, rows_read, rows_written, rows_rejected, finished_at) VALUES
-  ('B3_COTAHIST', 'COTAHIST_D30102026.ZIP', encode(sha256('cotahist-3010'::bytea), 'hex'), '2026-10-30', 'SUCCEEDED', 10, 8, 2, now());
+  ('TEST_COTAHIST', 'COTAHIST_D30102026.ZIP', encode(sha256('cotahist-3010'::bytea), 'hex'), '2026-10-30', 'SUCCEEDED', 10, 8, 2, now());
 INSERT INTO ops.ingestion_runs (source, status, error, finished_at) VALUES
-  ('B3_INSTRUMENTS', 'FAILED', 'HTTP 404: file not published yet', now());
+  ('TEST_INSTRUMENTS', 'FAILED', 'connection reset by peer', now());
+INSERT INTO ops.ingestion_runs (source, reference_date, status, finished_at) VALUES
+  ('TEST_COTAHIST', '2026-11-02', 'NO_FILE', now());
+DO $$ BEGIN RAISE NOTICE 'ok  NO_FILE com data de referência, fim e sem erro'; END $$;
 
 DO $$ DECLARE r ops.ingestion_runs; BEGIN
   SELECT * INTO r FROM ops.ingestion_runs WHERE id = 'ffffffff-0000-0000-0000-000000000a01';
@@ -83,30 +87,51 @@ DO $$ DECLARE r ops.ingestion_runs; BEGIN
 END $$;
 
 SELECT pg_temp.expect_error('duas execuções em andamento da mesma fonte',
-  $q$INSERT INTO ops.ingestion_runs (source) VALUES ('B3_COTAHIST')$q$, '23505');
+  $q$INSERT INTO ops.ingestion_runs (source) VALUES ('TEST_COTAHIST')$q$, '23505');
+-- outra fonte roda ao mesmo tempo (a trava é por fonte); fechada em seguida para não afetar os casos abaixo
+INSERT INTO ops.ingestion_runs (id, source) VALUES ('ffffffff-0000-0000-0000-000000000a02', 'TEST_INSTRUMENTS');
+UPDATE ops.ingestion_runs SET status = 'FAILED', error = 'test', finished_at = now()
+  WHERE id = 'ffffffff-0000-0000-0000-000000000a02';
+DO $$ BEGIN RAISE NOTICE 'ok  execuções em andamento de fontes diferentes'; END $$;
 SELECT pg_temp.expect_error('fonte fora do formato de código',
   $q$INSERT INTO ops.ingestion_runs (source) VALUES ('b3 cotahist')$q$, '23514');
+SELECT pg_temp.expect_error('fonte com 1 caractere',
+  $q$INSERT INTO ops.ingestion_runs (source) VALUES ('A')$q$, '23514');
 SELECT pg_temp.expect_error('hash de arquivo em maiúsculas',
-  $q$INSERT INTO ops.ingestion_runs (source, file_sha256) VALUES ('BCB_SGS', upper(encode(sha256('x'::bytea), 'hex')))$q$, '23514');
-SELECT pg_temp.expect_error('contagem de linhas negativa',
-  $q$INSERT INTO ops.ingestion_runs (source, rows_rejected) VALUES ('BCB_SGS', -1)$q$, '23514');
+  $q$INSERT INTO ops.ingestion_runs (source, file_sha256) VALUES ('TEST_SGS', upper(encode(sha256('x'::bytea), 'hex')))$q$, '23514');
+SELECT pg_temp.expect_error('linhas lidas negativas',
+  $q$INSERT INTO ops.ingestion_runs (source, rows_read) VALUES ('TEST_SGS', -1)$q$, '23514');
+SELECT pg_temp.expect_error('linhas gravadas negativas',
+  $q$INSERT INTO ops.ingestion_runs (source, rows_written) VALUES ('TEST_SGS', -1)$q$, '23514');
+SELECT pg_temp.expect_error('linhas rejeitadas negativas',
+  $q$INSERT INTO ops.ingestion_runs (source, rows_rejected) VALUES ('TEST_SGS', -1)$q$, '23514');
 SELECT pg_temp.expect_error('execução em andamento com fim',
-  $q$INSERT INTO ops.ingestion_runs (source, finished_at) VALUES ('BCB_SGS', now())$q$, '23514');
+  $q$INSERT INTO ops.ingestion_runs (source, finished_at) VALUES ('TEST_SGS', now())$q$, '23514');
 SELECT pg_temp.expect_error('execução encerrada sem fim',
-  $q$INSERT INTO ops.ingestion_runs (source, status, error) VALUES ('BCB_SGS', 'FAILED', 'erro')$q$, '23514');
+  $q$INSERT INTO ops.ingestion_runs (source, status, error) VALUES ('TEST_SGS', 'FAILED', 'erro')$q$, '23514');
 SELECT pg_temp.expect_error('falha sem erro',
-  $q$INSERT INTO ops.ingestion_runs (source, status, finished_at) VALUES ('BCB_SGS', 'FAILED', now())$q$, '23514');
+  $q$INSERT INTO ops.ingestion_runs (source, status, finished_at) VALUES ('TEST_SGS', 'FAILED', now())$q$, '23514');
 SELECT pg_temp.expect_error('sucesso com erro',
-  $q$INSERT INTO ops.ingestion_runs (source, file_name, file_sha256, reference_date, status, error, finished_at) VALUES ('BCB_SGS', 'a.json', encode(sha256('y'::bytea), 'hex'), '2026-10-30', 'SUCCEEDED', 'erro', now())$q$, '23514');
+  $q$INSERT INTO ops.ingestion_runs (source, file_name, file_sha256, reference_date, status, error, finished_at) VALUES ('TEST_SGS', 'a.json', encode(sha256('y'::bytea), 'hex'), '2026-10-30', 'SUCCEEDED', 'erro', now())$q$, '23514');
 SELECT pg_temp.expect_error('sucesso sem hash do arquivo',
-  $q$INSERT INTO ops.ingestion_runs (source, file_name, reference_date, status, finished_at) VALUES ('BCB_SGS', 'a.json', '2026-10-30', 'SUCCEEDED', now())$q$, '23514');
+  $q$INSERT INTO ops.ingestion_runs (source, file_name, reference_date, status, finished_at) VALUES ('TEST_SGS', 'a.json', '2026-10-30', 'SUCCEEDED', now())$q$, '23514');
+SELECT pg_temp.expect_error('sucesso sem nome do arquivo',
+  $q$INSERT INTO ops.ingestion_runs (source, file_sha256, reference_date, status, finished_at) VALUES ('TEST_SGS', encode(sha256('y'::bytea), 'hex'), '2026-10-30', 'SUCCEEDED', now())$q$, '23514');
+SELECT pg_temp.expect_error('sucesso sem data de referência',
+  $q$INSERT INTO ops.ingestion_runs (source, file_name, file_sha256, status, finished_at) VALUES ('TEST_SGS', 'a.json', encode(sha256('y'::bytea), 'hex'), 'SUCCEEDED', now())$q$, '23514');
+SELECT pg_temp.expect_error('NO_FILE sem data de referência',
+  $q$INSERT INTO ops.ingestion_runs (source, status, finished_at) VALUES ('TEST_SGS', 'NO_FILE', now())$q$, '23514');
+SELECT pg_temp.expect_error('NO_FILE com erro',
+  $q$INSERT INTO ops.ingestion_runs (source, reference_date, status, error, finished_at) VALUES ('TEST_SGS', '2026-11-02', 'NO_FILE', 'HTTP 404', now())$q$, '23514');
+SELECT pg_temp.expect_error('NO_FILE sem fim',
+  $q$INSERT INTO ops.ingestion_runs (source, reference_date, status) VALUES ('TEST_SGS', '2026-11-02', 'NO_FILE')$q$, '23514');
 SELECT pg_temp.expect_error('status fora do domínio',
-  $q$INSERT INTO ops.ingestion_runs (source, status) VALUES ('BCB_SGS', 'SKIPPED')$q$, '22P02');
+  $q$INSERT INTO ops.ingestion_runs (source, status) VALUES ('TEST_SGS', 'SKIPPED')$q$, '22P02');
 
 -- a órfã de um worker que caiu é fechada como FAILED; depois a fonte aceita nova execução
 UPDATE ops.ingestion_runs SET status = 'FAILED', error = 'interrupted', finished_at = now()
   WHERE id = 'ffffffff-0000-0000-0000-000000000a01';
-INSERT INTO ops.ingestion_runs (source) VALUES ('B3_COTAHIST');
+INSERT INTO ops.ingestion_runs (source) VALUES ('TEST_COTAHIST');
 DO $$ BEGIN RAISE NOTICE 'ok  fonte aceita nova execução depois de fechar a anterior'; END $$;
 
 ROLLBACK;
