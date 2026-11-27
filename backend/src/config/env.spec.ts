@@ -49,6 +49,45 @@ describe('environment validation (zod, D52)', () => {
     ).not.toThrow();
   });
 
+  it('worker env defaults the daily ingestion (K6) and the bronze folder at the repository root', () => {
+    const env = parseEnv(workerEnvSchema, {
+      DATABASE_URL: validApiEnv.DATABASE_URL,
+    });
+
+    expect(env).toMatchObject({
+      RAW_DATA_DIR: join(dirname(ROOT_ENV_FILE), 'data', 'raw'),
+      INGESTION_DAILY_TIME: '21:30',
+      INGESTION_RETRY_INTERVAL_MINUTES: 30,
+      INGESTION_MAX_ATTEMPTS: 6,
+    });
+  });
+
+  it('worker env keeps an absolute RAW_DATA_DIR (a Docker volume)', () => {
+    const dir = join(dirname(ROOT_ENV_FILE), 'volume');
+    expect(
+      parseEnv(workerEnvSchema, {
+        DATABASE_URL: validApiEnv.DATABASE_URL,
+        RAW_DATA_DIR: dir,
+      }).RAW_DATA_DIR,
+    ).toBe(dir);
+  });
+
+  it.each([
+    ['INGESTION_DAILY_TIME', '17:59'],
+    ['INGESTION_DAILY_TIME', '21:5'],
+    ['INGESTION_DAILY_TIME', '24:00'],
+    ['INGESTION_RETRY_INTERVAL_MINUTES', '0'],
+    ['INGESTION_MAX_ATTEMPTS', '13'],
+    ['RAW_DATA_DIR', ''],
+  ])('worker env refuses %s=%s', (name, value) => {
+    expect(() =>
+      parseEnv(workerEnvSchema, {
+        DATABASE_URL: validApiEnv.DATABASE_URL,
+        [name]: value,
+      }),
+    ).toThrow(name);
+  });
+
   it.each([
     [
       'missing DATABASE_URL',

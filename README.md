@@ -58,6 +58,16 @@ O seed carrega o catálogo de referência do S1 (setores, emissores, corretoras 
 
    Troque as datas pelas dos arquivos baixados. Rodar de novo com os mesmos arquivos não muda nada. Detalhes e regras da carga em `backend/README.md`, seção "Catálogo completo da B3".
 
+**Cotações e índices (K6).** O worker do passo 3 atualiza sozinho, todo dia útil às 21:30 (horário de São Paulo; variável `INGESTION_DAILY_TIME`), as cotações do último pregão (COTAHIST da B3), o Ibovespa, o CDI e o IPCA; se o arquivo do dia ainda não saiu, tenta de novo a cada 30 minutos até a meia-noite. Para carregar o histórico, ou se o worker não estiver de pé, rode na raiz, com o PostgreSQL de pé e o seed carregado:
+
+```bash
+npm --prefix backend run ingest:quotes -- --file data/raw/b3-cotahist/COTAHIST_A2026.ZIP    # ano inteiro (arquivo anual baixado da B3)
+npm --prefix backend run ingest:quotes -- --from 2026-11-13 --to 2026-11-27                # baixa e carrega os arquivos diários do período
+npm --prefix backend run ingest:indexes -- --from 2026-01-01 --to 2026-11-27               # CDI, IPCA e Ibovespa do período
+```
+
+Os arquivos baixados ficam em `data/raw/` (fora do Git). Rodar de novo não muda nada. Detalhes em `backend/README.md`, seção "Cotações e índices".
+
 ### 5. Frontend
 ```bash
 cd frontend

@@ -52,7 +52,7 @@ describe('boot of the root modules (D52)', () => {
     let loaded!: {
       NestFactory: typeof import('@nestjs/core').NestFactory;
       WorkerModule: Type;
-      WorkerHeartbeat: Type;
+      DailyIngestionScheduler: Type;
       Logger: Type;
     };
     jest.isolateModules(() => {
@@ -63,9 +63,9 @@ describe('boot of the root modules (D52)', () => {
         WorkerModule:
           jest.requireActual<Record<string, Type>>('../worker.module')
             .WorkerModule,
-        WorkerHeartbeat: jest.requireActual<Record<string, Type>>(
-          '../worker/worker-heartbeat',
-        ).WorkerHeartbeat,
+        DailyIngestionScheduler: jest.requireActual<Record<string, Type>>(
+          '../worker/daily-ingestion.scheduler',
+        ).DailyIngestionScheduler,
         Logger: jest.requireActual<Record<string, Type>>('nestjs-pino').Logger,
       };
     });
@@ -79,7 +79,7 @@ describe('boot of the root modules (D52)', () => {
     );
     try {
       expect(app.get(loaded.Logger)).toBeDefined();
-      expect(app.get(loaded.WorkerHeartbeat)).toBeDefined();
+      expect(app.get(loaded.DailyIngestionScheduler)).toBeDefined();
     } finally {
       await app.close();
     }

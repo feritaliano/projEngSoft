@@ -1,8 +1,10 @@
 import { resolve } from 'node:path';
 import { z } from 'zod';
 
-// Single .env at the repository root (D37). Resolved from this file, so it works from src/ (ts-node) and dist/ (build).
-export const ROOT_ENV_FILE = resolve(__dirname, '..', '..', '..', '.env');
+// Repository root, resolved from this file, so it works from src/ (ts-node) and dist/ (build); /app in the Docker image.
+const REPO_ROOT = resolve(__dirname, '..', '..', '..');
+// Single .env at the repository root (D37).
+export const ROOT_ENV_FILE = resolve(REPO_ROOT, '.env');
 
 const LOG_LEVELS = [
   'fatal',
@@ -18,7 +20,8 @@ function isOrigin(value: string): boolean {
   return URL.canParse(value) && new URL(value).origin === value;
 }
 
-export const workerEnvSchema = z.object({
+/** Variables of both processes (D24). */
+const baseEnvSchema = z.object({
   NODE_ENV: z
     .enum(['development', 'test', 'production'])
     .default('development'),
@@ -29,6 +32,34 @@ export const workerEnvSchema = z.object({
   LOG_LEVEL: z.enum(LOG_LEVELS).default('info'),
 });
 
+export const workerEnvSchema = baseEnvSchema.extend({
+  // Bronze zone (arquitetura 3.1): files as downloaded. A relative path is taken from the repository root; in Docker,
+  // the worker mounts a volume there.
+  RAW_DATA_DIR: z
+    .string()
+    .min(1)
+    .default('data/raw')
+    .transform((dir) => resolve(REPO_ROOT, dir)),
+  // Daily ingestion (K6), weekdays at this São Paulo time: after the B3 publishes the daily COTAHIST (Last-Modified of
+  // the files of 03–26/11/2026 between 20:25 and 21:18). Refused before 18:00, when the file of the day cannot exist.
+  INGESTION_DAILY_TIME: z
+    .string()
+    .regex(
+      /^(1[89]|2[0-3]):[0-5][0-9]$/,
+      'must be HH:MM between 18:00 and 23:59 (São Paulo time)',
+    )
+    .default('21:30'),
+  // A source without the file of the day (NO_FILE) or that failed is tried again this many minutes later...
+  INGESTION_RETRY_INTERVAL_MINUTES: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(180)
+    .default(30),
+  // ...up to this many attempts in all (the first included).
+  INGESTION_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(12).default(6),
+});
+
 /** Placeholder of .env.example: accepted while developing, refused in production. */
 export const JWT_SECRET_PLACEHOLDER =
   'troque-por-um-segredo-aleatorio-de-pelo-menos-32-caracteres';
@@ -36,7 +67,7 @@ export const JWT_SECRET_PLACEHOLDER =
 /** Highest login/sign-up rate limit accepted in production; higher values exist only for test suites. */
 export const PRODUCTION_AUTH_RATE_LIMIT_MAX = 20;
 
-export const apiEnvSchema = workerEnvSchema
+export const apiEnvSchema = baseEnvSchema
   .extend({
     API_PORT: z.coerce.number().int().min(1).max(65535).default(3000),
     // Only the frontend origin may call the API (D52).
