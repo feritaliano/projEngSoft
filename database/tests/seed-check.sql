@@ -47,8 +47,8 @@ BEGIN
       ('crypto_prices', 25), ('darfs', 10), ('economic_indexes', 5), ('fii_monthly_reports', 16),
       ('fii_quarterly_reports', 17), ('fii_report_properties', 14), ('financial_statements', 11),
       ('fixed_income_bonds', 10), ('fixed_income_prices', 50), ('fixed_income_types', 8), ('import_batches', 10),
-      ('income_distributions', 26), ('index_values', 13), ('indicators', 15), ('issuers', 49), ('operations', 68),
-      ('portfolio_goals', 12), ('portfolios', 12), ('price_alerts', 13), ('quotes', 97), ('received_income', 29),
+      ('income_distributions', 26), ('index_values', 956), ('indicators', 15), ('issuers', 49), ('operations', 68),
+      ('portfolio_goals', 12), ('portfolios', 12), ('price_alerts', 13), ('quotes', 9841), ('received_income', 29),
       ('saved_screens', 11), ('screen_criteria', 15), ('sectors', 37), ('statement_lines', 44),
       ('target_allocations', 15), ('tax_assessments', 19), ('tax_categories', 4), ('tax_rules', 4), ('users', 10),
       ('watchlist_items', 13)) AS v (tabela, minimo) LOOP
@@ -278,6 +278,50 @@ BEGIN
                                  AND CASE a.direction WHEN 'ABOVE' THEN q.close >= a.target_price
                                                       ELSE q.close <= a.target_price END))) THEN
     RAISE EXCEPTION 'seed: alerta disparado sem cotação que cruze o alvo'; END IF;
+END $$;
+
+-- 10. Histórico (BD-4, D64), de 02/01/2025 ao último pregão do seed (12/11/2026). Calendário de pregões = datas do
+-- COTAHIST no seed: 466 (250 em 2025 e 216 em 2026), as mesmas do IBOV, fonte independente. Cada
+-- ativo da B3 das carteiras do seed, mais a VIVT3 do roteiro de demonstração, tem cotação em todo pregão; CDI em todo
+-- pregão (o BCB publica também 24/12 e 31/12, sem pregão); IPCA em todo mês até 10/2026 (o de 11/2026 sai em
+-- dezembro); IBOV em todo pregão.
+DO $$
+DECLARE missing text;
+BEGIN
+  CREATE TEMP TABLE seed_trading_days ON COMMIT DROP AS
+    SELECT DISTINCT quote_date AS d FROM quotes WHERE quote_date BETWEEN '2025-01-02' AND '2026-11-12';
+  IF (SELECT count(*) FROM seed_trading_days) <> 466
+     OR EXISTS ((SELECT d FROM seed_trading_days
+                 EXCEPT SELECT v.reference_date FROM index_values v JOIN economic_indexes e ON e.id = v.economic_index_id
+                        WHERE e.code = 'IBOV' AND v.reference_date BETWEEN '2025-01-02' AND '2026-11-12')
+                UNION ALL
+                (SELECT v.reference_date FROM index_values v JOIN economic_indexes e ON e.id = v.economic_index_id
+                 WHERE e.code = 'IBOV' AND v.reference_date BETWEEN '2025-01-02' AND '2026-11-12'
+                 EXCEPT SELECT d FROM seed_trading_days)) THEN
+    RAISE EXCEPTION 'seed: calendário de pregões diferente de 466 dias ou do IBOV'; END IF;
+  SELECT a.ticker || ' ' || c.d INTO missing
+  FROM (SELECT DISTINCT o.asset_id FROM operations o
+          JOIN portfolios p ON p.id = o.portfolio_id JOIN users u ON u.id = p.user_id
+        WHERE u.email = 'demo@carteirab3.dev' OR u.email LIKE '%@example.com'
+        UNION SELECT id FROM assets WHERE ticker = 'VIVT3') h
+  JOIN assets a ON a.id = h.asset_id AND a.type IN ('STOCK', 'FII', 'ETF', 'BDR')
+  CROSS JOIN seed_trading_days c
+  LEFT JOIN quotes q ON q.asset_id = h.asset_id AND q.quote_date = c.d
+  WHERE q.asset_id IS NULL ORDER BY 1 LIMIT 1;
+  IF missing IS NOT NULL THEN RAISE EXCEPTION 'seed: falta cotação de % (histórico)', missing; END IF;
+  SELECT e.code || ' ' || c.d INTO missing
+  FROM economic_indexes e
+  CROSS JOIN seed_trading_days c
+  LEFT JOIN index_values v ON v.economic_index_id = e.id AND v.reference_date = c.d
+  WHERE v.reference_date IS NULL AND e.code IN ('CDI', 'IBOV')
+  ORDER BY 1 LIMIT 1;
+  IF missing IS NOT NULL THEN RAISE EXCEPTION 'seed: falta % (histórico)', missing; END IF;
+  SELECT m::date::text INTO missing
+  FROM generate_series(DATE '2025-01-01', DATE '2026-10-01', interval '1 month') m
+  WHERE NOT EXISTS (SELECT 1 FROM index_values v JOIN economic_indexes e ON e.id = v.economic_index_id
+                    WHERE e.code = 'IPCA' AND v.reference_date = m::date)
+  ORDER BY 1 LIMIT 1;
+  IF missing IS NOT NULL THEN RAISE EXCEPTION 'seed: falta IPCA de %', missing; END IF;
 END $$;
 
 -- Contagens de todas as tabelas de public (o CI compara a saída das duas execuções do seed).
