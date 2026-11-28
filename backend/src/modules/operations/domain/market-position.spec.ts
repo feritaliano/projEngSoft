@@ -5,13 +5,13 @@ import type { AssetType } from './asset-type';
 import type { AssetRef } from './catalog-refs';
 import type { DerivedValue } from './derived-value';
 import {
-  AssetMarketData,
   MarketPositionLine,
   marketAllocation,
   marketPositions,
   marketTotals,
   userEquity,
 } from './market-position';
+import type { AssetHistory } from './portfolio-history';
 import { calculatePosition } from './position-calculator';
 import { PositionLine, positionLine, portfolioTotals } from './position-trace';
 import type { TimelineItem } from './timeline';
@@ -36,7 +36,7 @@ function asset(name: string, assetType: AssetType = 'STOCK'): AssetRef {
 
 function valued(holdings: Holding[], closeDate: string | null = CLOSE_DATE) {
   const lines: PositionLine[] = [];
-  const market = new Map<string, AssetMarketData>();
+  const market = new Map<string, AssetHistory>();
   for (const holding of holdings) {
     const calculation = calculatePosition(holding.items);
     if (!calculation.ok) throw calculation.error;

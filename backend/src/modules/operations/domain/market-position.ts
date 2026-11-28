@@ -13,7 +13,7 @@ import {
   positionInput,
 } from './market-trace';
 import type { PositionStep } from './position-calculator';
-import { flowOf } from './portfolio-history';
+import { AssetHistory, flowOf } from './portfolio-history';
 import {
   ClosedPositionLine,
   isOpen,
@@ -22,13 +22,6 @@ import {
   PositionLine,
   portfolioSum,
 } from './position-trace';
-
-/** What the market numbers of a position need: the steps of its timeline and its closes up to the close date. */
-export interface AssetMarketData {
-  readonly steps: readonly PositionStep[];
-  /** Oldest first; empty without quote (fixed income and crypto until S11, D55). */
-  readonly closes: readonly ClosePoint[];
-}
 
 /** A close as published (not derived): value, trading day and source (D27). */
 export interface ClosePrice {
@@ -109,7 +102,7 @@ function marketValueTrace(
  * day has a change, from zero. Operations after the close date do not enter.
  */
 function dayChangeOf(
-  market: AssetMarketData,
+  market: AssetHistory,
   closeDate: string,
   asOf: LocalDate,
 ): Pick<OpenMarket, 'dayChange' | 'dayChangePercent'> {
@@ -179,7 +172,7 @@ function dayChangeOf(
 /** B8 of an open position, the weight apart (it needs the equity). */
 function valueOpenLine(
   line: OpenPositionLine,
-  market: AssetMarketData,
+  market: AssetHistory,
   closeDate: string | null,
   asOf: LocalDate,
 ): Omit<OpenMarket, 'portfolioWeight'> {
@@ -283,7 +276,7 @@ function isOpenMarket(line: MarketPositionLine): line is OpenMarketLine {
  */
 export function marketPositions(
   lines: readonly PositionLine[],
-  marketOf: (assetId: string) => AssetMarketData,
+  marketOf: (assetId: string) => AssetHistory,
   closeDate: string | null,
   asOf: LocalDate,
 ): { lines: MarketPositionLine[]; equity: DerivedValue } {

@@ -17,9 +17,13 @@ import {
   marketTotals,
   PortfolioAllocation,
 } from '../domain/market-position';
-import { calculatePosition, PositionStep } from '../domain/position-calculator';
+import { calculatePosition } from '../domain/position-calculator';
 import { positionLine, portfolioTotals } from '../domain/position-trace';
-import { monthEndDays, portfolioDays } from '../domain/portfolio-history';
+import {
+  AssetHistory,
+  monthEndDays,
+  portfolioDays,
+} from '../domain/portfolio-history';
 import {
   MarketIndexes,
   PortfolioPerformance,
@@ -57,11 +61,6 @@ export interface PortfolioValuations {
   readonly marketData: MarketDataRef;
   /** One entry per requested portfolio, an empty one without operations. */
   readonly portfolios: ReadonlyMap<string, PortfolioValue>;
-}
-
-interface AssetTrack {
-  readonly assetId: string;
-  readonly steps: readonly PositionStep[];
 }
 
 const NO_CLOSES: readonly ClosePoint[] = [];
@@ -120,7 +119,6 @@ export class PortfolioValuation {
         : new Map<string, readonly ClosePoint[]>(),
       options.history && closeDate ? this.indexesUntil(closeDate) : null,
     ]);
-    const closesOf = (assetId: string) => closes.get(assetId) ?? NO_CLOSES;
     const until = closeDate?.toString() ?? null;
     const context = { asOf, brokerOf: refs.broker };
 
@@ -129,12 +127,14 @@ export class PortfolioValuation {
       const own = calculated.filter(
         ({ timeline }) => timeline.portfolioId === portfolioId,
       );
-      const tracks: AssetTrack[] = own.map(({ timeline, calculation }) => ({
-        assetId: timeline.assetId,
-        steps: calculation.steps,
-      }));
-      const stepsOf = new Map(
-        tracks.map((track) => [track.assetId, track.steps]),
+      const assets = new Map(
+        own.map(({ timeline, calculation }): [string, AssetHistory] => [
+          timeline.assetId,
+          {
+            steps: calculation.steps,
+            closes: closes.get(timeline.assetId) ?? NO_CLOSES,
+          },
+        ]),
       );
       const positions = own
         .map(({ timeline, calculation }) =>
@@ -148,10 +148,7 @@ export class PortfolioValuation {
         .filter((line) => line !== null);
       const market = marketPositions(
         positions,
-        (assetId) => ({
-          steps: stepsOf.get(assetId)!,
-          closes: closesOf(assetId),
-        }),
+        (assetId) => assets.get(assetId)!,
         until,
         asOf,
       );
@@ -169,7 +166,7 @@ export class PortfolioValuation {
           asOf,
         ),
         ...(options.history && {
-          history: this.history(tracks, closesOf, until, indexes, asOf),
+          history: this.history([...assets.values()], until, indexes, asOf),
         }),
       });
     }
@@ -181,24 +178,14 @@ export class PortfolioValuation {
   }
 
   private history(
-    tracks: readonly AssetTrack[],
-    closesOf: (assetId: string) => readonly ClosePoint[],
+    assets: readonly AssetHistory[],
     until: string | null,
     indexes: MarketIndexes | null,
     asOf: LocalDate,
   ): NonNullable<PortfolioValue['history']> {
-    const days =
-      until === null
-        ? []
-        : portfolioDays(
-            tracks.map((track) => ({
-              steps: track.steps,
-              closes: closesOf(track.assetId),
-            })),
-            until,
-          );
-    const firstOperation = tracks
-      .flatMap((track) => track.steps.map((step) => step.item.date.toString()))
+    const days = until === null ? [] : portfolioDays(assets, until);
+    const firstOperation = assets
+      .flatMap((asset) => asset.steps.map((step) => step.item.date.toString()))
       .sort()[0];
     return {
       performance: portfolioPerformance(

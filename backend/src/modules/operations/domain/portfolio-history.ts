@@ -2,9 +2,10 @@ import { Decimal, toDecimal } from '../../../shared/domain/decimal';
 import type { ClosePoint } from '../../market-data/domain/market-data';
 import type { PositionState, PositionStep } from './position-calculator';
 
-/** One asset of a portfolio: the steps of its timeline (calculatePosition, chronological) and its closes, oldest first. */
+/** One asset of a portfolio: the steps of its timeline (calculatePosition, chronological) and its closes up to the close date. */
 export interface AssetHistory {
   readonly steps: readonly PositionStep[];
+  /** Oldest first; empty without quote (fixed income and crypto until S11, D55). */
   readonly closes: readonly ClosePoint[];
 }
 

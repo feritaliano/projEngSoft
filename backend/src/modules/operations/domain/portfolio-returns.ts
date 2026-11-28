@@ -54,7 +54,7 @@ interface Window {
 class Benchmarks {
   private readonly cdi: CompoundedRates;
   private readonly ipca: CompoundedRates;
-  private readonly ibov: IndexLevels;
+  readonly ibov: IndexLevels;
 
   constructor(
     indexes: MarketIndexes,
@@ -63,14 +63,6 @@ class Benchmarks {
     this.cdi = new CompoundedRates(indexes.cdi);
     this.ipca = new CompoundedRates(indexes.ipca);
     this.ibov = new IndexLevels(indexes.ibov);
-  }
-
-  ibovBefore(date: string): IndexPoint | null {
-    return this.ibov.before(date);
-  }
-
-  ibovAtOrBefore(date: string): IndexPoint | null {
-    return this.ibov.atOrBefore(date);
   }
 
   /**
@@ -213,7 +205,7 @@ export function portfolioPerformance(
     to: last.date,
     startQuota: ONE,
     endQuota: last.quota,
-    ibovStart: benchmarks.ibovBefore(from),
+    ibovStart: benchmarks.ibov.before(from),
     ipcaFrom: from,
   };
   const total = comparison(totalWindow, benchmarks, asOf);
@@ -244,7 +236,7 @@ export function portfolioPerformance(
       to: last.date,
       startQuota: quotaAt(days, yearAgo),
       endQuota: last.quota,
-      ibovStart: benchmarks.ibovAtOrBefore(yearAgo),
+      ibovStart: benchmarks.ibov.atOrBefore(yearAgo),
       ipcaFrom: nextDay(yearAgo),
     },
     benchmarks,

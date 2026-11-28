@@ -93,6 +93,8 @@ export class PrismaIndexValueWriter extends IndexValueWriter {
 }
 
 const isoDate = (date: Date) => date.toISOString().slice(0, 10);
+const utcMidnight = (date: LocalDate) =>
+  new Date(`${date.toString()}T00:00:00.000Z`);
 
 /** Closes by asset, one query (K7, K8). */
 @Injectable()
@@ -112,7 +114,7 @@ export class PrismaQuoteReader extends QuoteReader {
     const rows = await this.prisma.quote.findMany({
       where: {
         assetId: { in: [...new Set(assetIds)] },
-        quoteDate: { lte: new Date(`${until.toString()}T00:00:00.000Z`) },
+        quoteDate: { lte: utcMidnight(until) },
       },
       select: { assetId: true, quoteDate: true, close: true },
       orderBy: [{ assetId: 'asc' }, { quoteDate: 'asc' }],
@@ -147,7 +149,7 @@ export class PrismaIndexValueReader extends IndexValueReader {
     const rows = await this.prisma.indexValue.findMany({
       where: {
         economicIndex: { code },
-        referenceDate: { lte: new Date(`${until.toString()}T00:00:00.000Z`) },
+        referenceDate: { lte: utcMidnight(until) },
       },
       select: { referenceDate: true, value: true },
       orderBy: { referenceDate: 'asc' },
@@ -170,8 +172,6 @@ export class PrismaLatestCloseDate extends LatestCloseDate {
     const { _max } = await this.prisma.quote.aggregate({
       _max: { quoteDate: true },
     });
-    return _max.quoteDate
-      ? LocalDate.parse(_max.quoteDate.toISOString().slice(0, 10))
-      : null;
+    return _max.quoteDate ? LocalDate.parse(isoDate(_max.quoteDate)) : null;
   }
 }
