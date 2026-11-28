@@ -67,7 +67,19 @@ describe('Portfolios (E2E, B1, RN02, D41)', () => {
       .get('/api/v1/portfolios')
       .set('Authorization', bearer)
       .expect(200);
-    expect(list.body).toEqual([created.body]);
+    // A new portfolio has no market numbers in the POST; the list adds them (B8, B10; D64), with no close loaded here.
+    expect(list.body).toEqual([
+      {
+        ...created.body,
+        equity: expect.objectContaining({
+          formulaCode: 'PORTFOLIO_EQUITY',
+          value: '0',
+          inputs: [],
+        }) as unknown,
+        marketData: { source: 'B3_COTAHIST', closeDate: null },
+        returns: { total: null, last12Months: null },
+      },
+    ]);
     expect(list.headers['cache-control']).toBe('no-store');
 
     await http()
@@ -245,20 +257,20 @@ describe('Portfolios (E2E, B1, RN02, D41)', () => {
       .set('Authorization', ana.bearer)
       .expect(200);
     expect(list.body).toEqual([
-      {
+      expect.objectContaining({
         id: portfolio.id,
         name: 'Longo prazo',
         operationCount: 5,
         assetCount: 2,
         lastTradeDate: '2026-03-01',
-      },
-      {
+      }),
+      expect.objectContaining({
         id: other.id,
         name: 'Testes FII',
         operationCount: 0,
         assetCount: 0,
         lastTradeDate: null,
-      },
+      }),
     ]);
 
     await prisma.operation.delete({ where: { id: lastItsa4.id } });

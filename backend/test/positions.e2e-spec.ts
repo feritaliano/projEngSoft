@@ -190,6 +190,10 @@ describe('Positions and summary (E2E, B6, B7, D41, D55, RN05–RN12)', () => {
         inputs: [],
       }) as unknown,
       assetCount: 0,
+      equity: expect.objectContaining({ value: '0', inputs: [] }) as unknown,
+      unrealizedProfit: expect.objectContaining({ value: '0' }) as unknown,
+      unrealizedProfitPercent: null,
+      marketData: { source: 'B3_COTAHIST', closeDate: null },
     });
   });
 

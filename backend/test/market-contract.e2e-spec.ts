@@ -8,20 +8,22 @@ import { signUp, TestSession } from './utils/session';
 const PROBLEM_JSON = 'application/problem+json; charset=utf-8';
 const ANY_PORTFOLIO = '3f1c2b9e-8d4a-4c6f-9b1e-2a7d5c8e0f13';
 
-// Contract of S1+ (D64): the routes exist, need a session (D59) and answer 501 until K7 and K8 replace this file's
-// expectations with their own E2E.
-describe('S1+ market routes before K7 and K8 (E2E, D64)', () => {
+// Contract of S1+ (D64): the routes need a session (D59); the asset routes answer 501 until K8 replaces this file's
+// expectations with its own E2E. The portfolio routes (K7) are covered by portfolio-market.e2e-spec.ts.
+describe('S1+ market routes (E2E, D64)', () => {
   let app: NestFastifyApplication;
   let ana: TestSession;
   const http = () => request(app.getHttpServer());
 
   const ROUTES = [
-    ['/api/v1/portfolios/totals', 'K7'],
-    [`/api/v1/portfolios/${ANY_PORTFOLIO}/allocation`, 'K7'],
-    [`/api/v1/portfolios/${ANY_PORTFOLIO}/evolution`, 'K7'],
-    [`/api/v1/portfolios/${ANY_PORTFOLIO}/performance`, 'K7'],
     ['/api/v1/assets/PETR4/quotes', 'K8'],
     ['/api/v1/assets/PETR4/performance?period=P5Y', 'K8'],
+  ];
+  const PORTFOLIO_ROUTES = [
+    '/api/v1/portfolios/totals',
+    `/api/v1/portfolios/${ANY_PORTFOLIO}/allocation`,
+    `/api/v1/portfolios/${ANY_PORTFOLIO}/evolution`,
+    `/api/v1/portfolios/${ANY_PORTFOLIO}/performance`,
   ];
 
   beforeAll(async () => {
@@ -34,9 +36,12 @@ describe('S1+ market routes before K7 and K8 (E2E, D64)', () => {
     await app.close();
   });
 
-  it.each(ROUTES)('%s needs a session (D59)', async (route) => {
-    await http().get(route).expect(401);
-  });
+  it.each([...ROUTES.map(([route]) => route), ...PORTFOLIO_ROUTES])(
+    '%s needs a session (D59)',
+    async (route) => {
+      await http().get(route).expect(401);
+    },
+  );
 
   it.each(ROUTES)('%s answers 501 until %s', async (route, task) => {
     const response = await http()
