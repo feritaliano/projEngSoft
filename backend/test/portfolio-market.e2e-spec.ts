@@ -7,10 +7,14 @@ import { truncateAllTables } from './utils/database';
 import { runSqlFile } from './utils/sql-file';
 import { signUp } from './utils/session';
 
+// The expected numbers depend on the seed of BD-4 (database/sql/inserts.sql): closes up to 12/11/2026, the last trading
+// day loaded, and IPCA published up to 10/2026. A new seed history changes them (and the independent TWR calculation).
+
 // Seed users' password (comment in inserts.sql); development data only, never in .env.
 const PASSWORD = 'demo-carteira-2026';
 const LONGO_PRAZO = '00000000-0000-0000-0000-000000001101';
 const DIVIDENDOS = '00000000-0000-0000-0000-000000001102';
+const TESTES_FII = '00000000-0000-0000-0000-000000001103';
 const BRUNO_ACOES_BR = '00000000-0000-0000-0000-000000001104';
 // Last trading day of the seed history (BD-4): every number is dated by it.
 const CLOSE_DATE = '2026-11-12';
@@ -302,9 +306,11 @@ describe('Portfolio with market data over the seed (E2E, K7: B8–B11, D64)', ()
       get<{ equity: DerivedValueBody }>('/portfolios/totals', bruno),
     ]);
 
-    expect(demoList.map((portfolio) => portfolio.id)).toEqual(
-      expect.arrayContaining([LONGO_PRAZO, DIVIDENDOS]),
-    );
+    expect(demoList.map((portfolio) => portfolio.id)).toEqual([
+      DIVIDENDOS,
+      LONGO_PRAZO,
+      TESTES_FII,
+    ]);
     expect(brunoList.map((portfolio) => portfolio.id)).toEqual([
       BRUNO_ACOES_BR,
     ]);
@@ -340,7 +346,10 @@ describe('Portfolio with market data over the seed (E2E, K7: B8–B11, D64)', ()
     },
   );
 
-  it('values an operation on a day without trading by the previous close (14/11/2026 is a Saturday)', async () => {
+  /** A user of its own with one portfolio and PETR4 buys at XP: the catalog routes are not user data (no no-store). */
+  async function portfolioWithBuys(
+    buys: { tradeDate: string; quantity: string; unitPrice: string }[],
+  ) {
     const user = await signUp(app, `k7-${crypto.randomUUID()}@test.local`);
     const portfolio = (
       await http()
@@ -349,29 +358,66 @@ describe('Portfolio with market data over the seed (E2E, K7: B8–B11, D64)', ()
         .send({ name: 'Sábado' })
         .expect(201)
     ).body as { id: string };
-    const petr4 = await get<{ id: string }>('/assets/PETR4', user.bearer);
-    const brokers = await get<{ id: string; name: string }[]>(
-      '/brokers',
-      user.bearer,
+    const petr4 = (
+      await http()
+        .get('/api/v1/assets/PETR4')
+        .set('Authorization', user.bearer)
+        .expect(200)
+    ).body as { id: string };
+    const brokers = (
+      await http()
+        .get('/api/v1/brokers')
+        .set('Authorization', user.bearer)
+        .expect(200)
+    ).body as { id: string; name: string }[];
+    const xp = brokers.find((broker) => broker.name === 'XP Investimentos')!;
+    for (const buy of buys) {
+      await http()
+        .post(`/api/v1/portfolios/${portfolio.id}/operations`)
+        .set('Authorization', user.bearer)
+        .send({
+          assetId: petr4.id,
+          brokerId: xp.id,
+          type: 'BUY',
+          fees: '0',
+          ...buy,
+        })
+        .expect(201);
+    }
+    return { bearer: user.bearer, id: portfolio.id };
+  }
+
+  it('values a buy on a day without trading inside the history by the previous close (14/03/2026 is a Saturday)', async () => {
+    // Friday 13/03 at the close of 44,67, Saturday 14/03 at 36,00. By hand: Friday +0%; Saturday valued at Friday's
+    // close, (20 × 44,67 − 10 × 44,67 − 360) ÷ (10 × 44,67 + 360); then close to close up to 44,70 on 12/11/2026, so
+    // TWR = 2 × 44,70 ÷ (44,67 + 36,00) − 1.
+    const portfolio = await portfolioWithBuys([
+      { tradeDate: '2026-03-13', quantity: '10', unitPrice: '44.67' },
+      { tradeDate: '2026-03-14', quantity: '10', unitPrice: '36.00' },
+    ]);
+
+    const performance = await get<ReturnsBody>(
+      `/portfolios/${portfolio.id}/performance`,
+      portfolio.bearer,
     );
-    await http()
-      .post(`/api/v1/portfolios/${portfolio.id}/operations`)
-      .set('Authorization', user.bearer)
-      .send({
-        assetId: petr4.id,
-        brokerId: brokers.find((broker) => broker.name === 'XP Investimentos')!
-          .id,
-        type: 'BUY',
-        tradeDate: '2026-11-14',
-        quantity: '10',
-        unitPrice: '45.00',
-        fees: '0',
-      })
-      .expect(201);
+
+    expect(performance.total).toMatchObject({
+      from: '2026-03-13',
+      to: CLOSE_DATE,
+    });
+    expect(places(performance.total?.value.value, 6)).toBe(
+      new Decimal('89.4').dividedBy('80.67').minus(1).times(100).toFixed(6),
+    );
+  });
+
+  it('values a buy after the close date by the last close, outside the history (14/11/2026 is a Saturday)', async () => {
+    const portfolio = await portfolioWithBuys([
+      { tradeDate: '2026-11-14', quantity: '10', unitPrice: '45.00' },
+    ]);
 
     const [line] = await get<PositionBody[]>(
       `/portfolios/${portfolio.id}/positions`,
-      user.bearer,
+      portfolio.bearer,
     );
     expect(line.lastClose).toMatchObject({ value: '44.7', date: CLOSE_DATE });
     expect(cents(line.marketValue)).toBe('447.00');
@@ -381,7 +427,7 @@ describe('Portfolio with market data over the seed (E2E, K7: B8–B11, D64)', ()
 
     const performance = await get<ReturnsBody & { series: unknown[] }>(
       `/portfolios/${portfolio.id}/performance`,
-      user.bearer,
+      portfolio.bearer,
     );
     expect(performance).toMatchObject({
       total: null,
