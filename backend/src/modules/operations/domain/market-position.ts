@@ -95,30 +95,56 @@ function marketValueTrace(
   );
 }
 
+/** The last close up to `date`, or null. */
+function closeAtOrBefore(
+  closes: readonly ClosePoint[],
+  date: string,
+): ClosePoint | null {
+  let found: ClosePoint | null = null;
+  for (const close of closes) {
+    if (close.date > date) break;
+    found = close;
+  }
+  return found;
+}
+
+/** The trading days of the day change: the close date and the market's trading day before it (null if none). */
+export interface MarketClosing {
+  readonly closeDate: string;
+  readonly previousCloseDate: string | null;
+}
+
 /**
- * POSITION_DAY_CHANGE over the close date: value on it (its quantity × the last close) − value at the previous close
- * − buys + sales after the previous close up to the close date (a day without trading in between belongs to the day).
- * A buy counts from its executed price (F17). Without a previous close, only a position started on the first trading
- * day has a change, from zero. Operations after the close date do not enter.
+ * POSITION_DAY_CHANGE over the close date, against the market's previous trading day: value now (units on the close
+ * date × the last close up to it) − value before (units on the previous trading day × the last close up to it) − buys
+ * + sales after the previous trading day up to the close date (a day without trading in between belongs to the day).
+ * A buy counts at its executed price plus fees, a sale at its net amount (F17), so an asset that did not trade and
+ * had no operation changes 0. Null when units were held on the previous trading day without any close up to it (no
+ * value to start from); operations after the close date do not enter.
  */
 function dayChangeOf(
   market: AssetHistory,
-  closeDate: string,
+  last: ClosePoint,
+  { closeDate, previousCloseDate }: MarketClosing,
   asOf: LocalDate,
 ): Pick<OpenMarket, 'dayChange' | 'dayChangePercent'> {
   const { steps, closes } = market;
-  const last = closes[closes.length - 1];
-  const previous = closes.length > 1 ? closes[closes.length - 2] : null;
-  const after = previous ? previous.date : last.date;
-  if (!previous && steps.some((step) => step.item.date.toString() < after)) {
+  const previousUnits =
+    previousCloseDate === null ? ZERO : quantityAt(steps, previousCloseDate);
+  const previous =
+    previousCloseDate === null
+      ? null
+      : closeAtOrBefore(closes, previousCloseDate);
+  if (!previousUnits.isZero() && !previous) {
     return { dayChange: null, dayChangePercent: null };
   }
   let buys = ZERO;
   let sales = ZERO;
   for (const step of steps) {
     const date = step.item.date.toString();
-    const inWindow = previous ? date > after : date >= after;
-    if (inWindow && date <= closeDate) {
+    const afterPrevious =
+      previousCloseDate === null || date > previousCloseDate;
+    if (afterPrevious && date <= closeDate) {
       const flow = flowOf(step);
       buys = buys.plus(flow.buys);
       sales = sales.plus(flow.sales);
@@ -130,18 +156,18 @@ function dayChangeOf(
     last,
     asOf,
   );
-  const before: DerivedValueInput = previous
-    ? derivedInput(
-        'previousMarketValue',
-        marketValueTrace(
-          quantityAt(steps, previous.date),
-          previous.date,
-          previous,
-          asOf,
-        ),
-        previous.date,
-      )
-    : positionInput('previousMarketValue', ZERO, last.date);
+  const before: DerivedValueInput =
+    previous && previousCloseDate
+      ? derivedInput(
+          'previousMarketValue',
+          marketValueTrace(previousUnits, previousCloseDate, previous, asOf),
+          previousCloseDate,
+        )
+      : positionInput(
+          'previousMarketValue',
+          ZERO,
+          previousCloseDate ?? closeDate,
+        );
   const beforeValue = new Decimal(before.value);
   const dayBuys = positionInput('dayBuys', buys, closeDate);
   const dayChange = derivedValue(
@@ -173,12 +199,12 @@ function dayChangeOf(
 function valueOpenLine(
   line: OpenPositionLine,
   market: AssetHistory,
-  closeDate: string | null,
+  closing: MarketClosing | null,
   asOf: LocalDate,
 ): Omit<OpenMarket, 'portfolioWeight'> {
   const today = asOf.toString();
   const last = market.closes[market.closes.length - 1];
-  if (!last || closeDate === null) {
+  if (!last || closing === null) {
     return {
       lastClose: null,
       unavailableReason: 'NO_QUOTE',
@@ -217,7 +243,7 @@ function valueOpenLine(
       [derivedInput('unrealizedProfit', unrealizedProfit, today), totalCost],
       asOf,
     ),
-    ...dayChangeOf(market, closeDate, asOf),
+    ...dayChangeOf(market, last, closing, asOf),
   };
 }
 
@@ -271,18 +297,19 @@ function isOpenMarket(line: MarketPositionLine): line is OpenMarketLine {
 
 /**
  * B8: market numbers of each position of a portfolio, from the last close up to the close date (a day without trading
- * uses the previous one); fixed income and crypto at cost with NO_QUOTE (D55). Market value, gain and weight use the
- * current quantity (operations up to today). Returns the lines in the order of D63 and PORTFOLIO_EQUITY.
+ * uses the previous one); any asset without a close up to it at cost with NO_QUOTE (fixed income and crypto until S11,
+ * D55). Market value, gain and weight use the current quantity (operations up to today). `closing` is null before any
+ * quote is loaded. Returns the lines in the order of D63 and PORTFOLIO_EQUITY.
  */
 export function marketPositions(
   lines: readonly PositionLine[],
   marketOf: (assetId: string) => AssetHistory,
-  closeDate: string | null,
+  closing: MarketClosing | null,
   asOf: LocalDate,
 ): { lines: MarketPositionLine[]; equity: DerivedValue } {
   const open = lines.filter(isOpen).map((line) => ({
     ...line,
-    ...valueOpenLine(line, marketOf(line.asset.id), closeDate, asOf),
+    ...valueOpenLine(line, marketOf(line.asset.id), closing, asOf),
   }));
   const equity = portfolioSum(
     'PORTFOLIO_EQUITY',

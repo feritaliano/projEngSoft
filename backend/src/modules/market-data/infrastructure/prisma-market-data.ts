@@ -174,4 +174,12 @@ export class PrismaLatestCloseDate extends LatestCloseDate {
     });
     return _max.quoteDate ? LocalDate.parse(isoDate(_max.quoteDate)) : null;
   }
+
+  async before(date: LocalDate): Promise<LocalDate | null> {
+    const { _max } = await this.prisma.quote.aggregate({
+      where: { quoteDate: { lt: utcMidnight(date) } },
+      _max: { quoteDate: true },
+    });
+    return _max.quoteDate ? LocalDate.parse(isoDate(_max.quoteDate)) : null;
+  }
 }

@@ -73,6 +73,9 @@ export abstract class IndexValueWriter {
 /** Port: date of the last close available in quotes, for the market value of K7 and K8 (a query, no column; D4). */
 export abstract class LatestCloseDate {
   abstract get(): Promise<LocalDate | null>;
+
+  /** The market's last trading day with closes before `date` (the day change of K7), null without any. */
+  abstract before(date: LocalDate): Promise<LocalDate | null>;
 }
 
 /** A close of an asset on a trading day (quotes.close, COTAHIST, not adjusted: D64b). */

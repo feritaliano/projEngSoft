@@ -126,6 +126,16 @@ function setup(timelines: [number, TimelineItem[]][], market: Market = {}) {
       Promise.resolve(
         market.closeDate ? LocalDate.parse(market.closeDate) : null,
       ),
+    // The market's trading days are the dates of every close given.
+    before: (date: LocalDate) => {
+      const previous = Object.values(market.closes ?? {})
+        .flat()
+        .map(([day]) => day)
+        .filter((day) => day < date.toString())
+        .sort()
+        .pop();
+      return Promise.resolve(previous ? LocalDate.parse(previous) : null);
+    },
   };
   const valuation = new PortfolioValuation(
     reader,
@@ -464,4 +474,57 @@ describe('market numbers of a portfolio (B8–B11, D64)', () => {
       expect(reader.timelinesOf).not.toHaveBeenCalled();
     },
   );
+});
+
+describe('PortfolioValuation over several portfolios (B8)', () => {
+  it('keeps each portfolio apart when they hold the same asset', async () => {
+    const P2 = '9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d';
+    const reader: TimelineReader = {
+      timelinesOf: () =>
+        Promise.resolve([
+          {
+            portfolioId: P1,
+            assetId: ID(1),
+            items: [buy('2026-11-09', '10', '30', '0', at)],
+          },
+          {
+            portfolioId: P2,
+            assetId: ID(1),
+            items: [buy('2026-11-09', '100', '30', '0', at)],
+          },
+          {
+            portfolioId: P2,
+            assetId: ID(2),
+            items: [buy('2026-11-09', '10', '10', '0', at)],
+          },
+        ]),
+    };
+    const closes = new Map([
+      [ID(1), [{ date: '2026-11-10', close: '33' }]],
+      [ID(2), [{ date: '2026-11-10', close: '9' }]],
+    ]);
+    const valuation = new PortfolioValuation(
+      reader,
+      new OperationDetails(assets, brokers),
+      { closesUntil: () => Promise.resolve(closes) },
+      { valuesUntil: () => Promise.resolve([]) },
+      {
+        get: () => Promise.resolve(LocalDate.parse('2026-11-10')),
+        before: () => Promise.resolve(LocalDate.parse('2026-11-09')),
+      },
+      new FixedClock(),
+    );
+
+    const { portfolios } = await valuation.evaluate([P1, P2]);
+
+    expect(
+      [P1, P2].map((id) => [
+        portfolios.get(id)?.totals.equity.value,
+        portfolios.get(id)?.totals.assetCount,
+      ]),
+    ).toEqual([
+      ['330', 1],
+      ['3390', 2],
+    ]);
+  });
 });

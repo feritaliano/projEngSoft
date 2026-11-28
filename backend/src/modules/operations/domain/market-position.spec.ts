@@ -8,6 +8,7 @@ import {
   MarketPositionLine,
   marketAllocation,
   marketPositions,
+  MarketClosing,
   marketTotals,
   userEquity,
 } from './market-position';
@@ -34,7 +35,12 @@ function asset(name: string, assetType: AssetType = 'STOCK'): AssetRef {
   };
 }
 
-function valued(holdings: Holding[], closeDate: string | null = CLOSE_DATE) {
+const CLOSING: MarketClosing = {
+  closeDate: CLOSE_DATE,
+  previousCloseDate: '2026-11-11',
+};
+
+function valued(holdings: Holding[], closing: MarketClosing | null = CLOSING) {
   const lines: PositionLine[] = [];
   const market = new Map<string, AssetHistory>();
   for (const holding of holdings) {
@@ -52,7 +58,7 @@ function valued(holdings: Holding[], closeDate: string | null = CLOSE_DATE) {
       closes: holding.closes.map(([date, close]) => ({ date, close })),
     });
   }
-  return marketPositions(lines, (id) => market.get(id)!, closeDate, AS_OF);
+  return marketPositions(lines, (id) => market.get(id)!, closing, AS_OF);
 }
 
 const byName = (lines: readonly MarketPositionLine[], name: string) =>
@@ -277,7 +283,7 @@ describe('marketPositions (B8, D64)', () => {
             ],
           },
         ],
-        '2026-03-16',
+        { closeDate: '2026-03-16', previousCloseDate: '2026-03-13' },
       );
 
       // 20 × 41 − 10 × 40 − 360
@@ -289,7 +295,7 @@ describe('marketPositions (B8, D64)', () => {
       });
     });
 
-    it('uses the last close up to the close date when the asset did not trade on it', () => {
+    it('changes 0 for an asset that did not trade between the previous trading day and the close date', () => {
       const { lines } = valued([
         {
           asset: PETR4,
@@ -302,7 +308,14 @@ describe('marketPositions (B8, D64)', () => {
       ]);
 
       expect(lines[0].lastClose?.date).toBe('2026-11-10');
-      expect(value(lines[0].dayChange)).toBe('30.00');
+      expect(value(lines[0].dayChange)).toBe('0.00');
+      expect(
+        linked(lines[0].dayChange?.inputs[1]).derived?.inputs[1],
+      ).toMatchObject({
+        name: 'lastClose',
+        value: '33',
+        referenceDate: '2026-11-10',
+      });
     });
 
     it('starts from zero on the first trading day of an asset bought on it, and is null when held before it', () => {
@@ -330,6 +343,26 @@ describe('marketPositions (B8, D64)', () => {
       expect(heldBefore).toMatchObject({
         dayChange: null,
         dayChangePercent: null,
+      });
+    });
+
+    it('starts from zero on the first trading day of the market', () => {
+      const [line] = valued(
+        [
+          {
+            asset: PETR4,
+            items: [buy('2026-11-12', '10', '10')],
+            closes: [['2026-11-12', '11']],
+          },
+        ],
+        { closeDate: CLOSE_DATE, previousCloseDate: null },
+      ).lines;
+
+      expect(value(line.dayChange)).toBe('10.00');
+      expect(line.dayChange?.inputs[1]).toMatchObject({
+        name: 'previousMarketValue',
+        value: '0',
+        referenceDate: CLOSE_DATE,
       });
     });
 

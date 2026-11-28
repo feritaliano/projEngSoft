@@ -47,7 +47,7 @@ export interface PortfolioValue {
   readonly totals: MarketTotals;
   /** B9. */
   readonly allocation: PortfolioAllocation;
-  /** B10 and B11, only when asked for (they read the whole history). */
+  /** B10 and B11, only when asked for: they walk every evaluation day and read the indexes. */
   readonly history?: {
     readonly performance: PortfolioPerformance;
     readonly evolution: EvolutionPoint[];
@@ -67,7 +67,7 @@ const NO_CLOSES: readonly ClosePoint[] = [];
 
 /**
  * S1+ (D64): market numbers of whole portfolios from their operations (RN09), the closes of quotes up to the last close
- * date (LatestCloseDate) and the indexes, all read through the market-data ports. Ownership is the caller's: the ids
+ * date and the indexes, all read through the market-data ports. Ownership is the caller's: the ids
  * must be portfolios of the user. Read service exported to the portfolios module (GET /portfolios, totals).
  */
 @Injectable()
@@ -87,6 +87,9 @@ export class PortfolioValuation {
   ): Promise<PortfolioValuations> {
     const asOf = this.clock.today();
     const closeDate = await this.latestClose.get();
+    const previousCloseDate = closeDate
+      ? await this.latestClose.before(closeDate)
+      : null;
     const timelines =
       portfolioIds.length > 0
         ? await this.timelines.timelinesOf(portfolioIds)
@@ -120,6 +123,12 @@ export class PortfolioValuation {
       options.history && closeDate ? this.indexesUntil(closeDate) : null,
     ]);
     const until = closeDate?.toString() ?? null;
+    const closing = until
+      ? {
+          closeDate: until,
+          previousCloseDate: previousCloseDate?.toString() ?? null,
+        }
+      : null;
     const context = { asOf, brokerOf: refs.broker };
 
     const portfolios = new Map<string, PortfolioValue>();
@@ -149,7 +158,7 @@ export class PortfolioValuation {
       const market = marketPositions(
         positions,
         (assetId) => assets.get(assetId)!,
-        until,
+        closing,
         asOf,
       );
       portfolios.set(portfolioId, {
