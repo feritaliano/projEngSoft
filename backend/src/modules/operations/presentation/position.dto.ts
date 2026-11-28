@@ -95,7 +95,7 @@ export class DerivedValueDto {
 @ApiSchema({
   name: 'DerivedValueInput',
   description:
-    'A value used by the formula. `name` is a key of claude/microcopy.md, section 3 (`sales` and `positions` repeat once per item). `source` tells the origin line and which reference comes with it: OPERATION → `operation` (and `derived` on `sales` items); DERIVED → `derived`; ASSET_POSITION → `asset` and `derived`; MARKET → `marketSource` (a close or an index value on `referenceDate`, S1+); POSITION → none.',
+    'A value used by the formula. `name` is a key of claude/microcopy.md, section 3 (`sales` and `positions` repeat once per item). `source` tells the origin line and which reference comes with it: OPERATION → `operation` (and `derived` on `sales` items); DERIVED → `derived`; ASSET_POSITION → `asset` and `derived`; MARKET → `marketSource` (S1+: a close or index points as published on `referenceDate`; for `startFactor` and `endFactor`, the factor compounded from the rates published up to `referenceDate`, not a published number); POSITION → none.',
 })
 export class DerivedValueInputDto {
   @ApiProperty({ example: 'quantityBought' })

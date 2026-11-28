@@ -102,7 +102,9 @@ export type InputName =
   | 'startClose'
   | 'endClose'
   | 'startValue'
-  | 'endValue';
+  | 'endValue'
+  | 'startFactor'
+  | 'endFactor';
 
 interface InputBase {
   /** `sales` and `positions` repeat once per item. */
@@ -129,7 +131,10 @@ export type DerivedValueInput =
       readonly derived: DerivedValue;
     })
   | (InputBase & {
-      /** A close or an index value as published, on `referenceDate` (D27, D59). */
+      /**
+       * From a published series on `referenceDate` (D27, D59): a close or index points as published, or (`startFactor`,
+       * `endFactor` of CDI and IPCA) the compounded factor of the rates published up to that date, which is computed.
+       */
       readonly source: 'MARKET';
       readonly marketSource: MarketDataSource;
     });

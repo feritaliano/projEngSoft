@@ -108,7 +108,7 @@ export class PortfolioEvolutionDto {
 @ApiSchema({
   name: 'ReturnComparison',
   description:
-    'A return over a window [from, to] next to CDI, Ibovespa and IPCA over the same window (D64). Without dividends until S6. CDI compounds its daily rates published in the window; Ibovespa goes close to close; IPCA compounds the monthly rates of the whole months inside the window, without pro rata, up to the last month published (its inputs show the first and the last month). A benchmark is null when none of its values falls in the window.',
+    'A return over a window [from, to] next to CDI, Ibovespa and IPCA over the same window (D64). Without dividends until S6. CDI compounds its daily rates published in the window; Ibovespa goes close to close; IPCA compounds the monthly rates of the whole months inside the window, without pro rata, up to the last month published (its inputs show the first and the last month). CDI and IPCA show the compounded factors of the published rates as `startFactor` and `endFactor`; Ibovespa shows its points as `startValue` and `endValue`. A benchmark is null when none of its values falls in the window.',
 })
 export class ReturnComparisonDto {
   @ApiProperty({ format: 'date', example: '2025-02-12' })

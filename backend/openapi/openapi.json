@@ -2689,7 +2689,7 @@
             ]
           }
         },
-        "description": "A value used by the formula. `name` is a key of claude/microcopy.md, section 3 (`sales` and `positions` repeat once per item). `source` tells the origin line and which reference comes with it: OPERATION → `operation` (and `derived` on `sales` items); DERIVED → `derived`; ASSET_POSITION → `asset` and `derived`; MARKET → `marketSource` (a close or an index value on `referenceDate`, S1+); POSITION → none.",
+        "description": "A value used by the formula. `name` is a key of claude/microcopy.md, section 3 (`sales` and `positions` repeat once per item). `source` tells the origin line and which reference comes with it: OPERATION → `operation` (and `derived` on `sales` items); DERIVED → `derived`; ASSET_POSITION → `asset` and `derived`; MARKET → `marketSource` (S1+: a close or index points as published on `referenceDate`; for `startFactor` and `endFactor`, the factor compounded from the rates published up to `referenceDate`, not a published number); POSITION → none.",
         "required": [
           "name",
           "value",
@@ -3316,7 +3316,7 @@
             ]
           }
         },
-        "description": "A return over a window [from, to] next to CDI, Ibovespa and IPCA over the same window (D64). Without dividends until S6. CDI compounds its daily rates published in the window; Ibovespa goes close to close; IPCA compounds the monthly rates of the whole months inside the window, without pro rata, up to the last month published (its inputs show the first and the last month). A benchmark is null when none of its values falls in the window.",
+        "description": "A return over a window [from, to] next to CDI, Ibovespa and IPCA over the same window (D64). Without dividends until S6. CDI compounds its daily rates published in the window; Ibovespa goes close to close; IPCA compounds the monthly rates of the whole months inside the window, without pro rata, up to the last month published (its inputs show the first and the last month). CDI and IPCA show the compounded factors of the published rates as `startFactor` and `endFactor`; Ibovespa shows its points as `startValue` and `endValue`. A benchmark is null when none of its values falls in the window.",
         "required": [
           "from",
           "to",
