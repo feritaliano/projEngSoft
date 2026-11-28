@@ -3,6 +3,7 @@ import { OperationsReadModule } from '../operations/operations-read.module';
 import { CreatePortfolio } from './application/create-portfolio.use-case';
 import { DeletePortfolio } from './application/delete-portfolio.use-case';
 import { GetOwnedPortfolio } from './application/get-owned-portfolio.use-case';
+import { GetPortfolioTotals } from './application/get-portfolio-totals.use-case';
 import { ListPortfolios } from './application/list-portfolios.use-case';
 import { PortfolioRepository } from './domain/portfolio';
 import { PrismaPortfolioRepository } from './infrastructure/prisma-portfolio.repository';
@@ -15,6 +16,7 @@ import { PortfoliosController } from './presentation/portfolios.controller';
   providers: [
     ListPortfolios,
     GetOwnedPortfolio,
+    GetPortfolioTotals,
     CreatePortfolio,
     DeletePortfolio,
     { provide: PortfolioRepository, useClass: PrismaPortfolioRepository },

@@ -148,6 +148,14 @@ export class OperationDetails {
         }
         return toAssetRef(asset);
       },
+      /** Sector name of the asset's issuer (B9), null without one. */
+      sector: (id: string): string | null => {
+        const asset = assets.get(id);
+        if (!asset) {
+          throw new MissingReferenceError('asset', id);
+        }
+        return asset.sector;
+      },
       broker: (id: string): BrokerRef => {
         const broker = brokers.get(id);
         if (!broker) {

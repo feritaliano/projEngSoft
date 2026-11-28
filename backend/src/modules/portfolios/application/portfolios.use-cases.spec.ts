@@ -1,5 +1,11 @@
 import { InvalidValueError } from '../../../shared/domain/domain-error';
-import { CountOpenPositions } from '../../operations/application/count-open-positions';
+import { LocalDate } from '../../../shared/domain/local-date';
+import type {
+  PortfolioValuation,
+  PortfolioValuations,
+  PortfolioValue,
+} from '../../operations/application/portfolio-valuation';
+import type { DerivedValue } from '../../operations/domain/derived-value';
 import { InconsistentTimelineError } from '../../operations/domain/inconsistent-timeline';
 import {
   Portfolio,
@@ -12,6 +18,7 @@ import {
 import { CreatePortfolio } from './create-portfolio.use-case';
 import { DeletePortfolio } from './delete-portfolio.use-case';
 import { GetOwnedPortfolio } from './get-owned-portfolio.use-case';
+import { GetPortfolioTotals } from './get-portfolio-totals.use-case';
 import { ListPortfolios } from './list-portfolios.use-case';
 
 const ANA = 'user-ana';
@@ -96,13 +103,53 @@ class InMemoryPortfolios extends PortfolioRepository {
   }
 }
 
-/** Open positions per portfolio, as the operations module would derive them. */
-function openPositions(counts: Record<string, number>): CountOpenPositions {
-  return {
-    byPortfolio: jest.fn((ids: readonly string[]) =>
-      Promise.resolve(new Map(ids.map((id) => [id, counts[id] ?? 0]))),
-    ),
-  } as unknown as CountOpenPositions;
+const AS_OF = LocalDate.parse('2026-11-28');
+const MARKET_DATA = { source: 'B3_COTAHIST', closeDate: '2026-11-12' } as const;
+const RETURNS = {
+  total: null,
+  last12Months: null,
+  last12MonthsUnavailableReason: 'SHORT_HISTORY',
+  last12MonthsAvailableFrom: '2027-01-05',
+} as const;
+
+const equityOf = (value: string): DerivedValue => ({
+  value,
+  formulaCode: 'PORTFOLIO_EQUITY',
+  asOf: '2026-11-28',
+  inputs: [],
+});
+
+/** Open positions and equity per portfolio, as the operations module would derive them. */
+function openPositions(
+  counts: Record<string, number>,
+): PortfolioValuation & { evaluate: jest.Mock } {
+  const evaluate = jest.fn(
+    (ids: readonly string[]): Promise<PortfolioValuations> =>
+      Promise.resolve({
+        asOf: AS_OF,
+        marketData: MARKET_DATA,
+        portfolios: new Map(
+          ids.map((id): [string, PortfolioValue] => [
+            id,
+            {
+              lines: [],
+              totals: {
+                assetCount: counts[id] ?? 0,
+                equity: equityOf(String((counts[id] ?? 0) * 100)),
+              },
+              allocation: { byClass: [], bySector: [] },
+              history: {
+                performance: { ...RETURNS, series: [] },
+                evolution: [],
+              },
+            } as unknown as PortfolioValue,
+          ]),
+        ),
+      }),
+  );
+  return { evaluate } as unknown as PortfolioValuation & {
+    evaluate: jest.Mock;
+  };
 }
 
 function seed(repository: InMemoryPortfolios, rows: Row[]): void {
@@ -195,6 +242,9 @@ describe('ListPortfolios (B1, D41)', () => {
         operationCount: 11,
         lastTradeDate: '2026-10-28',
         assetCount: 6,
+        equity: equityOf('600'),
+        marketData: MARKET_DATA,
+        returns: RETURNS,
       },
       {
         id: ID(3),
@@ -202,9 +252,14 @@ describe('ListPortfolios (B1, D41)', () => {
         operationCount: 0,
         lastTradeDate: null,
         assetCount: 0,
+        equity: equityOf('0'),
+        marketData: MARKET_DATA,
+        returns: RETURNS,
       },
     ]);
-    expect(positions.byPortfolio).toHaveBeenCalledWith([ID(1), ID(3)]);
+    expect(positions.evaluate).toHaveBeenCalledWith([ID(1), ID(3)], {
+      history: true,
+    });
   });
 });
 
@@ -221,9 +276,9 @@ describe('ListPortfolios with inconsistent stored operations (RN10)', () => {
       },
     ]);
     const failing = {
-      byPortfolio: () =>
+      evaluate: () =>
         Promise.reject(new InconsistentTimelineError(ID(1), 'PETR4')),
-    } as unknown as CountOpenPositions;
+    } as unknown as PortfolioValuation;
 
     await expect(
       new ListPortfolios(repository, failing).execute(ANA),
@@ -244,13 +299,16 @@ describe('GetOwnedPortfolio (RN02)', () => {
   ]);
   const get = new GetOwnedPortfolio(repository, openPositions({ [ID(1)]: 6 }));
 
-  it('returns a portfolio of the user with its counts', async () => {
+  it('returns a portfolio of the user with its counts, equity and returns', async () => {
     await expect(get.execute(ANA, ID(1))).resolves.toEqual({
       id: ID(1),
       name: 'Longo prazo',
       operationCount: 11,
       lastTradeDate: '2026-10-28',
       assetCount: 6,
+      equity: equityOf('600'),
+      marketData: MARKET_DATA,
+      returns: RETURNS,
     });
   });
 
@@ -298,6 +356,60 @@ describe('GetOwnedPortfolio (RN02)', () => {
       PortfolioNotFoundError,
     );
     expect(repository.calls).toEqual([]);
+  });
+});
+
+describe('GetPortfolioTotals (B8, D64)', () => {
+  it('sums the equity of the portfolios of the user only, one input per portfolio', async () => {
+    const repository = new InMemoryPortfolios();
+    seed(repository, [
+      {
+        id: ID(1),
+        userId: ANA,
+        name: 'Longo prazo',
+        operationCount: 1,
+        lastTradeDate: null,
+      },
+      {
+        id: ID(2),
+        userId: BRUNO,
+        name: 'Outro',
+        operationCount: 1,
+        lastTradeDate: null,
+      },
+      {
+        id: ID(3),
+        userId: ANA,
+        name: 'Testes FII',
+        operationCount: 1,
+        lastTradeDate: null,
+      },
+    ]);
+    const valuation = openPositions({ [ID(1)]: 2, [ID(2)]: 9, [ID(3)]: 1 });
+
+    const totals = await new GetPortfolioTotals(repository, valuation).execute(
+      ANA,
+    );
+
+    expect(totals.equity).toMatchObject({
+      formulaCode: 'USER_EQUITY',
+      value: '300',
+    });
+    expect(totals.equity.inputs.map((input) => input.value)).toEqual([
+      '200',
+      '100',
+    ]);
+    expect(totals.marketData).toEqual(MARKET_DATA);
+    expect(valuation.evaluate).toHaveBeenCalledWith([ID(1), ID(3)]);
+  });
+
+  it('is zero without portfolios', async () => {
+    const totals = await new GetPortfolioTotals(
+      new InMemoryPortfolios(),
+      openPositions({}),
+    ).execute(ANA);
+
+    expect(totals.equity).toMatchObject({ value: '0', inputs: [] });
   });
 });
 

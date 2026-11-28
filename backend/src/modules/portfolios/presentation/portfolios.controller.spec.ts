@@ -9,6 +9,7 @@ import { JwtAuthGuard } from '../../auth/presentation/jwt-auth.guard';
 import { CreatePortfolio } from '../application/create-portfolio.use-case';
 import { DeletePortfolio } from '../application/delete-portfolio.use-case';
 import { GetOwnedPortfolio } from '../application/get-owned-portfolio.use-case';
+import { GetPortfolioTotals } from '../application/get-portfolio-totals.use-case';
 import { ListPortfolios } from '../application/list-portfolios.use-case';
 import {
   PortfolioNameTakenError,
@@ -31,6 +32,7 @@ describe('PortfoliosController (B1, RN02, D41)', () => {
   const useCases = {
     list: { execute: jest.fn() },
     get: { execute: jest.fn() },
+    totals: { execute: jest.fn() },
     create: { execute: jest.fn() },
     delete: { execute: jest.fn() },
   };
@@ -41,6 +43,7 @@ describe('PortfoliosController (B1, RN02, D41)', () => {
       providers: [
         { provide: ListPortfolios, useValue: useCases.list },
         { provide: GetOwnedPortfolio, useValue: useCases.get },
+        { provide: GetPortfolioTotals, useValue: useCases.totals },
         { provide: CreatePortfolio, useValue: useCases.create },
         { provide: DeletePortfolio, useValue: useCases.delete },
         {
@@ -88,8 +91,26 @@ describe('PortfoliosController (B1, RN02, D41)', () => {
     expect(useCases.list.execute).toHaveBeenCalledWith('user-1');
   });
 
+  it('answers the summed equity of the user on /totals, never cached, not read as an id (B8)', async () => {
+    const body = { equity: { value: '0' }, marketData: { closeDate: null } };
+    useCases.totals.execute.mockResolvedValue(body);
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/portfolios/totals',
+      headers: AUTH,
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual(body);
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(useCases.totals.execute).toHaveBeenCalledWith('user-1');
+    expect(useCases.get.execute).not.toHaveBeenCalled();
+  });
+
   it.each([
     ['GET', '/api/v1/portfolios'],
+    ['GET', '/api/v1/portfolios/totals'],
     ['GET', `/api/v1/portfolios/${ID}`],
     ['POST', '/api/v1/portfolios'],
     ['DELETE', `/api/v1/portfolios/${ID}`],

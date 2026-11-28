@@ -23,7 +23,6 @@ import { CurrentUser } from '../../../shared/presentation/auth-context';
 import {
   alreadyExistsProblem,
   invalidValueProblem,
-  notImplemented,
   ProblemException,
 } from '../../../shared/presentation/problem-details';
 import {
@@ -34,6 +33,7 @@ import { API_PREFIX } from '../../../shared/presentation/api-prefix';
 import { CreatePortfolio } from '../application/create-portfolio.use-case';
 import { DeletePortfolio } from '../application/delete-portfolio.use-case';
 import { GetOwnedPortfolio } from '../application/get-owned-portfolio.use-case';
+import { GetPortfolioTotals } from '../application/get-portfolio-totals.use-case';
 import { ListPortfolios } from '../application/list-portfolios.use-case';
 import {
   PortfolioNameTakenError,
@@ -75,12 +75,17 @@ export class PortfoliosController {
   constructor(
     private readonly listPortfolios: ListPortfolios,
     private readonly getOwnedPortfolio: GetOwnedPortfolio,
+    private readonly getTotals: GetPortfolioTotals,
     private readonly createPortfolio: CreatePortfolio,
     private readonly deletePortfolio: DeletePortfolio,
   ) {}
 
   @Get()
-  @ApiOperation({ summary: 'List the portfolios of the user (B1)' })
+  @ApiOperation({
+    summary: 'List the portfolios of the user (B1, B8, B10)',
+    description:
+      'Each portfolio with its equity, the date of the close used and its returns (D64), as in GET /portfolios/{id}/summary and /performance.',
+  })
   @Header('Cache-Control', 'no-store')
   @ApiOkResponse({ type: [PortfolioDto] })
   async list(@CurrentUser() user: AuthenticatedUser): Promise<PortfolioDto[]> {
@@ -91,16 +96,15 @@ export class PortfoliosController {
   @Get('totals')
   @ApiOperation({
     summary: 'Equity of all the portfolios of the user (B8)',
-    description: 'S1+ (D64) contract: 501 until K7 implements it.',
+    description:
+      'Sum of the equity of every portfolio of the user (USER_EQUITY), with the date of the close used (D27).',
   })
   @Header('Cache-Control', 'no-store')
   @ApiOkResponse({ type: PortfolioTotalsDto })
-  @ApiProblemResponse(
-    HttpStatus.NOT_IMPLEMENTED,
-    'S1+ (D64) contract: 501 until K7 implements it.',
-  )
-  totals(): PortfolioTotalsDto {
-    throw notImplemented('K7');
+  async totals(
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<PortfolioTotalsDto> {
+    return this.getTotals.execute(user.id);
   }
 
   @Get(':id')

@@ -426,6 +426,7 @@
     },
     "/api/v1/portfolios": {
       "get": {
+        "description": "Each portfolio with its equity, the date of the close used and its returns (D64), as in GET /portfolios/{id}/summary and /performance.",
         "operationId": "PortfoliosController_list",
         "parameters": [],
         "responses": {
@@ -453,7 +454,7 @@
             }
           }
         },
-        "summary": "List the portfolios of the user (B1)",
+        "summary": "List the portfolios of the user (B1, B8, B10)",
         "tags": [
           "portfolios"
         ]
@@ -538,7 +539,7 @@
     },
     "/api/v1/portfolios/totals": {
       "get": {
-        "description": "S1+ (D64) contract: 501 until K7 implements it.",
+        "description": "Sum of the equity of every portfolio of the user (USER_EQUITY), with the date of the close used (D27).",
         "operationId": "PortfoliosController_totals",
         "parameters": [],
         "responses": {
@@ -554,16 +555,6 @@
           },
           "401": {
             "description": "Missing, malformed or expired access token.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "S1+ (D64) contract: 501 until K7 implements it.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -1233,7 +1224,7 @@
     },
     "/api/v1/portfolios/{id}/positions": {
       "get": {
-        "description": "Open (quantity > 0) and closed (quantity 0, realized profit ≠ 0) positions; a closed one with realized profit exactly 0 is not listed. Open positions first, their asset classes by total cost descending (market value from S2 on), a tie by the fixed order of AssetType; then closed positions by that fixed order; display name within a class (D63). 500 while the portfolio has a corporate event (traced from S2 on).",
+        "description": "Open (quantity > 0) and closed (quantity 0, realized profit ≠ 0) positions; a closed one with realized profit exactly 0 is not listed. Open positions first, their asset classes by market value descending (D63, D64; at cost without quote), a tie by the fixed order of AssetType; then closed positions by that fixed order; display name within a class. Market numbers from the last close loaded (marketData.closeDate, LatestCloseDate; a day without trading uses the previous close), COTAHIST not adjusted for splits (D64b); fixed income and crypto at cost (D55). 500 while the portfolio has a corporate event (S2).",
         "operationId": "PositionsController_positions",
         "parameters": [
           {
@@ -1289,7 +1280,7 @@
     },
     "/api/v1/portfolios/{id}/summary": {
       "get": {
-        "description": "Computed from the same rows as GET positions. 500 while the portfolio has a corporate event (traced from S2 on).",
+        "description": "Computed from the same rows as GET positions. Market numbers from the last close loaded (marketData.closeDate, LatestCloseDate; a day without trading uses the previous close), COTAHIST not adjusted for splits (D64b); fixed income and crypto at cost (D55). 500 while the portfolio has a corporate event (S2).",
         "operationId": "PositionsController_summary",
         "parameters": [
           {
@@ -1342,7 +1333,7 @@
     },
     "/api/v1/portfolios/{id}/allocation": {
       "get": {
-        "description": "S1+ (D64) contract: 501 until K7 implements it.",
+        "description": "Market numbers from the last close loaded (marketData.closeDate, LatestCloseDate; a day without trading uses the previous close), COTAHIST not adjusted for splits (D64b); fixed income and crypto at cost (D55). 500 while the portfolio has a corporate event (S2).",
         "operationId": "PositionsController_allocation",
         "parameters": [
           {
@@ -1350,7 +1341,8 @@
             "required": true,
             "in": "path",
             "schema": {
-              "format": "uuid"
+              "format": "uuid",
+              "type": "string"
             }
           }
         ],
@@ -1384,16 +1376,6 @@
                 }
               }
             }
-          },
-          "501": {
-            "description": "S1+ (D64) contract: 501 until K7 implements it.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
           }
         },
         "summary": "Allocation by asset class and by sector (B9)",
@@ -1404,7 +1386,7 @@
     },
     "/api/v1/portfolios/{id}/evolution": {
       "get": {
-        "description": "S1+ (D64) contract: 501 until K7 implements it.",
+        "description": "Market numbers from the last close loaded (marketData.closeDate, LatestCloseDate; a day without trading uses the previous close), COTAHIST not adjusted for splits (D64b); fixed income and crypto at cost (D55). 500 while the portfolio has a corporate event (S2).",
         "operationId": "PositionsController_evolution",
         "parameters": [
           {
@@ -1412,7 +1394,8 @@
             "required": true,
             "in": "path",
             "schema": {
-              "format": "uuid"
+              "format": "uuid",
+              "type": "string"
             }
           }
         ],
@@ -1446,16 +1429,6 @@
                 }
               }
             }
-          },
-          "501": {
-            "description": "S1+ (D64) contract: 501 until K7 implements it.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
           }
         },
         "summary": "Equity and invested value over time (B11)",
@@ -1466,7 +1439,7 @@
     },
     "/api/v1/portfolios/{id}/performance": {
       "get": {
-        "description": "S1+ (D64) contract: 501 until K7 implements it.",
+        "description": "Market numbers from the last close loaded (marketData.closeDate, LatestCloseDate; a day without trading uses the previous close), COTAHIST not adjusted for splits (D64b); fixed income and crypto at cost (D55). 500 while the portfolio has a corporate event (S2).",
         "operationId": "PositionsController_performance",
         "parameters": [
           {
@@ -1474,7 +1447,8 @@
             "required": true,
             "in": "path",
             "schema": {
-              "format": "uuid"
+              "format": "uuid",
+              "type": "string"
             }
           }
         ],
@@ -1501,16 +1475,6 @@
           },
           "404": {
             "description": "Portfolio not found, or it belongs to another user (RN02).",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "S1+ (D64) contract: 501 until K7 implements it.",
             "content": {
               "application/problem+json": {
                 "schema": {

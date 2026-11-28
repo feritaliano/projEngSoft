@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { CountOpenPositions } from '../../operations/application/count-open-positions';
+import { PortfolioValuation } from '../../operations/application/portfolio-valuation';
 import {
   parsePortfolioId,
   PortfolioId,
@@ -16,7 +16,7 @@ import { PortfolioSummary, summarize } from './portfolio-summary';
 export class GetOwnedPortfolio {
   constructor(
     private readonly portfolios: PortfolioRepository,
-    private readonly openPositions: CountOpenPositions,
+    private readonly valuation: PortfolioValuation,
   ) {}
 
   async execute(
@@ -28,7 +28,7 @@ export class GetOwnedPortfolio {
     if (!portfolio) {
       throw new PortfolioNotFoundError();
     }
-    const [summary] = await summarize([portfolio], this.openPositions);
+    const [summary] = await summarize([portfolio], this.valuation);
     return summary;
   }
 

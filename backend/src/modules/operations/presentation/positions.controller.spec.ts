@@ -6,6 +6,8 @@ import { ApiFastifyAdapter } from '../../../shared/presentation/api-fastify-adap
 import { AccessTokens } from '../../auth/domain/session';
 import { JwtAuthGuard } from '../../auth/presentation/jwt-auth.guard';
 import { PortfolioNotFoundError } from '../../portfolios/domain/portfolio';
+import { GetPortfolioAllocation } from '../application/get-portfolio-allocation.use-case';
+import { GetPortfolioHistory } from '../application/get-portfolio-history.use-case';
 import { GetPortfolioSummary } from '../application/get-portfolio-summary.use-case';
 import { ListPositions } from '../application/list-positions.use-case';
 import { PositionsController } from './positions.controller';
@@ -20,11 +22,18 @@ const ZERO = {
   inputs: [],
 };
 
-describe('PositionsController (B6, B7, D41)', () => {
+describe('PositionsController (B6–B11, D41, D64)', () => {
   let app: NestFastifyApplication;
   const useCases = {
     positions: { execute: jest.fn() },
     summary: { execute: jest.fn() },
+    allocation: { execute: jest.fn() },
+    evolution: { execute: jest.fn() },
+    performance: { execute: jest.fn() },
+  };
+  const history = {
+    evolution: useCases.evolution.execute,
+    performance: useCases.performance.execute,
   };
 
   beforeAll(async () => {
@@ -33,6 +42,8 @@ describe('PositionsController (B6, B7, D41)', () => {
       providers: [
         { provide: ListPositions, useValue: useCases.positions },
         { provide: GetPortfolioSummary, useValue: useCases.summary },
+        { provide: GetPortfolioAllocation, useValue: useCases.allocation },
+        { provide: GetPortfolioHistory, useValue: history },
         {
           provide: AccessTokens,
           useValue: {
@@ -77,6 +88,9 @@ describe('PositionsController (B6, B7, D41)', () => {
       useCases.summary,
       { totalCost: ZERO, realizedProfit: ZERO, assetCount: 0 },
     ],
+    ['allocation', useCases.allocation, { byClass: [], bySector: [] }],
+    ['evolution', useCases.evolution, { points: [] }],
+    ['performance', useCases.performance, { total: null, series: [] }],
   ])(
     'answers %s for the authenticated user, never cached',
     async (path, useCase, body) => {
@@ -94,6 +108,9 @@ describe('PositionsController (B6, B7, D41)', () => {
   it.each([
     ['positions', useCases.positions],
     ['summary', useCases.summary],
+    ['allocation', useCases.allocation],
+    ['evolution', useCases.evolution],
+    ['performance', useCases.performance],
   ])(
     'answers 404 problem+json on %s for a portfolio of another user (RN02)',
     async (path, useCase) => {

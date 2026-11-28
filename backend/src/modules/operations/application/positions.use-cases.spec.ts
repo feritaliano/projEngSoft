@@ -1,5 +1,6 @@
 import { buy, sell, split } from '../../../../test/factories/timeline.factory';
 import { Clock } from '../../../shared/domain/clock';
+import { LocalDate } from '../../../shared/domain/local-date';
 import { GetOwnedPortfolio } from '../../portfolios/application/get-owned-portfolio.use-case';
 import { PortfolioNotFoundError } from '../../portfolios/domain/portfolio';
 import {
@@ -14,9 +15,12 @@ import {
   PortfolioAssetTimeline,
   TimelineReader,
 } from '../domain/timeline-reader';
+import { GetPortfolioAllocation } from './get-portfolio-allocation.use-case';
+import { GetPortfolioHistory } from './get-portfolio-history.use-case';
 import { GetPortfolioSummary } from './get-portfolio-summary.use-case';
 import { ListPositions } from './list-positions.use-case';
 import { OperationDetails } from './operation-details';
+import { PortfolioValuation } from './portfolio-valuation';
 
 const ANA = 'user-ana';
 const P1 = '3f1c2b9e-8d4a-4c6f-9b1e-2a7d5c8e0f13';
@@ -37,7 +41,7 @@ const ASSETS: AssetSummary[] = [
   displayName,
   assetType: assetType as AssetSummary['assetType'],
   issuer: null,
-  sector: null,
+  sector: displayName === 'PETR4' ? 'Petróleo' : null,
 }));
 const BROKER: Broker = { id: XP, name: 'XP Investimentos', cnpj: null };
 
@@ -72,7 +76,14 @@ const portfolios = {
 
 const at = { brokerId: XP };
 
-function setup(timelines: [number, TimelineItem[]][]) {
+interface Market {
+  /** Closes by asset number, oldest first. */
+  closes?: Record<number, [string, string][]>;
+  closeDate?: string | null;
+  indexes?: Partial<Record<'CDI' | 'IPCA' | 'IBOV', [string, string][]>>;
+}
+
+function setup(timelines: [number, TimelineItem[]][], market: Market = {}) {
   const reader: TimelineReader = {
     timelinesOf: jest.fn(() =>
       Promise.resolve(
@@ -84,14 +95,55 @@ function setup(timelines: [number, TimelineItem[]][]) {
       ),
     ),
   };
-  const clock = new FixedClock();
-  const list = new ListPositions(
-    portfolios,
+  const quotes = {
+    closesUntil: jest.fn((ids: readonly string[], until: LocalDate) =>
+      Promise.resolve(
+        new Map(
+          Object.entries(market.closes ?? {})
+            .filter(([asset]) => ids.includes(ID(Number(asset))))
+            .map(([asset, rows]) => [
+              ID(Number(asset)),
+              rows
+                .filter(([date]) => date <= until.toString())
+                .map(([date, close]) => ({ date, close })),
+            ]),
+        ),
+      ),
+    ),
+  };
+  const indexes = {
+    valuesUntil: jest.fn((code: 'CDI' | 'IPCA' | 'IBOV') =>
+      Promise.resolve(
+        (market.indexes?.[code] ?? []).map(([date, value]) => ({
+          date,
+          value,
+        })),
+      ),
+    ),
+  };
+  const latestClose = {
+    get: () =>
+      Promise.resolve(
+        market.closeDate ? LocalDate.parse(market.closeDate) : null,
+      ),
+  };
+  const valuation = new PortfolioValuation(
     reader,
     new OperationDetails(assets, brokers),
-    clock,
+    quotes,
+    indexes,
+    latestClose,
+    new FixedClock(),
   );
-  return { list, summary: new GetPortfolioSummary(list, clock), reader };
+  return {
+    list: new ListPositions(portfolios, valuation),
+    summary: new GetPortfolioSummary(portfolios, valuation),
+    allocation: new GetPortfolioAllocation(portfolios, valuation),
+    history: new GetPortfolioHistory(portfolios, valuation),
+    reader,
+    quotes,
+    indexes,
+  };
 }
 
 describe('ListPositions (B6, D41, RN09, RN12)', () => {
@@ -104,7 +156,7 @@ describe('ListPositions (B6, D41, RN09, RN12)', () => {
     expect(reader.timelinesOf).not.toHaveBeenCalled();
   });
 
-  it('lists open positions by class cost, then display name, and closed after, leaving out closed with profit 0 (D41, D55, D63)', async () => {
+  it('lists open positions by class value (at cost without quote), then display name, and closed after, leaving out closed with profit 0 (D41, D55, D63)', async () => {
     const { list } = setup([
       [3, [buy('2026-01-05', '0.0125', '350000', '0', at)]],
       [0, [buy('2026-01-05', '10', '60', '0', at)]],
@@ -145,7 +197,7 @@ describe('ListPositions (B6, D41, RN09, RN12)', () => {
     });
   });
 
-  describe('order of the classes by their cost (D63)', () => {
+  describe('order of the classes by their value, at cost without quote (D63)', () => {
     const order = async (timelines: [number, TimelineItem[]][]) =>
       (await setup(timelines).list.execute(ANA, P1)).map(
         (line) => line.asset.displayName,
@@ -158,7 +210,7 @@ describe('ListPositions (B6, D41, RN09, RN12)', () => {
       sell('2026-02-05', '10', sellPrice, '0', at),
     ];
 
-    it('puts the class with more cost first, even if it comes later in the fixed order', async () => {
+    it('puts the class with more value first, even if it comes later in the fixed order', async () => {
       expect(
         await order([
           [0, holding('10', '60')],
@@ -265,4 +317,151 @@ describe('GetPortfolioSummary (B7, D41)', () => {
       PortfolioNotFoundError,
     );
   });
+});
+
+describe('market numbers of a portfolio (B8–B11, D64)', () => {
+  // VALE3 = ID(0), PETR4 = ID(1), MXRF11 = ID(2), Bitcoin = ID(3).
+  const holdings: [number, TimelineItem[]][] = [
+    [1, [buy('2026-11-09', '10', '30', '0', at)]],
+    [2, [buy('2026-11-09', '100', '10', '0', at)]],
+    [3, [buy('2026-11-09', '0.01', '100000', '0', at)]],
+  ];
+  const market: Market = {
+    closeDate: '2026-11-10',
+    closes: {
+      1: [
+        ['2026-11-09', '30'],
+        ['2026-11-10', '33'],
+        ['2026-11-11', '99'],
+      ],
+      2: [
+        ['2026-11-09', '10'],
+        ['2026-11-10', '9'],
+      ],
+    },
+    indexes: {
+      CDI: [
+        ['2026-11-09', '0.05'],
+        ['2026-11-10', '0.05'],
+      ],
+      IBOV: [
+        ['2026-11-06', '100'],
+        ['2026-11-10', '110'],
+      ],
+    },
+  };
+
+  it('values the positions at the last close up to the close date and the crypto at cost (D55)', async () => {
+    const { list, quotes } = setup(holdings, market);
+
+    const lines = await list.execute(ANA, P1);
+
+    expect(
+      lines.map((line) => [
+        line.asset.displayName,
+        line.marketValue?.value,
+        line.unavailableReason,
+      ]),
+    ).toEqual([
+      ['Bitcoin', '1000', 'NO_QUOTE'],
+      ['MXRF11', '900', undefined],
+      ['PETR4', '330', undefined],
+    ]);
+    expect(quotes.closesUntil).toHaveBeenCalledWith(
+      [ID(1), ID(2), ID(3)],
+      LocalDate.parse('2026-11-10'),
+    );
+  });
+
+  it('adds the equity, the gain over the cost and the close date to the summary (B8, D27)', async () => {
+    const { summary } = setup(holdings, market);
+
+    const totals = await summary.execute(ANA, P1);
+
+    expect(totals.equity.value).toBe('2230');
+    expect(totals.unrealizedProfit.value).toBe('-70');
+    expect(totals.marketData).toEqual({
+      source: 'B3_COTAHIST',
+      closeDate: '2026-11-10',
+    });
+  });
+
+  it('allocates by class and by the sector of the issuer (B9)', async () => {
+    const { allocation } = setup(holdings, market);
+
+    const result = await allocation.execute(ANA, P1);
+
+    expect(result.byClass.map((group) => group.assetType)).toEqual([
+      'CRYPTO',
+      'FII',
+      'STOCK',
+    ]);
+    expect(
+      result.bySector.map((group) => [group.sector, group.value.value]),
+    ).toEqual([
+      ['Petróleo', '330'],
+      [null, '1900'],
+    ]);
+    expect(result.marketData.closeDate).toBe('2026-11-10');
+  });
+
+  it('reads the indexes only for the history, and gives the evolution and the TWR with the benchmarks (B10, B11)', async () => {
+    const { history, list, indexes } = setup(holdings, market);
+
+    await list.execute(ANA, P1);
+    expect(indexes.valuesUntil).not.toHaveBeenCalled();
+
+    const evolution = await history.evolution(ANA, P1);
+    expect(evolution.points).toEqual([
+      { date: '2026-11-10', equity: '2230', invested: '2300' },
+    ]);
+    expect(indexes.valuesUntil).toHaveBeenCalledWith(
+      'IPCA',
+      LocalDate.parse('2026-11-10'),
+    );
+
+    const performance = await history.performance(ANA, P1);
+    expect(performance.total).toMatchObject({
+      from: '2026-11-09',
+      to: '2026-11-10',
+    });
+    expect(performance.total?.cdi?.value).toBe('0.05');
+    expect(performance.total?.ibov?.value).toBe('10');
+    expect(performance.total?.ipca).toBeNull();
+    expect(performance.last12MonthsUnavailableReason).toBe('SHORT_HISTORY');
+    expect(performance.series.map((point) => point.date)).toEqual([
+      '2026-11-10',
+    ]);
+    expect(performance.marketData.closeDate).toBe('2026-11-10');
+  });
+
+  it('keeps everything at cost and reads no quote before any close is loaded', async () => {
+    const { list, history, quotes, indexes } = setup(holdings, {
+      closeDate: null,
+    });
+
+    const lines = await list.execute(ANA, P1);
+    const performance = await history.performance(ANA, P1);
+
+    expect(lines.every((line) => line.unavailableReason === 'NO_QUOTE')).toBe(
+      true,
+    );
+    expect(performance).toMatchObject({ total: null, series: [] });
+    expect(quotes.closesUntil).not.toHaveBeenCalled();
+    expect(indexes.valuesUntil).not.toHaveBeenCalled();
+  });
+
+  it.each(['allocation', 'evolution', 'performance'] as const)(
+    '%s returns 404 for a portfolio of another user before reading anything (RN02)',
+    async (route) => {
+      const { allocation, history, reader } = setup(holdings, market);
+      const call =
+        route === 'allocation'
+          ? allocation.execute('user-bruno', P1)
+          : history[route]('user-bruno', P1);
+
+      await expect(call).rejects.toBeInstanceOf(PortfolioNotFoundError);
+      expect(reader.timelinesOf).not.toHaveBeenCalled();
+    },
+  );
 });

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { CountOpenPositions } from '../../operations/application/count-open-positions';
+import { PortfolioValuation } from '../../operations/application/portfolio-valuation';
 import { PortfolioRepository } from '../domain/portfolio';
 import { PortfolioSummary, summarize } from './portfolio-summary';
 
@@ -8,13 +8,10 @@ import { PortfolioSummary, summarize } from './portfolio-summary';
 export class ListPortfolios {
   constructor(
     private readonly portfolios: PortfolioRepository,
-    private readonly openPositions: CountOpenPositions,
+    private readonly valuation: PortfolioValuation,
   ) {}
 
   async execute(userId: string): Promise<PortfolioSummary[]> {
-    return summarize(
-      await this.portfolios.listOwned(userId),
-      this.openPositions,
-    );
+    return summarize(await this.portfolios.listOwned(userId), this.valuation);
   }
 }

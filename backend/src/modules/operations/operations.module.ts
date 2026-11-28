@@ -6,10 +6,11 @@ import { ReferenceDataModule } from '../reference-data/reference-data.module';
 import { CreateOperation } from './application/create-operation.use-case';
 import { DeleteOperation } from './application/delete-operation.use-case';
 import { GetOperation } from './application/get-operation.use-case';
+import { GetPortfolioAllocation } from './application/get-portfolio-allocation.use-case';
+import { GetPortfolioHistory } from './application/get-portfolio-history.use-case';
 import { GetPortfolioSummary } from './application/get-portfolio-summary.use-case';
 import { ListOperations } from './application/list-operations.use-case';
 import { ListPositions } from './application/list-positions.use-case';
-import { OperationDetails } from './application/operation-details';
 import { OperationDrafts } from './application/operation-drafts';
 import { PreviewOperation } from './application/preview-operation.use-case';
 import { UpdateOperation } from './application/update-operation.use-case';
@@ -42,7 +43,8 @@ import { PositionsController } from './presentation/positions.controller';
     PreviewOperation,
     ListPositions,
     GetPortfolioSummary,
-    OperationDetails,
+    GetPortfolioAllocation,
+    GetPortfolioHistory,
     OperationDrafts,
     { provide: OperationStore, useClass: PrismaOperationStore },
     { provide: OperationHistory, useClass: PrismaOperationHistory },
