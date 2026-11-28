@@ -55,6 +55,15 @@ export class OperationRefDto {
   broker: BrokerRefDto;
 }
 
+@ApiSchema({ name: 'PortfolioRef' })
+export class PortfolioRefDto {
+  @ApiProperty({ format: 'uuid' })
+  id: string;
+
+  @ApiProperty({ example: 'Longo prazo' })
+  name: string;
+}
+
 @ApiSchema({ name: 'AssetPositionRef' })
 export class AssetPositionRefDto extends AssetRefDto {
   @ApiProperty(STATUS_PROPERTY)
@@ -95,7 +104,7 @@ export class DerivedValueDto {
 @ApiSchema({
   name: 'DerivedValueInput',
   description:
-    'A value used by the formula. `name` is a key of claude/microcopy.md, section 3 (`sales` and `positions` repeat once per item). `source` tells the origin line and which reference comes with it: OPERATION → `operation` (and `derived` on `sales` items); DERIVED → `derived`; ASSET_POSITION → `asset` and `derived`; MARKET → `marketSource` (S1+: a close or index points as published on `referenceDate`; for `startFactor` and `endFactor`, the factor compounded from the rates published up to `referenceDate`, not a published number); POSITION → none.',
+    'A value used by the formula. `name` is a key of claude/microcopy.md, section 3 (`sales` and `positions` repeat once per item). `source` tells the origin line and which reference comes with it: OPERATION → `operation` (and `derived` on `sales` items); DERIVED → `derived`; ASSET_POSITION → `asset` and `derived`; PORTFOLIO → `portfolio` and `derived` (S1+); MARKET → `marketSource` (S1+: a close or index points as published on `referenceDate`; for `startFactor` and `endFactor`, the factor compounded from the rates published up to `referenceDate`, not a published number); POSITION → none.',
 })
 export class DerivedValueInputDto {
   @ApiProperty({ example: 'quantityBought' })
@@ -128,6 +137,12 @@ export class DerivedValueInputDto {
     description: 'The trace of this value, when it is itself derived.',
   })
   derived?: DerivedValueDto;
+
+  @ApiPropertyOptional({
+    type: () => PortfolioRefDto,
+    description: 'Only with source PORTFOLIO (S1+, D64): labeled by its name.',
+  })
+  portfolio?: PortfolioRefDto;
 
   @ApiPropertyOptional({
     enum: MARKET_DATA_SOURCES,

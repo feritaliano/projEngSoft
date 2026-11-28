@@ -171,11 +171,11 @@ export class ReturnPointDto {
 }
 
 @ApiSchema({
-  name: 'PortfolioPerformance',
+  name: 'PortfolioReturns',
   description:
-    'B10: time-weighted return (TWR, daily quotas with the flows on the operation dates; while the portfolio is empty the quota stays) over the whole history and the last 12 months, compared with CDI, Ibovespa and IPCA. Price only: no dividends until S6.',
+    'B10: time-weighted return (TWR, daily quotas with the flows on the operation dates; while the portfolio is empty the quota stays) over the whole history and the last 12 months, compared with CDI, Ibovespa and IPCA. Price only: no dividends until S6. Also on each portfolio of GET /portfolios (cards of the list).',
 })
-export class PortfolioPerformanceDto {
+export class PortfolioReturnsDto {
   @ApiProperty({
     type: ReturnComparisonDto,
     nullable: true,
@@ -195,6 +195,20 @@ export class PortfolioPerformanceDto {
   @ApiPropertyOptional(UNAVAILABLE_REASON_PROPERTY)
   last12MonthsUnavailableReason?: UnavailableReason;
 
+  @ApiPropertyOptional({
+    format: 'date',
+    example: '2027-01-05',
+    description:
+      'With SHORT_HISTORY: the day the 12-month return starts to exist, 12 months after the first operation ("o valor aparece a partir de").',
+  })
+  last12MonthsAvailableFrom?: string;
+}
+
+@ApiSchema({
+  name: 'PortfolioPerformance',
+  description: 'B10: the returns of the portfolio and the chart.',
+})
+export class PortfolioPerformanceDto extends PortfolioReturnsDto {
   @ApiProperty({
     type: [ReturnPointDto],
     description:

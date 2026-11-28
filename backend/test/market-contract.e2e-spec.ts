@@ -16,6 +16,7 @@ describe('S1+ market routes before K7 and K8 (E2E, D64)', () => {
   const http = () => request(app.getHttpServer());
 
   const ROUTES = [
+    ['/api/v1/portfolios/totals', 'K7'],
     [`/api/v1/portfolios/${ANY_PORTFOLIO}/allocation`, 'K7'],
     [`/api/v1/portfolios/${ANY_PORTFOLIO}/evolution`, 'K7'],
     [`/api/v1/portfolios/${ANY_PORTFOLIO}/performance`, 'K7'],

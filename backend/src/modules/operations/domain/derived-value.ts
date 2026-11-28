@@ -35,6 +35,7 @@ export const FORMULA_CODES = [
   'CDI_RETURN',
   'IBOV_RETURN',
   'IPCA_RETURN',
+  'USER_EQUITY',
 ] as const;
 export type FormulaCode = (typeof FORMULA_CODES)[number];
 
@@ -44,6 +45,7 @@ export const DERIVED_VALUE_SOURCES = [
   'DERIVED',
   'ASSET_POSITION',
   'MARKET',
+  'PORTFOLIO',
 ] as const;
 export type DerivedValueSource = (typeof DERIVED_VALUE_SOURCES)[number];
 
@@ -104,7 +106,8 @@ export type InputName =
   | 'startValue'
   | 'endValue'
   | 'startFactor'
-  | 'endFactor';
+  | 'endFactor'
+  | 'portfolios';
 
 interface InputBase {
   /** `sales` and `positions` repeat once per item. */
@@ -137,7 +140,19 @@ export type DerivedValueInput =
        */
       readonly source: 'MARKET';
       readonly marketSource: MarketDataSource;
+    })
+  | (InputBase & {
+      /** One portfolio of the user, labeled by its name, with the trace of its own value. */
+      readonly source: 'PORTFOLIO';
+      readonly portfolio: PortfolioRef;
+      readonly derived: DerivedValue;
     });
+
+/** The portfolio a PORTFOLIO input comes from (S1+, D64). */
+export interface PortfolioRef {
+  readonly id: string;
+  readonly name: string;
+}
 
 /** A derived number with its trace (D12, D26). Never stored (D4). */
 export interface DerivedValue {
@@ -147,4 +162,22 @@ export interface DerivedValue {
   /** Day of the calculation: today in America/Sao_Paulo (D54). */
   readonly asOf: string;
   readonly inputs: readonly DerivedValueInput[];
+}
+
+/** A return over [from, to] next to CDI, Ibovespa and IPCA over the same window (B10, C3; D64). */
+export interface ReturnComparison {
+  readonly from: string;
+  readonly to: string;
+  readonly value: DerivedValue;
+  readonly cdi: DerivedValue | null;
+  readonly ibov: DerivedValue | null;
+  readonly ipca: DerivedValue | null;
+}
+
+/** TWR of a portfolio over its whole history and the last 12 months (B10). */
+export interface PortfolioReturns {
+  readonly total: ReturnComparison | null;
+  readonly last12Months: ReturnComparison | null;
+  readonly last12MonthsUnavailableReason?: UnavailableReason;
+  readonly last12MonthsAvailableFrom?: string;
 }

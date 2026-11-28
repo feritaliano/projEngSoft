@@ -1,5 +1,6 @@
 import { Controller, Get, Header, HttpStatus, Param } from '@nestjs/common';
 import {
+  ApiExtraModels,
   ApiOkResponse,
   ApiOperation,
   ApiParam,
@@ -19,6 +20,7 @@ import {
   PortfolioAllocationDto,
   PortfolioEvolutionDto,
   PortfolioPerformanceDto,
+  PortfolioReturnsDto,
 } from './market.dto';
 import { PortfolioSummaryDto, PositionDto } from './position.dto';
 
@@ -37,6 +39,8 @@ const UNTIL_K7 = 'S1+ (D64) contract: 501 until K7 implements it.';
 
 /** B6, B7, D41: positions and totals derived from the operations (RN09). User data: never cached. */
 @ApiTags('positions')
+// PortfolioReturns is flattened into PortfolioPerformance; GET /portfolios references it by name.
+@ApiExtraModels(PortfolioReturnsDto)
 @Controller('portfolios/:id')
 export class PositionsController {
   constructor(

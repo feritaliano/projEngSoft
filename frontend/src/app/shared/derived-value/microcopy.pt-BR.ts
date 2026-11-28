@@ -112,6 +112,7 @@ export const FORMULA_TEXTS: Record<FormulaCode, FormulaText> = {
     'CDI_RETURN',
     'IBOV_RETURN',
     'IPCA_RETURN',
+    'USER_EQUITY',
   ]),
 };
 
