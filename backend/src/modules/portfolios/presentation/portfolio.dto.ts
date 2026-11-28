@@ -61,7 +61,7 @@ export class PortfolioDto {
   })
   assetCount: number;
 
-  // S1+ (D64), filled from K7. The schemas belong to operations: referenced by name, since a module imports only the
+  // S1+ (D64). The schemas belong to operations: referenced by name, since a module imports only the
   // application and domain of another.
 
   @ApiPropertyOptional({

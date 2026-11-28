@@ -6,13 +6,13 @@ import { UNAVAILABLE_REASONS } from '../domain/derived-value';
 // Pieces of the S1+ (D64) market contract used by position.dto.ts and market.dto.ts (a separate file: no import cycle).
 
 export const PERCENT =
-  'Percentage points as a decimal string ("9.84" = 9,84%), full precision (RN11).';
+  'In % as a decimal string ("9.84" = 9,84%), full precision (RN11).';
 
 export const UNAVAILABLE_REASON_PROPERTY = {
   enum: UNAVAILABLE_REASONS,
   enumName: 'UnavailableReason',
   description:
-    'Present only when the close or the return is null, and why: NO_QUOTE = no close for the asset (fixed income and crypto until S11, D55), it goes by its cost ("sem cotação"); SHORT_HISTORY = history shorter than the window. A day change can also be null without a reason on the first trading day of an asset (no previous close).',
+    'Present only when the close or the return is null, and why: NO_QUOTE = no close for the asset up to the date (fixed income and crypto until S11, D55), it goes by its cost ("sem cotação"); SHORT_HISTORY = history shorter than the window. A day change (and its percentage) can also be null without a reason: units held on the previous trading day without any close up to it, or, for the percentage, a zero base (nothing held on the previous trading day and nothing bought).',
 } as const;
 
 @ApiSchema({
@@ -29,8 +29,7 @@ export class MarketDataDto {
     format: 'date',
     nullable: true,
     example: '2026-11-12',
-    description:
-      'Last trading day with closes loaded (LatestCloseDate); null before any quote.',
+    description: 'Last trading day with closes loaded; null before any quote.',
   })
   closeDate: string | null;
 }

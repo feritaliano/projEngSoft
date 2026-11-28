@@ -22,8 +22,8 @@ import {
 } from './market-ref.dto';
 import { AssetRefDto, BrokerRefDto } from './operation.dto';
 
-/** S1+ (D64): fields added for K7, optional so the clients of W3 and W4 keep compiling; K7 fills them. */
-const S1_PLUS = 'S1+ (D64), filled from K7.';
+/** S1+ (D64): market fields, optional in the contract so the clients of W3 and W4 keep compiling. */
+const S1_PLUS = 'S1+ (D64).';
 
 const STATUS_PROPERTY = {
   enum: POSITION_STATUSES,
@@ -104,7 +104,7 @@ export class DerivedValueDto {
 @ApiSchema({
   name: 'DerivedValueInput',
   description:
-    'A value used by the formula. `name` is a key of claude/microcopy.md, section 3 (`sales` and `positions` repeat once per item). `source` tells the origin line and which reference comes with it: OPERATION → `operation` (and `derived` on `sales` items); DERIVED → `derived`; ASSET_POSITION → `asset` and `derived`; PORTFOLIO → `portfolio` and `derived` (S1+); MARKET → `marketSource` (S1+: a close or index points as published on `referenceDate`; for `startFactor` and `endFactor`, the factor compounded from the rates published up to `referenceDate`, not a published number); POSITION → none.',
+    'A value used by the formula. `name` is a key of claude/microcopy.md, section 3 (`sales` and `positions` repeat once per item). `source` tells the origin line and which reference comes with it: OPERATION → `operation` (and `derived` on `sales` items); DERIVED → `derived`; ASSET_POSITION → `asset` and `derived`; PORTFOLIO → `portfolio` and `derived` (S1+); MARKET → `marketSource` (S1+: a close or index points as published on `referenceDate`; for `startFactor` and `endFactor` of CDI and IPCA, a factor compounded from the published rates, not a published number: before the first rate used and after the last one, each dated by that rate); POSITION → none.',
 })
 export class DerivedValueInputDto {
   @ApiProperty({ example: 'quantityBought' })
@@ -192,7 +192,7 @@ export class PositionDto {
   })
   realizedProfit: DerivedValueDto;
 
-  // S1+ (D64): absent until K7; from K7 on present on every position, null on closed ones (like averagePrice). Market
+  // S1+ (D64): present on every position, null on closed ones (like averagePrice). Market
   // value, weight and unrealized profit use the current quantity (operations up to today) × the last close.
 
   @ApiPropertyOptional({
@@ -229,14 +229,14 @@ export class PositionDto {
   @ApiPropertyOptional({
     type: DerivedValueDto,
     nullable: true,
-    description: `POSITION_DAY_CHANGE, over the close date (marketData.closeDate) with the quantities of that day: operations after it do not enter. Value on the close date − value on the previous trading day − buys + sales of the close date, so a buy of the day counts from its executed price (F17). Null without quote, or when the asset has no close before the close date (first trading day) and the position no buy on it. ${S1_PLUS}`,
+    description: `POSITION_DAY_CHANGE over the close date (marketData.closeDate) against the market's previous trading day: units on the close date × the last close up to it − units on the previous trading day × the last close up to that day − buys + sales dated after the previous trading day up to the close date (a day without trading in between belongs to the day). A buy counts at its executed price plus fees and a sale at its net amount (F17); an asset that did not trade and had no operation changes 0; operations after the close date do not enter. Null without quote, or when units were held on the previous trading day without any close up to it. ${S1_PLUS}`,
   })
   dayChange?: DerivedValueDto | null;
 
   @ApiPropertyOptional({
     type: DerivedValueDto,
     nullable: true,
-    description: `POSITION_DAY_CHANGE_PERCENT: day change ÷ (market value on the previous trading day + buys of the close date) × 100. Null with dayChange. ${PERCENT} ${S1_PLUS}`,
+    description: `POSITION_DAY_CHANGE_PERCENT: day change ÷ (market value on the previous trading day + buys of the day) × 100. Null with dayChange, or when that base is zero. ${PERCENT} ${S1_PLUS}`,
   })
   dayChangePercent?: DerivedValueDto | null;
 

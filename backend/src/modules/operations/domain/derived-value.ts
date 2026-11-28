@@ -54,8 +54,9 @@ export const POSITION_STATUSES = ['OPEN', 'CLOSED'] as const;
 export type PositionStatus = (typeof POSITION_STATUSES)[number];
 
 /**
- * Why a market number is null (D64): NO_QUOTE = no close for the asset (fixed income and crypto until S11, D55, or a
- * B3 asset never traded in the history), the position goes by its cost; SHORT_HISTORY = history shorter than the window.
+ * Why a market number is null (D64): NO_QUOTE = no close for the asset up to the date (fixed income and crypto until
+ * S11, D55), the position goes by its cost; SHORT_HISTORY = history shorter than the window. A day change and its
+ * percentage can also be null without a reason (see POSITION_DAY_CHANGE and a zero base).
  */
 export const UNAVAILABLE_REASONS = ['NO_QUOTE', 'SHORT_HISTORY'] as const;
 export type UnavailableReason = (typeof UNAVAILABLE_REASONS)[number];
@@ -136,7 +137,8 @@ export type DerivedValueInput =
   | (InputBase & {
       /**
        * From a published series on `referenceDate` (D27, D59): a close or index points as published, or (`startFactor`,
-       * `endFactor` of CDI and IPCA) the compounded factor of the rates published up to that date, which is computed.
+       * `endFactor` of CDI and IPCA) a factor compounded from the published rates, which is computed: before the first
+       * rate used and after the last one, dated by that rate.
        */
       readonly source: 'MARKET';
       readonly marketSource: MarketDataSource;

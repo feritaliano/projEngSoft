@@ -426,7 +426,7 @@
     },
     "/api/v1/portfolios": {
       "get": {
-        "description": "Each portfolio with its equity, the date of the close used and its returns (D64), as in GET /portfolios/{id}/summary and /performance.",
+        "description": "Each portfolio with its equity, the date of the close used and its returns (D64), as in GET /portfolios/{id}/summary and /performance. Corporate events enter the timeline only from S2; until their trace exists, a portfolio with one answers 500.",
         "operationId": "PortfoliosController_list",
         "parameters": [],
         "responses": {
@@ -539,7 +539,7 @@
     },
     "/api/v1/portfolios/totals": {
       "get": {
-        "description": "Sum of the equity of every portfolio of the user (USER_EQUITY), with the date of the close used (D27).",
+        "description": "Sum of the equity of every portfolio of the user (USER_EQUITY), with the date of the close used (D27). Corporate events enter the timeline only from S2; until their trace exists, a portfolio with one answers 500.",
         "operationId": "PortfoliosController_totals",
         "parameters": [],
         "responses": {
@@ -572,6 +572,7 @@
     },
     "/api/v1/portfolios/{id}": {
       "get": {
+        "description": "With its equity and returns, as in the list (D64). Corporate events enter the timeline only from S2; until their trace exists, a portfolio with one answers 500.",
         "operationId": "PortfoliosController_get",
         "parameters": [
           {
@@ -1224,7 +1225,7 @@
     },
     "/api/v1/portfolios/{id}/positions": {
       "get": {
-        "description": "Open (quantity > 0) and closed (quantity 0, realized profit ≠ 0) positions; a closed one with realized profit exactly 0 is not listed. Open positions first, their asset classes by market value descending (D63, D64; at cost without quote), a tie by the fixed order of AssetType; then closed positions by that fixed order; display name within a class. Market numbers from the last close loaded (marketData.closeDate, LatestCloseDate; a day without trading uses the previous close), COTAHIST not adjusted for splits (D64b); fixed income and crypto at cost (D55). 500 while the portfolio has a corporate event (S2).",
+        "description": "Open (quantity > 0) and closed (quantity 0, realized profit ≠ 0) positions; a closed one with realized profit exactly 0 is not listed. Open positions first, their asset classes by market value descending (D63, D64; at cost without quote), a tie by the fixed order of AssetType; then closed positions by that fixed order; display name within a class. Market numbers from the last close loaded (marketData.closeDate; a day without trading uses the previous close), COTAHIST not adjusted for splits (D64b); assets without any close at cost (fixed income and crypto until S11, D55). Corporate events enter the timeline only from S2; until their trace exists, a portfolio with one answers 500.",
         "operationId": "PositionsController_positions",
         "parameters": [
           {
@@ -1280,7 +1281,7 @@
     },
     "/api/v1/portfolios/{id}/summary": {
       "get": {
-        "description": "Computed from the same rows as GET positions. Market numbers from the last close loaded (marketData.closeDate, LatestCloseDate; a day without trading uses the previous close), COTAHIST not adjusted for splits (D64b); fixed income and crypto at cost (D55). 500 while the portfolio has a corporate event (S2).",
+        "description": "Computed from the same rows as GET positions. Market numbers from the last close loaded (marketData.closeDate; a day without trading uses the previous close), COTAHIST not adjusted for splits (D64b); assets without any close at cost (fixed income and crypto until S11, D55). Corporate events enter the timeline only from S2; until their trace exists, a portfolio with one answers 500.",
         "operationId": "PositionsController_summary",
         "parameters": [
           {
@@ -1333,7 +1334,7 @@
     },
     "/api/v1/portfolios/{id}/allocation": {
       "get": {
-        "description": "Market numbers from the last close loaded (marketData.closeDate, LatestCloseDate; a day without trading uses the previous close), COTAHIST not adjusted for splits (D64b); fixed income and crypto at cost (D55). 500 while the portfolio has a corporate event (S2).",
+        "description": "Market numbers from the last close loaded (marketData.closeDate; a day without trading uses the previous close), COTAHIST not adjusted for splits (D64b); assets without any close at cost (fixed income and crypto until S11, D55). Corporate events enter the timeline only from S2; until their trace exists, a portfolio with one answers 500.",
         "operationId": "PositionsController_allocation",
         "parameters": [
           {
@@ -1386,7 +1387,7 @@
     },
     "/api/v1/portfolios/{id}/evolution": {
       "get": {
-        "description": "Market numbers from the last close loaded (marketData.closeDate, LatestCloseDate; a day without trading uses the previous close), COTAHIST not adjusted for splits (D64b); fixed income and crypto at cost (D55). 500 while the portfolio has a corporate event (S2).",
+        "description": "Market numbers from the last close loaded (marketData.closeDate; a day without trading uses the previous close), COTAHIST not adjusted for splits (D64b); assets without any close at cost (fixed income and crypto until S11, D55). Corporate events enter the timeline only from S2; until their trace exists, a portfolio with one answers 500.",
         "operationId": "PositionsController_evolution",
         "parameters": [
           {
@@ -1439,7 +1440,7 @@
     },
     "/api/v1/portfolios/{id}/performance": {
       "get": {
-        "description": "Market numbers from the last close loaded (marketData.closeDate, LatestCloseDate; a day without trading uses the previous close), COTAHIST not adjusted for splits (D64b); fixed income and crypto at cost (D55). 500 while the portfolio has a corporate event (S2).",
+        "description": "Market numbers from the last close loaded (marketData.closeDate; a day without trading uses the previous close), COTAHIST not adjusted for splits (D64b); assets without any close at cost (fixed income and crypto until S11, D55). Corporate events enter the timeline only from S2; until their trace exists, a portfolio with one answers 500.",
         "operationId": "PositionsController_performance",
         "parameters": [
           {
@@ -2757,7 +2758,7 @@
             ]
           }
         },
-        "description": "A value used by the formula. `name` is a key of claude/microcopy.md, section 3 (`sales` and `positions` repeat once per item). `source` tells the origin line and which reference comes with it: OPERATION → `operation` (and `derived` on `sales` items); DERIVED → `derived`; ASSET_POSITION → `asset` and `derived`; PORTFOLIO → `portfolio` and `derived` (S1+); MARKET → `marketSource` (S1+: a close or index points as published on `referenceDate`; for `startFactor` and `endFactor`, the factor compounded from the rates published up to `referenceDate`, not a published number); POSITION → none.",
+        "description": "A value used by the formula. `name` is a key of claude/microcopy.md, section 3 (`sales` and `positions` repeat once per item). `source` tells the origin line and which reference comes with it: OPERATION → `operation` (and `derived` on `sales` items); DERIVED → `derived`; ASSET_POSITION → `asset` and `derived`; PORTFOLIO → `portfolio` and `derived` (S1+); MARKET → `marketSource` (S1+: a close or index points as published on `referenceDate`; for `startFactor` and `endFactor` of CDI and IPCA, a factor compounded from the published rates, not a published number: before the first rate used and after the last one, each dated by that rate); POSITION → none.",
         "required": [
           "name",
           "value",
@@ -2945,7 +2946,7 @@
             "example": "2026-11-12"
           },
           "value": {
-            "description": "TWR of the portfolio (end quota ÷ start quota − 1, quotas with base 1) or ASSET_RETURN of the asset. Percentage points as a decimal string (\"9.84\" = 9,84%), full precision (RN11).",
+            "description": "TWR of the portfolio (end quota ÷ start quota − 1, quotas with base 1) or ASSET_RETURN of the asset. In % as a decimal string (\"9.84\" = 9,84%), full precision (RN11).",
             "allOf": [
               {
                 "$ref": "#/components/schemas/DerivedValue"
@@ -2954,7 +2955,7 @@
           },
           "cdi": {
             "nullable": true,
-            "description": "CDI_RETURN. Percentage points as a decimal string (\"9.84\" = 9,84%), full precision (RN11).",
+            "description": "CDI_RETURN. In % as a decimal string (\"9.84\" = 9,84%), full precision (RN11).",
             "type": "object",
             "allOf": [
               {
@@ -2964,7 +2965,7 @@
           },
           "ibov": {
             "nullable": true,
-            "description": "IBOV_RETURN. Percentage points as a decimal string (\"9.84\" = 9,84%), full precision (RN11).",
+            "description": "IBOV_RETURN; null also without an Ibovespa point before the start. In % as a decimal string (\"9.84\" = 9,84%), full precision (RN11).",
             "type": "object",
             "allOf": [
               {
@@ -2974,7 +2975,7 @@
           },
           "ipca": {
             "nullable": true,
-            "description": "IPCA_RETURN. Percentage points as a decimal string (\"9.84\" = 9,84%), full precision (RN11).",
+            "description": "IPCA_RETURN. In % as a decimal string (\"9.84\" = 9,84%), full precision (RN11).",
             "type": "object",
             "allOf": [
               {
@@ -2983,7 +2984,7 @@
             ]
           }
         },
-        "description": "A return over a window [from, to] next to CDI, Ibovespa and IPCA over the same window (D64). Without dividends until S6. CDI compounds its daily rates published in the window; Ibovespa goes close to close; IPCA compounds the monthly rates of the whole months inside the window, without pro rata, up to the last month published (its inputs show the first and the last month). CDI and IPCA show the compounded factors of the published rates as `startFactor` and `endFactor`; Ibovespa shows its points as `startValue` and `endValue`. A benchmark is null when none of its values falls in the window.",
+        "description": "A return over a window [from, to] next to CDI, Ibovespa and IPCA over the same window (D64). Without dividends until S6. CDI compounds its daily rates dated in [from, to) (a rate pays the night after its date); Ibovespa goes close to close; IPCA compounds the monthly rates of the whole months inside the window, without pro rata, up to the last month published. CDI and IPCA show `startFactor` (the factor before the first rate used, dated by it) and `endFactor` (after the last rate used, dated by it); Ibovespa shows its points as `startValue` and `endValue`. A benchmark is null unless its series reaches both ends of the window (a few days of tolerance; IPCA: loaded from the first month on), and Ibovespa also without a point before the start.",
         "required": [
           "from",
           "to",
@@ -2999,7 +3000,7 @@
           "NO_QUOTE",
           "SHORT_HISTORY"
         ],
-        "description": "Present only when the close or the return is null, and why: NO_QUOTE = no close for the asset (fixed income and crypto until S11, D55), it goes by its cost (\"sem cotação\"); SHORT_HISTORY = history shorter than the window. A day change can also be null without a reason on the first trading day of an asset (no previous close)."
+        "description": "Present only when the close or the return is null, and why: NO_QUOTE = no close for the asset up to the date (fixed income and crypto until S11, D55), it goes by its cost (\"sem cotação\"); SHORT_HISTORY = history shorter than the window. A day change (and its percentage) can also be null without a reason: units held on the previous trading day without any close up to it, or, for the percentage, a zero base (nothing held on the previous trading day and nothing bought)."
       },
       "PortfolioReturns": {
         "type": "object",
@@ -3025,7 +3026,7 @@
             ]
           },
           "last12MonthsUnavailableReason": {
-            "description": "Present only when the close or the return is null, and why: NO_QUOTE = no close for the asset (fixed income and crypto until S11, D55), it goes by its cost (\"sem cotação\"); SHORT_HISTORY = history shorter than the window. A day change can also be null without a reason on the first trading day of an asset (no previous close).",
+            "description": "Present only when the close or the return is null, and why: NO_QUOTE = no close for the asset up to the date (fixed income and crypto until S11, D55), it goes by its cost (\"sem cotação\"); SHORT_HISTORY = history shorter than the window. A day change (and its percentage) can also be null without a reason: units held on the previous trading day without any close up to it, or, for the percentage, a zero base (nothing held on the previous trading day and nothing bought).",
             "allOf": [
               {
                 "$ref": "#/components/schemas/UnavailableReason"
@@ -3125,7 +3126,7 @@
           },
           "lastClose": {
             "nullable": true,
-            "description": "Last close up to the close date; null with unavailableReason NO_QUOTE (fixed income and crypto, D55). S1+ (D64), filled from K7.",
+            "description": "Last close up to the close date; null with unavailableReason NO_QUOTE (fixed income and crypto, D55). S1+ (D64).",
             "type": "object",
             "allOf": [
               {
@@ -3134,7 +3135,7 @@
             ]
           },
           "unavailableReason": {
-            "description": "Present only when the close or the return is null, and why: NO_QUOTE = no close for the asset (fixed income and crypto until S11, D55), it goes by its cost (\"sem cotação\"); SHORT_HISTORY = history shorter than the window. A day change can also be null without a reason on the first trading day of an asset (no previous close).",
+            "description": "Present only when the close or the return is null, and why: NO_QUOTE = no close for the asset up to the date (fixed income and crypto until S11, D55), it goes by its cost (\"sem cotação\"); SHORT_HISTORY = history shorter than the window. A day change (and its percentage) can also be null without a reason: units held on the previous trading day without any close up to it, or, for the percentage, a zero base (nothing held on the previous trading day and nothing bought).",
             "allOf": [
               {
                 "$ref": "#/components/schemas/UnavailableReason"
@@ -3143,7 +3144,7 @@
           },
           "marketValue": {
             "nullable": true,
-            "description": "MARKET_VALUE (quantity × last close) or, without quote, MARKET_VALUE_AT_COST (the total cost). S1+ (D64), filled from K7.",
+            "description": "MARKET_VALUE (quantity × last close) or, without quote, MARKET_VALUE_AT_COST (the total cost). S1+ (D64).",
             "type": "object",
             "allOf": [
               {
@@ -3153,7 +3154,7 @@
           },
           "unrealizedProfit": {
             "nullable": true,
-            "description": "UNREALIZED_PROFIT: market value − total cost; null without quote. S1+ (D64), filled from K7.",
+            "description": "UNREALIZED_PROFIT: market value − total cost; null without quote. S1+ (D64).",
             "type": "object",
             "allOf": [
               {
@@ -3163,7 +3164,7 @@
           },
           "unrealizedProfitPercent": {
             "nullable": true,
-            "description": "UNREALIZED_PROFIT_PERCENT: unrealized profit ÷ total cost × 100, which equals (last close − average price) ÷ average price × 100: the column \"Variação s/ PM\". Null without quote. Percentage points as a decimal string (\"9.84\" = 9,84%), full precision (RN11). S1+ (D64), filled from K7.",
+            "description": "UNREALIZED_PROFIT_PERCENT: unrealized profit ÷ total cost × 100, which equals (last close − average price) ÷ average price × 100: the column \"Variação s/ PM\". Null without quote. In % as a decimal string (\"9.84\" = 9,84%), full precision (RN11). S1+ (D64).",
             "type": "object",
             "allOf": [
               {
@@ -3173,7 +3174,7 @@
           },
           "dayChange": {
             "nullable": true,
-            "description": "POSITION_DAY_CHANGE, over the close date (marketData.closeDate) with the quantities of that day: operations after it do not enter. Value on the close date − value on the previous trading day − buys + sales of the close date, so a buy of the day counts from its executed price (F17). Null without quote, or when the asset has no close before the close date (first trading day) and the position no buy on it. S1+ (D64), filled from K7.",
+            "description": "POSITION_DAY_CHANGE over the close date (marketData.closeDate) against the market's previous trading day: units on the close date × the last close up to it − units on the previous trading day × the last close up to that day − buys + sales dated after the previous trading day up to the close date (a day without trading in between belongs to the day). A buy counts at its executed price plus fees and a sale at its net amount (F17); an asset that did not trade and had no operation changes 0; operations after the close date do not enter. Null without quote, or when units were held on the previous trading day without any close up to it. S1+ (D64).",
             "type": "object",
             "allOf": [
               {
@@ -3183,7 +3184,7 @@
           },
           "dayChangePercent": {
             "nullable": true,
-            "description": "POSITION_DAY_CHANGE_PERCENT: day change ÷ (market value on the previous trading day + buys of the close date) × 100. Null with dayChange. Percentage points as a decimal string (\"9.84\" = 9,84%), full precision (RN11). S1+ (D64), filled from K7.",
+            "description": "POSITION_DAY_CHANGE_PERCENT: day change ÷ (market value on the previous trading day + buys of the day) × 100. Null with dayChange, or when that base is zero. In % as a decimal string (\"9.84\" = 9,84%), full precision (RN11). S1+ (D64).",
             "type": "object",
             "allOf": [
               {
@@ -3193,7 +3194,7 @@
           },
           "portfolioWeight": {
             "nullable": true,
-            "description": "PORTFOLIO_WEIGHT: market value ÷ equity × 100 (\"% da carteira\"). Percentage points as a decimal string (\"9.84\" = 9,84%), full precision (RN11). S1+ (D64), filled from K7.",
+            "description": "PORTFOLIO_WEIGHT: market value ÷ equity × 100 (\"% da carteira\"). In % as a decimal string (\"9.84\" = 9,84%), full precision (RN11). S1+ (D64).",
             "type": "object",
             "allOf": [
               {
@@ -3227,7 +3228,7 @@
             "format": "date",
             "nullable": true,
             "example": "2026-11-12",
-            "description": "Last trading day with closes loaded (LatestCloseDate); null before any quote."
+            "description": "Last trading day with closes loaded; null before any quote."
           }
         },
         "description": "Date and source of the close the market numbers used (D27, D59b): shown next to them.",
@@ -3261,7 +3262,7 @@
             "description": "Open positions."
           },
           "equity": {
-            "description": "PORTFOLIO_EQUITY (\"Patrimônio\"): sum of the market value of the open positions, at cost without quote; one `positions` input per open position. S1+ (D64), filled from K7.",
+            "description": "PORTFOLIO_EQUITY (\"Patrimônio\"): sum of the market value of the open positions, at cost without quote; one `positions` input per open position. S1+ (D64).",
             "allOf": [
               {
                 "$ref": "#/components/schemas/DerivedValue"
@@ -3269,7 +3270,7 @@
             ]
           },
           "unrealizedProfit": {
-            "description": "PORTFOLIO_UNREALIZED_PROFIT: equity − total cost. S1+ (D64), filled from K7.",
+            "description": "PORTFOLIO_UNREALIZED_PROFIT: equity − total cost. S1+ (D64).",
             "allOf": [
               {
                 "$ref": "#/components/schemas/DerivedValue"
@@ -3278,7 +3279,7 @@
           },
           "unrealizedProfitPercent": {
             "nullable": true,
-            "description": "PORTFOLIO_UNREALIZED_PROFIT_PERCENT: unrealized profit ÷ total cost × 100; null without open positions. Percentage points as a decimal string (\"9.84\" = 9,84%), full precision (RN11). S1+ (D64), filled from K7.",
+            "description": "PORTFOLIO_UNREALIZED_PROFIT_PERCENT: unrealized profit ÷ total cost × 100; null without open positions. In % as a decimal string (\"9.84\" = 9,84%), full precision (RN11). S1+ (D64).",
             "type": "object",
             "allOf": [
               {
@@ -3287,7 +3288,7 @@
             ]
           },
           "marketData": {
-            "description": "S1+ (D64), filled from K7.",
+            "description": "S1+ (D64).",
             "allOf": [
               {
                 "$ref": "#/components/schemas/MarketData"
@@ -3322,7 +3323,7 @@
             ]
           },
           "percent": {
-            "description": "ALLOCATION_PERCENT: value ÷ equity × 100. Percentage points as a decimal string (\"9.84\" = 9,84%), full precision (RN11).",
+            "description": "ALLOCATION_PERCENT: value ÷ equity × 100. In % as a decimal string (\"9.84\" = 9,84%), full precision (RN11).",
             "allOf": [
               {
                 "$ref": "#/components/schemas/DerivedValue"
@@ -3354,7 +3355,7 @@
             ]
           },
           "percent": {
-            "description": "ALLOCATION_PERCENT. Percentage points as a decimal string (\"9.84\" = 9,84%), full precision (RN11).",
+            "description": "ALLOCATION_PERCENT. In % as a decimal string (\"9.84\" = 9,84%), full precision (RN11).",
             "allOf": [
               {
                 "$ref": "#/components/schemas/DerivedValue"
@@ -3432,7 +3433,7 @@
             "$ref": "#/components/schemas/MarketData"
           }
         },
-        "description": "B11: equity and invested value over time, one point per month on its last trading day, from the month of the first operation, plus the close date (marketData.closeDate). Empty without operations.",
+        "description": "B11: equity and invested value over time, one point on the last evaluation day of each month (trading days of the assets and operation dates), from the start of the series (the first operation, or the first close of a quoted asset bought before it) to the close date (marketData.closeDate), which is the last point. Empty without operations up to the close date.",
         "required": [
           "points",
           "marketData"
@@ -3467,7 +3468,7 @@
             "example": "3.60"
           }
         },
-        "description": "Cumulative return since the start of the series, in percentage points, for the chart. Null where the series has no value yet (IPCA of a month not published).",
+        "description": "Cumulative return since the start of the series, in % (\"9.84\" = 9,84%), for the chart. A benchmark is null where its series has no value for the point: IPCA of a month not published yet, CDI or Ibovespa whose last value is from before the month of the point or not near it.",
         "required": [
           "date",
           "value",
@@ -3500,7 +3501,7 @@
             ]
           },
           "last12MonthsUnavailableReason": {
-            "description": "Present only when the close or the return is null, and why: NO_QUOTE = no close for the asset (fixed income and crypto until S11, D55), it goes by its cost (\"sem cotação\"); SHORT_HISTORY = history shorter than the window. A day change can also be null without a reason on the first trading day of an asset (no previous close).",
+            "description": "Present only when the close or the return is null, and why: NO_QUOTE = no close for the asset up to the date (fixed income and crypto until S11, D55), it goes by its cost (\"sem cotação\"); SHORT_HISTORY = history shorter than the window. A day change (and its percentage) can also be null without a reason: units held on the previous trading day without any close up to it, or, for the percentage, a zero base (nothing held on the previous trading day and nothing bought).",
             "allOf": [
               {
                 "$ref": "#/components/schemas/UnavailableReason"
@@ -3514,7 +3515,7 @@
             "description": "With SHORT_HISTORY: the day the 12-month return starts to exist, 12 months after the first operation (\"o valor aparece a partir de\")."
           },
           "series": {
-            "description": "Chart of the total window: one point per month on its last trading day, plus the close date.",
+            "description": "Chart of the total window: the last evaluation day of each month, the close date being the last point.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ReturnPoint"
@@ -3577,7 +3578,7 @@
           },
           "dayChangePercent": {
             "nullable": true,
-            "description": "ASSET_DAY_CHANGE_PERCENT: (last close − previous close) ÷ previous close × 100; null without two closes. Percentage points as a decimal string (\"9.84\" = 9,84%), full precision (RN11).",
+            "description": "ASSET_DAY_CHANGE_PERCENT: (last close − previous close) ÷ previous close × 100; null without two closes. In % as a decimal string (\"9.84\" = 9,84%), full precision (RN11).",
             "type": "object",
             "allOf": [
               {
@@ -3586,7 +3587,7 @@
             ]
           },
           "unavailableReason": {
-            "description": "Present only when the close or the return is null, and why: NO_QUOTE = no close for the asset (fixed income and crypto until S11, D55), it goes by its cost (\"sem cotação\"); SHORT_HISTORY = history shorter than the window. A day change can also be null without a reason on the first trading day of an asset (no previous close).",
+            "description": "Present only when the close or the return is null, and why: NO_QUOTE = no close for the asset up to the date (fixed income and crypto until S11, D55), it goes by its cost (\"sem cotação\"); SHORT_HISTORY = history shorter than the window. A day change (and its percentage) can also be null without a reason: units held on the previous trading day without any close up to it, or, for the percentage, a zero base (nothing held on the previous trading day and nothing bought).",
             "allOf": [
               {
                 "$ref": "#/components/schemas/UnavailableReason"
@@ -3645,7 +3646,7 @@
             ]
           },
           "unavailableReason": {
-            "description": "Present only when the close or the return is null, and why: NO_QUOTE = no close for the asset (fixed income and crypto until S11, D55), it goes by its cost (\"sem cotação\"); SHORT_HISTORY = history shorter than the window. A day change can also be null without a reason on the first trading day of an asset (no previous close).",
+            "description": "Present only when the close or the return is null, and why: NO_QUOTE = no close for the asset up to the date (fixed income and crypto until S11, D55), it goes by its cost (\"sem cotação\"); SHORT_HISTORY = history shorter than the window. A day change (and its percentage) can also be null without a reason: units held on the previous trading day without any close up to it, or, for the percentage, a zero base (nothing held on the previous trading day and nothing bought).",
             "allOf": [
               {
                 "$ref": "#/components/schemas/UnavailableReason"
@@ -3685,7 +3686,7 @@
             }
           },
           "unavailableReason": {
-            "description": "Present only when the close or the return is null, and why: NO_QUOTE = no close for the asset (fixed income and crypto until S11, D55), it goes by its cost (\"sem cotação\"); SHORT_HISTORY = history shorter than the window. A day change can also be null without a reason on the first trading day of an asset (no previous close).",
+            "description": "Present only when the close or the return is null, and why: NO_QUOTE = no close for the asset up to the date (fixed income and crypto until S11, D55), it goes by its cost (\"sem cotação\"); SHORT_HISTORY = history shorter than the window. A day change (and its percentage) can also be null without a reason: units held on the previous trading day without any close up to it, or, for the percentage, a zero base (nothing held on the previous trading day and nothing bought).",
             "allOf": [
               {
                 "$ref": "#/components/schemas/UnavailableReason"

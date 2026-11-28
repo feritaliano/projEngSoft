@@ -95,7 +95,7 @@ export class EvolutionPointDto {
 @ApiSchema({
   name: 'PortfolioEvolution',
   description:
-    'B11: equity and invested value over time, one point per month on its last trading day, from the month of the first operation, plus the close date (marketData.closeDate). Empty without operations.',
+    'B11: equity and invested value over time, one point on the last evaluation day of each month (trading days of the assets and operation dates), from the start of the series (the first operation, or the first close of a quoted asset bought before it) to the close date (marketData.closeDate), which is the last point. Empty without operations up to the close date.',
 })
 export class PortfolioEvolutionDto {
   @ApiProperty({ type: [EvolutionPointDto] })
@@ -108,7 +108,7 @@ export class PortfolioEvolutionDto {
 @ApiSchema({
   name: 'ReturnComparison',
   description:
-    'A return over a window [from, to] next to CDI, Ibovespa and IPCA over the same window (D64). Without dividends until S6. CDI compounds its daily rates published in the window; Ibovespa goes close to close; IPCA compounds the monthly rates of the whole months inside the window, without pro rata, up to the last month published (its inputs show the first and the last month). CDI and IPCA show the compounded factors of the published rates as `startFactor` and `endFactor`; Ibovespa shows its points as `startValue` and `endValue`. A benchmark is null when none of its values falls in the window.',
+    'A return over a window [from, to] next to CDI, Ibovespa and IPCA over the same window (D64). Without dividends until S6. CDI compounds its daily rates dated in [from, to) (a rate pays the night after its date); Ibovespa goes close to close; IPCA compounds the monthly rates of the whole months inside the window, without pro rata, up to the last month published. CDI and IPCA show `startFactor` (the factor before the first rate used, dated by it) and `endFactor` (after the last rate used, dated by it); Ibovespa shows its points as `startValue` and `endValue`. A benchmark is null unless its series reaches both ends of the window (a few days of tolerance; IPCA: loaded from the first month on), and Ibovespa also without a point before the start.',
 })
 export class ReturnComparisonDto {
   @ApiProperty({ format: 'date', example: '2025-02-12' })
@@ -133,7 +133,7 @@ export class ReturnComparisonDto {
   @ApiProperty({
     type: DerivedValueDto,
     nullable: true,
-    description: `IBOV_RETURN. ${PERCENT}`,
+    description: `IBOV_RETURN; null also without an Ibovespa point before the start. ${PERCENT}`,
   })
   ibov: DerivedValueDto | null;
 
@@ -148,7 +148,7 @@ export class ReturnComparisonDto {
 @ApiSchema({
   name: 'ReturnPoint',
   description:
-    'Cumulative return since the start of the series, in percentage points, for the chart. Null where the series has no value yet (IPCA of a month not published).',
+    'Cumulative return since the start of the series, in % ("9.84" = 9,84%), for the chart. A benchmark is null where its series has no value for the point: IPCA of a month not published yet, CDI or Ibovespa whose last value is from before the month of the point or not near it.',
 })
 export class ReturnPointDto {
   @ApiProperty({ format: 'date', example: '2026-10-30' })
@@ -212,7 +212,7 @@ export class PortfolioPerformanceDto extends PortfolioReturnsDto {
   @ApiProperty({
     type: [ReturnPointDto],
     description:
-      'Chart of the total window: one point per month on its last trading day, plus the close date.',
+      'Chart of the total window: the last evaluation day of each month, the close date being the last point.',
   })
   series: ReturnPointDto[];
 

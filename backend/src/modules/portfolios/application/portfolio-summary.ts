@@ -7,8 +7,8 @@ import type {
 import { PortfolioWithOperationCount } from '../domain/portfolio';
 
 /**
- * A portfolio as the list and the detail show it: operations and open positions, both derived (D4, D41), and from K7
- * its equity and returns (B8, B10; D64). A portfolio just created has no market numbers yet.
+ * A portfolio as the list and the detail show it: operations and open positions, both derived (D4, D41), and (S1+,
+ * D64) its equity and returns (B8, B10; D64). A portfolio just created has no market numbers yet.
  */
 export interface PortfolioSummary {
   readonly id: string;

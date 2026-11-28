@@ -35,9 +35,9 @@ const PORTFOLIO_NOT_FOUND =
   'Portfolio not found, or it belongs to another user (RN02).';
 
 const MARKET =
-  'Market numbers from the last close loaded (marketData.closeDate, LatestCloseDate; a day without trading uses the previous close), COTAHIST not adjusted for splits (D64b); fixed income and crypto at cost (D55). 500 while the portfolio has a corporate event (S2).';
+  'Market numbers from the last close loaded (marketData.closeDate; a day without trading uses the previous close), COTAHIST not adjusted for splits (D64b); assets without any close at cost (fixed income and crypto until S11, D55). Corporate events enter the timeline only from S2; until their trace exists, a portfolio with one answers 500.';
 
-/** B6, B7, D41: positions and totals derived from the operations (RN09). User data: never cached. */
+/** B6–B11 (D41, D64): positions, totals and market numbers derived from the operations (RN09). User data: never cached. */
 @ApiTags('positions')
 // PortfolioReturns is flattened into PortfolioPerformance; GET /portfolios references it by name.
 @ApiExtraModels(PortfolioReturnsDto)

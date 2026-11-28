@@ -84,7 +84,7 @@ export class PortfoliosController {
   @ApiOperation({
     summary: 'List the portfolios of the user (B1, B8, B10)',
     description:
-      'Each portfolio with its equity, the date of the close used and its returns (D64), as in GET /portfolios/{id}/summary and /performance.',
+      'Each portfolio with its equity, the date of the close used and its returns (D64), as in GET /portfolios/{id}/summary and /performance. Corporate events enter the timeline only from S2; until their trace exists, a portfolio with one answers 500.',
   })
   @Header('Cache-Control', 'no-store')
   @ApiOkResponse({ type: [PortfolioDto] })
@@ -97,7 +97,7 @@ export class PortfoliosController {
   @ApiOperation({
     summary: 'Equity of all the portfolios of the user (B8)',
     description:
-      'Sum of the equity of every portfolio of the user (USER_EQUITY), with the date of the close used (D27).',
+      'Sum of the equity of every portfolio of the user (USER_EQUITY), with the date of the close used (D27). Corporate events enter the timeline only from S2; until their trace exists, a portfolio with one answers 500.',
   })
   @Header('Cache-Control', 'no-store')
   @ApiOkResponse({ type: PortfolioTotalsDto })
@@ -108,7 +108,11 @@ export class PortfoliosController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get a portfolio of the user (RN02)' })
+  @ApiOperation({
+    summary: 'Get a portfolio of the user (RN02)',
+    description:
+      'With its equity and returns, as in the list (D64). Corporate events enter the timeline only from S2; until their trace exists, a portfolio with one answers 500.',
+  })
   @Header('Cache-Control', 'no-store')
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiOkResponse({ type: PortfolioDto })
