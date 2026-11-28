@@ -1,5 +1,30 @@
 import type { LocalDate } from '../../../shared/domain/local-date';
 
+/** Where a market number comes from (D27, D59): B3 COTAHIST closes, BCB SGS (CDI, IPCA), B3 index history (IBOV). */
+export const MARKET_DATA_SOURCES = [
+  'B3_COTAHIST',
+  'BCB_SGS',
+  'B3_INDEX',
+] as const;
+export type MarketDataSource = (typeof MARKET_DATA_SOURCES)[number];
+
+/** Date and source of the close a market number used (D27): shown next to it. Null date before any quote is loaded. */
+export interface MarketDataRef {
+  readonly source: 'B3_COTAHIST';
+  readonly closeDate: string | null;
+}
+
+/** Windows of the asset page (C2, C3), as ISO 8601 durations up to the close date; MAX = the whole history loaded. */
+export const MARKET_PERIODS = [
+  'P1M',
+  'P6M',
+  'P1Y',
+  'P2Y',
+  'P5Y',
+  'MAX',
+] as const;
+export type MarketPeriod = (typeof MARKET_PERIODS)[number];
+
 /** A daily quote of a catalog asset (quotes table; COTAHIST, D59). Decimals as plain strings (RN11); date YYYY-MM-DD. */
 export interface QuoteRow {
   readonly assetId: string;

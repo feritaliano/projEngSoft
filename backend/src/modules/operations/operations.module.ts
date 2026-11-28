@@ -18,6 +18,7 @@ import { OperationStore } from './domain/operation-store';
 import { PrismaOperationHistory } from './infrastructure/prisma-operation-history';
 import { PrismaOperationStore } from './infrastructure/prisma-operation-store';
 import { OperationsReadModule } from './operations-read.module';
+import { AssetMarketController } from './presentation/asset-market.controller';
 import { OperationsController } from './presentation/operations.controller';
 import { PositionsController } from './presentation/positions.controller';
 
@@ -27,7 +28,11 @@ import { PositionsController } from './presentation/positions.controller';
  */
 @Module({
   imports: [PortfoliosModule, OperationsReadModule, ReferenceDataModule],
-  controllers: [OperationsController, PositionsController],
+  controllers: [
+    OperationsController,
+    PositionsController,
+    AssetMarketController,
+  ],
   providers: [
     ListOperations,
     GetOperation,

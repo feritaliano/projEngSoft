@@ -1,5 +1,11 @@
-import { ApiProperty } from '@nestjs/swagger';
+import {
+  ApiProperty,
+  ApiPropertyOptional,
+  getSchemaPath,
+} from '@nestjs/swagger';
 import { IsString } from 'class-validator';
+import type { MarketDataRef } from '../../market-data/domain/market-data';
+import type { DerivedValue } from '../../operations/domain/derived-value';
 import { PORTFOLIO_NAME_MAX_LENGTH } from '../domain/portfolio';
 
 // class-validator counts UTF-16 units, so the length is left to PortfolioName, which trims and counts characters like
@@ -50,4 +56,20 @@ export class PortfolioDto {
       'Assets with an open position (quantity > 0), derived from the operations by the position calculator (RN09); closed positions do not count.',
   })
   assetCount: number;
+
+  // S1+ (D64), filled from K7. The schemas belong to operations: referenced by name, since a module imports only the
+  // application and domain of another.
+
+  @ApiPropertyOptional({
+    allOf: [{ $ref: getSchemaPath('DerivedValue') }],
+    description:
+      'PORTFOLIO_EQUITY ("Patrimônio", B8): the same value as in GET /portfolios/{id}/summary.',
+  })
+  equity?: DerivedValue;
+
+  @ApiPropertyOptional({
+    allOf: [{ $ref: getSchemaPath('MarketData') }],
+    description: 'Date and source of the close the equity used (D27).',
+  })
+  marketData?: MarketDataRef;
 }

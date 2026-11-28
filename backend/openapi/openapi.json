@@ -1296,6 +1296,368 @@
           "positions"
         ]
       }
+    },
+    "/api/v1/portfolios/{id}/allocation": {
+      "get": {
+        "description": "S1+ (D64) contract: 501 until K7 implements it.",
+        "operationId": "PositionsController_allocation",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortfolioAllocation"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed or expired access token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Portfolio not found, or it belongs to another user (RN02).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "S1+ (D64) contract: 501 until K7 implements it.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Allocation by asset class and by sector (B9)",
+        "tags": [
+          "positions"
+        ]
+      }
+    },
+    "/api/v1/portfolios/{id}/evolution": {
+      "get": {
+        "description": "S1+ (D64) contract: 501 until K7 implements it.",
+        "operationId": "PositionsController_evolution",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortfolioEvolution"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed or expired access token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Portfolio not found, or it belongs to another user (RN02).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "S1+ (D64) contract: 501 until K7 implements it.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Equity and invested value over time (B11)",
+        "tags": [
+          "positions"
+        ]
+      }
+    },
+    "/api/v1/portfolios/{id}/performance": {
+      "get": {
+        "description": "S1+ (D64) contract: 501 until K7 implements it.",
+        "operationId": "PositionsController_performance",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortfolioPerformance"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed or expired access token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Portfolio not found, or it belongs to another user (RN02).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "S1+ (D64) contract: 501 until K7 implements it.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "summary": "TWR compared with CDI, Ibovespa and IPCA (B10)",
+        "tags": [
+          "positions"
+        ]
+      }
+    },
+    "/api/v1/assets/{ticker}/quotes": {
+      "get": {
+        "description": "S1+ (D64) contract: 501 until K8 implements it.",
+        "operationId": "AssetMarketController_quotes",
+        "parameters": [
+          {
+            "name": "ticker",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": "PETR4",
+              "type": "string"
+            }
+          },
+          {
+            "name": "period",
+            "required": false,
+            "in": "query",
+            "description": "Window up to the close date: P1M, P6M, P1Y, P2Y, P5Y (ISO 8601 durations) or MAX (the whole history loaded).",
+            "schema": {
+              "default": "P1Y",
+              "example": "P1Y",
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/MarketPeriod"
+                }
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetQuotes"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query: errors[] with field period and INVALID_VALUE (D56).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed or expired access token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No active asset with this ticker (fixed income has no ticker: no asset page until S11).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "S1+ (D64) contract: 501 until K8 implements it.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Last close, day change and closes of a window (C2)",
+        "tags": [
+          "market-data"
+        ]
+      }
+    },
+    "/api/v1/assets/{ticker}/performance": {
+      "get": {
+        "description": "S1+ (D64) contract: 501 until K8 implements it.",
+        "operationId": "AssetMarketController_performance",
+        "parameters": [
+          {
+            "name": "ticker",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": "BOVA11",
+              "type": "string"
+            }
+          },
+          {
+            "name": "period",
+            "required": false,
+            "in": "query",
+            "description": "Window up to the close date: P1M, P6M, P1Y, P2Y, P5Y (ISO 8601 durations) or MAX (the whole history loaded).",
+            "schema": {
+              "default": "P1Y",
+              "example": "P1Y",
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/MarketPeriod"
+                }
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetPerformance"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query: errors[] with field period and INVALID_VALUE (D56).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed or expired access token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No active asset with this ticker (fixed income has no ticker: no asset page until S11).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "S1+ (D64) contract: 501 until K8 implements it.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Return of the asset compared with CDI, Ibovespa and IPCA (C3)",
+        "tags": [
+          "market-data"
+        ]
+      }
     }
   },
   "info": {
@@ -1763,6 +2125,22 @@
             "type": "number",
             "example": 6,
             "description": "Assets with an open position (quantity > 0), derived from the operations by the position calculator (RN09); closed positions do not count."
+          },
+          "equity": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DerivedValue"
+              }
+            ],
+            "description": "PORTFOLIO_EQUITY (\"Patrimônio\", B8): the same value as in GET /portfolios/{id}/summary."
+          },
+          "marketData": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MarketData"
+              }
+            ],
+            "description": "Date and source of the close the equity used (D27)."
           }
         },
         "required": [
@@ -2142,7 +2520,25 @@
           "PORTFOLIO_REALIZED_PROFIT",
           "OPERATION_GROSS",
           "OPERATION_TOTAL_BUY",
-          "OPERATION_NET_SELL"
+          "OPERATION_NET_SELL",
+          "MARKET_VALUE",
+          "MARKET_VALUE_AT_COST",
+          "UNREALIZED_PROFIT",
+          "UNREALIZED_PROFIT_PERCENT",
+          "POSITION_DAY_CHANGE",
+          "POSITION_DAY_CHANGE_PERCENT",
+          "PORTFOLIO_WEIGHT",
+          "PORTFOLIO_EQUITY",
+          "PORTFOLIO_UNREALIZED_PROFIT",
+          "PORTFOLIO_UNREALIZED_PROFIT_PERCENT",
+          "ALLOCATION_VALUE",
+          "ALLOCATION_PERCENT",
+          "TWR",
+          "ASSET_DAY_CHANGE_PERCENT",
+          "ASSET_RETURN",
+          "CDI_RETURN",
+          "IBOV_RETURN",
+          "IPCA_RETURN"
         ]
       },
       "DerivedValueSource": {
@@ -2151,7 +2547,8 @@
           "POSITION",
           "OPERATION",
           "DERIVED",
-          "ASSET_POSITION"
+          "ASSET_POSITION",
+          "MARKET"
         ]
       },
       "OperationRef": {
@@ -2234,6 +2631,15 @@
           "status"
         ]
       },
+      "MarketDataSource": {
+        "type": "string",
+        "enum": [
+          "B3_COTAHIST",
+          "BCB_SGS",
+          "B3_INDEX"
+        ],
+        "description": "Only with source MARKET (S1+, D64)."
+      },
       "DerivedValueInput": {
         "type": "object",
         "properties": {
@@ -2272,9 +2678,18 @@
                 "$ref": "#/components/schemas/DerivedValue"
               }
             ]
+          },
+          "marketSource": {
+            "example": "B3_COTAHIST",
+            "description": "Only with source MARKET (S1+, D64).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MarketDataSource"
+              }
+            ]
           }
         },
-        "description": "A value used by the formula. `name` is a key of claude/microcopy.md, section 3 (`sales` and `positions` repeat once per item). `source` tells the origin line and which reference comes with it: OPERATION → `operation` (and `derived` on `sales` items); DERIVED → `derived`; ASSET_POSITION → `asset` and `derived`; POSITION → none.",
+        "description": "A value used by the formula. `name` is a key of claude/microcopy.md, section 3 (`sales` and `positions` repeat once per item). `source` tells the origin line and which reference comes with it: OPERATION → `operation` (and `derived` on `sales` items); DERIVED → `derived`; ASSET_POSITION → `asset` and `derived`; MARKET → `marketSource` (a close or an index value on `referenceDate`, S1+); POSITION → none.",
         "required": [
           "name",
           "value",
@@ -2448,6 +2863,44 @@
           }
         }
       },
+      "ClosePrice": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string",
+            "example": "32.18",
+            "description": "Decimal string (RN11)."
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-11-12",
+            "description": "Trading day of the close: the last one up to the date, so a day without trading uses the previous close."
+          },
+          "source": {
+            "example": "B3_COTAHIST",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MarketDataSource"
+              }
+            ]
+          }
+        },
+        "description": "A close as published (not derived): value, trading day and source (D27).",
+        "required": [
+          "value",
+          "date",
+          "source"
+        ]
+      },
+      "UnavailableReason": {
+        "type": "string",
+        "enum": [
+          "NO_QUOTE",
+          "SHORT_HISTORY"
+        ],
+        "description": "Present only when the close or the return is null, and why: NO_QUOTE = no close for the asset (fixed income and crypto until S11, D55), it goes by its cost (\"sem cotação\"); SHORT_HISTORY = history shorter than the window. A day change can also be null without a reason on the first trading day of an asset (no previous close)."
+      },
       "Position": {
         "type": "object",
         "properties": {
@@ -2495,6 +2948,84 @@
                 "$ref": "#/components/schemas/DerivedValue"
               }
             ]
+          },
+          "lastClose": {
+            "nullable": true,
+            "description": "Last close up to the close date; null with unavailableReason NO_QUOTE (fixed income and crypto, D55). S1+ (D64), filled from K7.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ClosePrice"
+              }
+            ]
+          },
+          "unavailableReason": {
+            "description": "Present only when the close or the return is null, and why: NO_QUOTE = no close for the asset (fixed income and crypto until S11, D55), it goes by its cost (\"sem cotação\"); SHORT_HISTORY = history shorter than the window. A day change can also be null without a reason on the first trading day of an asset (no previous close).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UnavailableReason"
+              }
+            ]
+          },
+          "marketValue": {
+            "nullable": true,
+            "description": "MARKET_VALUE (quantity × last close) or, without quote, MARKET_VALUE_AT_COST (the total cost). S1+ (D64), filled from K7.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DerivedValue"
+              }
+            ]
+          },
+          "unrealizedProfit": {
+            "nullable": true,
+            "description": "UNREALIZED_PROFIT: market value − total cost; null without quote. S1+ (D64), filled from K7.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DerivedValue"
+              }
+            ]
+          },
+          "unrealizedProfitPercent": {
+            "nullable": true,
+            "description": "UNREALIZED_PROFIT_PERCENT: unrealized profit ÷ total cost × 100, which equals (last close − average price) ÷ average price × 100: the column \"Variação s/ PM\". Null without quote. Percentage points as a decimal string (\"9.84\" = 9,84%), full precision (RN11). S1+ (D64), filled from K7.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DerivedValue"
+              }
+            ]
+          },
+          "dayChange": {
+            "nullable": true,
+            "description": "POSITION_DAY_CHANGE, over the close date (marketData.closeDate) with the quantities of that day: operations after it do not enter. Value on the close date − value on the previous trading day − buys + sales of the close date, so a buy of the day counts from its executed price (F17). Null without quote, or when the asset has no close before the close date (first trading day) and the position no buy on it. S1+ (D64), filled from K7.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DerivedValue"
+              }
+            ]
+          },
+          "dayChangePercent": {
+            "nullable": true,
+            "description": "POSITION_DAY_CHANGE_PERCENT: day change ÷ (market value on the previous trading day + buys of the close date) × 100. Null with dayChange. Percentage points as a decimal string (\"9.84\" = 9,84%), full precision (RN11). S1+ (D64), filled from K7.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DerivedValue"
+              }
+            ]
+          },
+          "portfolioWeight": {
+            "nullable": true,
+            "description": "PORTFOLIO_WEIGHT: market value ÷ equity × 100 (\"% da carteira\"). Percentage points as a decimal string (\"9.84\" = 9,84%), full precision (RN11). S1+ (D64), filled from K7.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DerivedValue"
+              }
+            ]
           }
         },
         "description": "Position of one asset in the portfolio, brokers summed (RN12), derived from the operations (RN09, D4).",
@@ -2505,6 +3036,30 @@
           "averagePrice",
           "totalCost",
           "realizedProfit"
+        ]
+      },
+      "MarketData": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "enum": [
+              "B3_COTAHIST"
+            ],
+            "example": "B3_COTAHIST"
+          },
+          "closeDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "example": "2026-11-12",
+            "description": "Last trading day with closes loaded (LatestCloseDate); null before any quote."
+          }
+        },
+        "description": "Date and source of the close the market numbers used (D27, D59b): shown next to them.",
+        "required": [
+          "source",
+          "closeDate"
         ]
       },
       "PortfolioSummary": {
@@ -2530,6 +3085,40 @@
             "type": "number",
             "example": 4,
             "description": "Open positions."
+          },
+          "equity": {
+            "description": "PORTFOLIO_EQUITY (\"Patrimônio\"): sum of the market value of the open positions, at cost without quote; one `positions` input per open position. S1+ (D64), filled from K7.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DerivedValue"
+              }
+            ]
+          },
+          "unrealizedProfit": {
+            "description": "PORTFOLIO_UNREALIZED_PROFIT: equity − total cost. S1+ (D64), filled from K7.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DerivedValue"
+              }
+            ]
+          },
+          "unrealizedProfitPercent": {
+            "nullable": true,
+            "description": "PORTFOLIO_UNREALIZED_PROFIT_PERCENT: unrealized profit ÷ total cost × 100; null without open positions. Percentage points as a decimal string (\"9.84\" = 9,84%), full precision (RN11). S1+ (D64), filled from K7.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DerivedValue"
+              }
+            ]
+          },
+          "marketData": {
+            "description": "S1+ (D64), filled from K7.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MarketData"
+              }
+            ]
           }
         },
         "description": "Totals of the portfolio (B7).",
@@ -2537,6 +3126,464 @@
           "totalCost",
           "realizedProfit",
           "assetCount"
+        ]
+      },
+      "ClassAllocation": {
+        "type": "object",
+        "properties": {
+          "assetType": {
+            "example": "STOCK",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AssetType"
+              }
+            ]
+          },
+          "value": {
+            "description": "ALLOCATION_VALUE: sum of the market value of the open positions of the class (at cost without quote).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DerivedValue"
+              }
+            ]
+          },
+          "percent": {
+            "description": "ALLOCATION_PERCENT: value ÷ equity × 100. Percentage points as a decimal string (\"9.84\" = 9,84%), full precision (RN11).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DerivedValue"
+              }
+            ]
+          }
+        },
+        "required": [
+          "assetType",
+          "value",
+          "percent"
+        ]
+      },
+      "SectorAllocation": {
+        "type": "object",
+        "properties": {
+          "sector": {
+            "type": "string",
+            "nullable": true,
+            "example": "Petróleo, Gás e Biocombustíveis",
+            "description": "Sector name of the issuer, as in GET /assets; null groups the assets without sector (fixed income, crypto, issuers without one)."
+          },
+          "value": {
+            "description": "ALLOCATION_VALUE.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DerivedValue"
+              }
+            ]
+          },
+          "percent": {
+            "description": "ALLOCATION_PERCENT. Percentage points as a decimal string (\"9.84\" = 9,84%), full precision (RN11).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DerivedValue"
+              }
+            ]
+          }
+        },
+        "required": [
+          "sector",
+          "value",
+          "percent"
+        ]
+      },
+      "PortfolioAllocation": {
+        "type": "object",
+        "properties": {
+          "byClass": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClassAllocation"
+            }
+          },
+          "bySector": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SectorAllocation"
+            }
+          },
+          "marketData": {
+            "$ref": "#/components/schemas/MarketData"
+          }
+        },
+        "description": "B9: open positions grouped by asset class and by sector, over the equity. Classes in the order of GET positions (D63); sectors by value descending, the null group last.",
+        "required": [
+          "byClass",
+          "bySector",
+          "marketData"
+        ]
+      },
+      "EvolutionPoint": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-10-30"
+          },
+          "equity": {
+            "type": "string",
+            "example": "17102.80",
+            "description": "Equity on the date, as PORTFOLIO_EQUITY: closes up to the date, at cost without quote."
+          },
+          "invested": {
+            "type": "string",
+            "example": "16151.27",
+            "description": "Invested value on the date, as PORTFOLIO_TOTAL_COST: cost of the positions open on the date."
+          }
+        },
+        "required": [
+          "date",
+          "equity",
+          "invested"
+        ]
+      },
+      "PortfolioEvolution": {
+        "type": "object",
+        "properties": {
+          "points": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EvolutionPoint"
+            }
+          },
+          "marketData": {
+            "$ref": "#/components/schemas/MarketData"
+          }
+        },
+        "description": "B11: equity and invested value over time, one point per month on its last trading day, from the month of the first operation, plus the close date (marketData.closeDate). Empty without operations.",
+        "required": [
+          "points",
+          "marketData"
+        ]
+      },
+      "ReturnComparison": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date",
+            "example": "2025-02-12"
+          },
+          "to": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-11-12"
+          },
+          "value": {
+            "description": "TWR of the portfolio (end quota ÷ start quota − 1, quotas with base 1) or ASSET_RETURN of the asset. Percentage points as a decimal string (\"9.84\" = 9,84%), full precision (RN11).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DerivedValue"
+              }
+            ]
+          },
+          "cdi": {
+            "nullable": true,
+            "description": "CDI_RETURN. Percentage points as a decimal string (\"9.84\" = 9,84%), full precision (RN11).",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DerivedValue"
+              }
+            ]
+          },
+          "ibov": {
+            "nullable": true,
+            "description": "IBOV_RETURN. Percentage points as a decimal string (\"9.84\" = 9,84%), full precision (RN11).",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DerivedValue"
+              }
+            ]
+          },
+          "ipca": {
+            "nullable": true,
+            "description": "IPCA_RETURN. Percentage points as a decimal string (\"9.84\" = 9,84%), full precision (RN11).",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DerivedValue"
+              }
+            ]
+          }
+        },
+        "description": "A return over a window [from, to] next to CDI, Ibovespa and IPCA over the same window (D64). Without dividends until S6. CDI compounds its daily rates published in the window; Ibovespa goes close to close; IPCA compounds the monthly rates of the whole months inside the window, without pro rata, up to the last month published (its inputs show the first and the last month). A benchmark is null when none of its values falls in the window.",
+        "required": [
+          "from",
+          "to",
+          "value",
+          "cdi",
+          "ibov",
+          "ipca"
+        ]
+      },
+      "ReturnPoint": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-10-30"
+          },
+          "value": {
+            "type": "string",
+            "example": "9.84",
+            "description": "The portfolio (TWR) or the asset (ASSET_RETURN)."
+          },
+          "cdi": {
+            "type": "string",
+            "nullable": true,
+            "example": "11.52"
+          },
+          "ibov": {
+            "type": "string",
+            "nullable": true,
+            "example": "12.10"
+          },
+          "ipca": {
+            "type": "string",
+            "nullable": true,
+            "example": "3.60"
+          }
+        },
+        "description": "Cumulative return since the start of the series, in percentage points, for the chart. Null where the series has no value yet (IPCA of a month not published).",
+        "required": [
+          "date",
+          "value",
+          "cdi",
+          "ibov",
+          "ipca"
+        ]
+      },
+      "PortfolioPerformance": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "nullable": true,
+            "description": "From the first operation to the close date; null without operations.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReturnComparison"
+              }
+            ]
+          },
+          "last12Months": {
+            "nullable": true,
+            "description": "The 12 months up to the close date; null with last12MonthsUnavailableReason when the history is shorter.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReturnComparison"
+              }
+            ]
+          },
+          "last12MonthsUnavailableReason": {
+            "description": "Present only when the close or the return is null, and why: NO_QUOTE = no close for the asset (fixed income and crypto until S11, D55), it goes by its cost (\"sem cotação\"); SHORT_HISTORY = history shorter than the window. A day change can also be null without a reason on the first trading day of an asset (no previous close).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UnavailableReason"
+              }
+            ]
+          },
+          "series": {
+            "description": "Chart of the total window: one point per month on its last trading day, plus the close date.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReturnPoint"
+            }
+          },
+          "marketData": {
+            "$ref": "#/components/schemas/MarketData"
+          }
+        },
+        "description": "B10: time-weighted return (TWR, daily quotas with the flows on the operation dates; while the portfolio is empty the quota stays) over the whole history and the last 12 months, compared with CDI, Ibovespa and IPCA. Price only: no dividends until S6.",
+        "required": [
+          "total",
+          "last12Months",
+          "series",
+          "marketData"
+        ]
+      },
+      "MarketPeriod": {
+        "type": "string",
+        "enum": [
+          "P1M",
+          "P6M",
+          "P1Y",
+          "P2Y",
+          "P5Y",
+          "MAX"
+        ]
+      },
+      "QuotePoint": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-11-12"
+          },
+          "close": {
+            "type": "string",
+            "example": "32.18",
+            "description": "Close (B3 COTAHIST)."
+          }
+        },
+        "required": [
+          "date",
+          "close"
+        ]
+      },
+      "AssetQuotes": {
+        "type": "object",
+        "properties": {
+          "lastClose": {
+            "nullable": true,
+            "description": "Null with unavailableReason NO_QUOTE.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ClosePrice"
+              }
+            ]
+          },
+          "dayChangePercent": {
+            "nullable": true,
+            "description": "ASSET_DAY_CHANGE_PERCENT: (last close − previous close) ÷ previous close × 100; null without two closes. Percentage points as a decimal string (\"9.84\" = 9,84%), full precision (RN11).",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DerivedValue"
+              }
+            ]
+          },
+          "unavailableReason": {
+            "description": "Present only when the close or the return is null, and why: NO_QUOTE = no close for the asset (fixed income and crypto until S11, D55), it goes by its cost (\"sem cotação\"); SHORT_HISTORY = history shorter than the window. A day change can also be null without a reason on the first trading day of an asset (no previous close).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UnavailableReason"
+              }
+            ]
+          },
+          "period": {
+            "example": "P1Y",
+            "description": "Window up to the close date: P1M, P6M, P1Y, P2Y, P5Y (ISO 8601 durations) or MAX (the whole history loaded).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MarketPeriod"
+              }
+            ]
+          },
+          "series": {
+            "description": "One close per trading day of the window, oldest first; a window longer than the history starts at the first close; empty with NO_QUOTE.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuotePoint"
+            }
+          },
+          "marketData": {
+            "$ref": "#/components/schemas/MarketData"
+          }
+        },
+        "description": "C2: last close, day change and the closes of a window, for the header and the chart of the asset page; no file or download (D59b). Closes are not adjusted for splits or reverse splits (D64b).",
+        "required": [
+          "lastClose",
+          "dayChangePercent",
+          "period",
+          "series",
+          "marketData"
+        ]
+      },
+      "AssetPeriodReturn": {
+        "type": "object",
+        "properties": {
+          "period": {
+            "example": "P1Y",
+            "description": "Window up to the close date: P1M, P6M, P1Y, P2Y, P5Y (ISO 8601 durations) or MAX (the whole history loaded).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MarketPeriod"
+              }
+            ]
+          },
+          "comparison": {
+            "nullable": true,
+            "description": "ASSET_RETURN next to CDI, Ibovespa and IPCA; null with unavailableReason.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReturnComparison"
+              }
+            ]
+          },
+          "unavailableReason": {
+            "description": "Present only when the close or the return is null, and why: NO_QUOTE = no close for the asset (fixed income and crypto until S11, D55), it goes by its cost (\"sem cotação\"); SHORT_HISTORY = history shorter than the window. A day change can also be null without a reason on the first trading day of an asset (no previous close).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UnavailableReason"
+              }
+            ]
+          }
+        },
+        "required": [
+          "period",
+          "comparison"
+        ]
+      },
+      "AssetPerformance": {
+        "type": "object",
+        "properties": {
+          "periods": {
+            "description": "Every window of MarketPeriod but MAX, in its order; a window longer than the history has SHORT_HISTORY.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssetPeriodReturn"
+            }
+          },
+          "period": {
+            "example": "P1Y",
+            "description": "Window up to the close date: P1M, P6M, P1Y, P2Y, P5Y (ISO 8601 durations) or MAX (the whole history loaded).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MarketPeriod"
+              }
+            ]
+          },
+          "series": {
+            "description": "Chart of `period`: one point per trading day, cumulative since its start; a window longer than the history starts at the first close; empty with NO_QUOTE.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReturnPoint"
+            }
+          },
+          "unavailableReason": {
+            "description": "Present only when the close or the return is null, and why: NO_QUOTE = no close for the asset (fixed income and crypto until S11, D55), it goes by its cost (\"sem cotação\"); SHORT_HISTORY = history shorter than the window. A day change can also be null without a reason on the first trading day of an asset (no previous close).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UnavailableReason"
+              }
+            ]
+          },
+          "marketData": {
+            "$ref": "#/components/schemas/MarketData"
+          }
+        },
+        "description": "C3: return of the asset (close to close, without dividends until S6) by window, compared with CDI, Ibovespa and IPCA, and the chart of one window; no file or download (D59b).",
+        "required": [
+          "periods",
+          "period",
+          "series",
+          "marketData"
         ]
       }
     }

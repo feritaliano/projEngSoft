@@ -7,11 +7,19 @@ import {
 } from '@nestjs/swagger';
 import type { AuthenticatedUser } from '../../../shared/presentation/auth-context';
 import { CurrentUser } from '../../../shared/presentation/auth-context';
-import { ProblemException } from '../../../shared/presentation/problem-details';
+import {
+  notImplemented,
+  ProblemException,
+} from '../../../shared/presentation/problem-details';
 import { ApiProblemResponse } from '../../../shared/presentation/problem-details.dto';
 import { PortfolioNotFoundError } from '../../portfolios/domain/portfolio';
 import { GetPortfolioSummary } from '../application/get-portfolio-summary.use-case';
 import { ListPositions } from '../application/list-positions.use-case';
+import {
+  PortfolioAllocationDto,
+  PortfolioEvolutionDto,
+  PortfolioPerformanceDto,
+} from './market.dto';
 import { PortfolioSummaryDto, PositionDto } from './position.dto';
 
 /** Anything but a missing portfolio propagates (500 by the global filter). */
@@ -24,6 +32,8 @@ function rethrowAsProblem(error: unknown): never {
 
 const PORTFOLIO_NOT_FOUND =
   'Portfolio not found, or it belongs to another user (RN02).';
+
+const UNTIL_K7 = 'S1+ (D64) contract: 501 until K7 implements it.';
 
 /** B6, B7, D41: positions and totals derived from the operations (RN09). User data: never cached. */
 @ApiTags('positions')
@@ -66,5 +76,47 @@ export class PositionsController {
     @Param('id') id: string,
   ): Promise<PortfolioSummaryDto> {
     return this.getSummary.execute(user.id, id).catch(rethrowAsProblem);
+  }
+
+  @Get('allocation')
+  @ApiOperation({
+    summary: 'Allocation by asset class and by sector (B9)',
+    description: UNTIL_K7,
+  })
+  @Header('Cache-Control', 'no-store')
+  @ApiParam({ name: 'id', format: 'uuid' })
+  @ApiOkResponse({ type: PortfolioAllocationDto })
+  @ApiProblemResponse(HttpStatus.NOT_FOUND, PORTFOLIO_NOT_FOUND)
+  @ApiProblemResponse(HttpStatus.NOT_IMPLEMENTED, UNTIL_K7)
+  allocation(): PortfolioAllocationDto {
+    throw notImplemented('K7');
+  }
+
+  @Get('evolution')
+  @ApiOperation({
+    summary: 'Equity and invested value over time (B11)',
+    description: UNTIL_K7,
+  })
+  @Header('Cache-Control', 'no-store')
+  @ApiParam({ name: 'id', format: 'uuid' })
+  @ApiOkResponse({ type: PortfolioEvolutionDto })
+  @ApiProblemResponse(HttpStatus.NOT_FOUND, PORTFOLIO_NOT_FOUND)
+  @ApiProblemResponse(HttpStatus.NOT_IMPLEMENTED, UNTIL_K7)
+  evolution(): PortfolioEvolutionDto {
+    throw notImplemented('K7');
+  }
+
+  @Get('performance')
+  @ApiOperation({
+    summary: 'TWR compared with CDI, Ibovespa and IPCA (B10)',
+    description: UNTIL_K7,
+  })
+  @Header('Cache-Control', 'no-store')
+  @ApiParam({ name: 'id', format: 'uuid' })
+  @ApiOkResponse({ type: PortfolioPerformanceDto })
+  @ApiProblemResponse(HttpStatus.NOT_FOUND, PORTFOLIO_NOT_FOUND)
+  @ApiProblemResponse(HttpStatus.NOT_IMPLEMENTED, UNTIL_K7)
+  performance(): PortfolioPerformanceDto {
+    throw notImplemented('K7');
   }
 }
