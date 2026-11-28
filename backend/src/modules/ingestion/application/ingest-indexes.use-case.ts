@@ -21,9 +21,13 @@ import {
 /** Bronze folders (data/raw/<folder>/<year>/). */
 export const SGS_FOLDER = 'bcb-sgs';
 export const IBOV_FOLDER = 'b3-indices';
-/** Days of SGS data a daily run asks for: CDI of a day is published the next one; IPCA about 10 days after the month. */
-export const DAILY_CDI_WINDOW_DAYS = 30;
-export const DAILY_IPCA_WINDOW_DAYS = 120;
+/**
+ * Calendar days a daily run reaches back for CDI and Ibovespa: the span of the longest quotes catch-up (60 weekdays, 84
+ * days), so the indexes of the days it recovers come with it. IPCA of a month (dated on the 1st) comes out about 40 days
+ * later: the span plus that lag. The upsert leaves equal values alone (D27).
+ */
+export const DAILY_INDEX_WINDOW_DAYS = 90;
+export const DAILY_IPCA_WINDOW_DAYS = 150;
 
 const yearOf = (date: LocalDate) => Number(date.toString().slice(0, 4));
 
@@ -106,20 +110,38 @@ export class IngestIndexes {
     });
   }
 
-  /** The daily runs of the indexes for a trading day: recent SGS windows and the Ibovespa of the day. */
+  /**
+   * The daily runs of the indexes for a trading day: SGS windows and the Ibovespa of the day. When the window starts in
+   * the previous year, the end of that year's IBOV file is loaded first, so a gap across the turn of the year is filled.
+   * The last run decides whether the source is tried again.
+   */
   async daily(
     source: 'BCB_SGS_CDI' | 'BCB_SGS_IPCA' | 'B3_IBOV',
     day: LocalDate,
-  ): Promise<RunOutcome> {
+  ): Promise<RunOutcome[]> {
     switch (source) {
       case 'BCB_SGS_CDI':
-        return this.sgs('CDI', addDays(day, -DAILY_CDI_WINDOW_DAYS), day);
+        return [
+          await this.sgs('CDI', addDays(day, -DAILY_INDEX_WINDOW_DAYS), day),
+        ];
       case 'BCB_SGS_IPCA':
-        return this.sgs('IPCA', addDays(day, -DAILY_IPCA_WINDOW_DAYS), day);
-      case 'B3_IBOV':
-        return this.ibov(LocalDate.parse(`${yearOf(day)}-01-01`), day, {
-          requireDay: true,
-        });
+        return [
+          await this.sgs('IPCA', addDays(day, -DAILY_IPCA_WINDOW_DAYS), day),
+        ];
+      case 'B3_IBOV': {
+        const year = yearOf(day);
+        const from = addDays(day, -DAILY_INDEX_WINDOW_DAYS);
+        const previousYear =
+          yearOf(from) < year
+            ? [await this.ibov(from, LocalDate.parse(`${year - 1}-12-31`))]
+            : [];
+        return [
+          ...previousYear,
+          await this.ibov(LocalDate.parse(`${year}-01-01`), day, {
+            requireDay: true,
+          }),
+        ];
+      }
     }
   }
 

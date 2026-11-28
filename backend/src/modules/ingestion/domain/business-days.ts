@@ -103,3 +103,16 @@ export function nextDailyRun(
     day = addDays(day, 1);
   }
 }
+
+/** Last weekday whose time in the time zone has come (at or before now): the run a worker started now has missed. */
+export function previousDailyRun(
+  now: Date,
+  time: DailyTime,
+  timeZone: string,
+): LocalDate {
+  let day = LocalDate.todayIn(now, timeZone);
+  while (!isWeekday(day) || zonedInstant(day, time, timeZone) > now) {
+    day = addDays(day, -1);
+  }
+  return day;
+}
