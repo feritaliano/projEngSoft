@@ -23,6 +23,7 @@ import { CurrentUser } from '../../../shared/presentation/auth-context';
 import {
   alreadyExistsProblem,
   invalidValueProblem,
+  notImplemented,
   ProblemException,
 } from '../../../shared/presentation/problem-details';
 import {
@@ -38,7 +39,11 @@ import {
   PortfolioNameTakenError,
   PortfolioNotFoundError,
 } from '../domain/portfolio';
-import { CreatePortfolioDto, PortfolioDto } from './portfolio.dto';
+import {
+  CreatePortfolioDto,
+  PortfolioDto,
+  PortfolioTotalsDto,
+} from './portfolio.dto';
 
 /** Domain errors of the portfolios flow as HTTP problems; anything else propagates (500 by the global filter). */
 function toProblem(error: unknown): unknown {
@@ -80,6 +85,22 @@ export class PortfoliosController {
   @ApiOkResponse({ type: [PortfolioDto] })
   async list(@CurrentUser() user: AuthenticatedUser): Promise<PortfolioDto[]> {
     return this.listPortfolios.execute(user.id);
+  }
+
+  // Before :id, so "totals" is never read as a portfolio id.
+  @Get('totals')
+  @ApiOperation({
+    summary: 'Equity of all the portfolios of the user (B8)',
+    description: 'S1+ (D64) contract: 501 until K7 implements it.',
+  })
+  @Header('Cache-Control', 'no-store')
+  @ApiOkResponse({ type: PortfolioTotalsDto })
+  @ApiProblemResponse(
+    HttpStatus.NOT_IMPLEMENTED,
+    'S1+ (D64) contract: 501 until K7 implements it.',
+  )
+  totals(): PortfolioTotalsDto {
+    throw notImplemented('K7');
   }
 
   @Get(':id')

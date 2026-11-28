@@ -1,3 +1,4 @@
+import type { MarketDataSource } from '../../market-data/domain/market-data';
 import type { AssetRef, BrokerRef } from './catalog-refs';
 import type { OperationType } from './timeline';
 
@@ -15,6 +16,26 @@ export const FORMULA_CODES = [
   'OPERATION_GROSS',
   'OPERATION_TOTAL_BUY',
   'OPERATION_NET_SELL',
+  // S1+ (D64): market value and returns, implemented by K7 (portfolio) and K8 (asset page).
+  'MARKET_VALUE',
+  'MARKET_VALUE_AT_COST',
+  'UNREALIZED_PROFIT',
+  'UNREALIZED_PROFIT_PERCENT',
+  'POSITION_DAY_CHANGE',
+  'POSITION_DAY_CHANGE_PERCENT',
+  'PORTFOLIO_WEIGHT',
+  'PORTFOLIO_EQUITY',
+  'PORTFOLIO_UNREALIZED_PROFIT',
+  'PORTFOLIO_UNREALIZED_PROFIT_PERCENT',
+  'ALLOCATION_VALUE',
+  'ALLOCATION_PERCENT',
+  'TWR',
+  'ASSET_DAY_CHANGE_PERCENT',
+  'ASSET_RETURN',
+  'CDI_RETURN',
+  'IBOV_RETURN',
+  'IPCA_RETURN',
+  'USER_EQUITY',
 ] as const;
 export type FormulaCode = (typeof FORMULA_CODES)[number];
 
@@ -23,12 +44,21 @@ export const DERIVED_VALUE_SOURCES = [
   'OPERATION',
   'DERIVED',
   'ASSET_POSITION',
+  'MARKET',
+  'PORTFOLIO',
 ] as const;
 export type DerivedValueSource = (typeof DERIVED_VALUE_SOURCES)[number];
 
 /** OPEN: quantity > 0. CLOSED: quantity 0 and realized profit ≠ 0 (D41). */
 export const POSITION_STATUSES = ['OPEN', 'CLOSED'] as const;
 export type PositionStatus = (typeof POSITION_STATUSES)[number];
+
+/**
+ * Why a market number is null (D64): NO_QUOTE = no close for the asset (fixed income and crypto until S11, D55, or a
+ * B3 asset never traded in the history), the position goes by its cost; SHORT_HISTORY = history shorter than the window.
+ */
+export const UNAVAILABLE_REASONS = ['NO_QUOTE', 'SHORT_HISTORY'] as const;
+export type UnavailableReason = (typeof UNAVAILABLE_REASONS)[number];
 
 /** The operation an OPERATION input comes from: "{Compra | Venda} de {data} · {corretora}". */
 export interface OperationRef {
@@ -56,7 +86,28 @@ export type InputName =
   | 'avgPriceAtSale'
   | 'sales'
   | 'positions'
-  | 'grossValue';
+  | 'grossValue'
+  // S1+ (D64)
+  | 'lastClose'
+  | 'previousClose'
+  | 'totalCost'
+  | 'marketValue'
+  | 'previousMarketValue'
+  | 'dayBuys'
+  | 'daySales'
+  | 'dayChange'
+  | 'unrealizedProfit'
+  | 'equity'
+  | 'groupValue'
+  | 'startQuota'
+  | 'endQuota'
+  | 'startClose'
+  | 'endClose'
+  | 'startValue'
+  | 'endValue'
+  | 'startFactor'
+  | 'endFactor'
+  | 'portfolios';
 
 interface InputBase {
   /** `sales` and `positions` repeat once per item. */
@@ -81,7 +132,27 @@ export type DerivedValueInput =
       readonly source: 'ASSET_POSITION';
       readonly asset: AssetPositionRef;
       readonly derived: DerivedValue;
+    })
+  | (InputBase & {
+      /**
+       * From a published series on `referenceDate` (D27, D59): a close or index points as published, or (`startFactor`,
+       * `endFactor` of CDI and IPCA) the compounded factor of the rates published up to that date, which is computed.
+       */
+      readonly source: 'MARKET';
+      readonly marketSource: MarketDataSource;
+    })
+  | (InputBase & {
+      /** One portfolio of the user, labeled by its name, with the trace of its own value. */
+      readonly source: 'PORTFOLIO';
+      readonly portfolio: PortfolioRef;
+      readonly derived: DerivedValue;
     });
+
+/** The portfolio a PORTFOLIO input comes from (S1+, D64). */
+export interface PortfolioRef {
+  readonly id: string;
+  readonly name: string;
+}
 
 /** A derived number with its trace (D12, D26). Never stored (D4). */
 export interface DerivedValue {
@@ -91,4 +162,22 @@ export interface DerivedValue {
   /** Day of the calculation: today in America/Sao_Paulo (D54). */
   readonly asOf: string;
   readonly inputs: readonly DerivedValueInput[];
+}
+
+/** A return over [from, to] next to CDI, Ibovespa and IPCA over the same window (B10, C3; D64). */
+export interface ReturnComparison {
+  readonly from: string;
+  readonly to: string;
+  readonly value: DerivedValue;
+  readonly cdi: DerivedValue | null;
+  readonly ibov: DerivedValue | null;
+  readonly ipca: DerivedValue | null;
+}
+
+/** TWR of a portfolio over its whole history and the last 12 months (B10). */
+export interface PortfolioReturns {
+  readonly total: ReturnComparison | null;
+  readonly last12Months: ReturnComparison | null;
+  readonly last12MonthsUnavailableReason?: UnavailableReason;
+  readonly last12MonthsAvailableFrom?: string;
 }

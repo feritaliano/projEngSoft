@@ -1,5 +1,15 @@
-import { ApiProperty } from '@nestjs/swagger';
+import {
+  ApiProperty,
+  ApiPropertyOptional,
+  ApiSchema,
+  getSchemaPath,
+} from '@nestjs/swagger';
 import { IsString } from 'class-validator';
+import type { MarketDataRef } from '../../market-data/domain/market-data';
+import type {
+  DerivedValue,
+  PortfolioReturns,
+} from '../../operations/domain/derived-value';
 import { PORTFOLIO_NAME_MAX_LENGTH } from '../domain/portfolio';
 
 // class-validator counts UTF-16 units, so the length is left to PortfolioName, which trims and counts characters like
@@ -50,4 +60,47 @@ export class PortfolioDto {
       'Assets with an open position (quantity > 0), derived from the operations by the position calculator (RN09); closed positions do not count.',
   })
   assetCount: number;
+
+  // S1+ (D64), filled from K7. The schemas belong to operations: referenced by name, since a module imports only the
+  // application and domain of another.
+
+  @ApiPropertyOptional({
+    allOf: [{ $ref: getSchemaPath('DerivedValue') }],
+    description:
+      'PORTFOLIO_EQUITY ("Patrimônio", B8): the same value as in GET /portfolios/{id}/summary.',
+  })
+  equity?: DerivedValue;
+
+  @ApiPropertyOptional({
+    allOf: [{ $ref: getSchemaPath('MarketData') }],
+    description: 'Date and source of the close the equity used (D27).',
+  })
+  marketData?: MarketDataRef;
+
+  @ApiPropertyOptional({
+    allOf: [{ $ref: getSchemaPath('PortfolioReturns') }],
+    description:
+      'Rentabilidade total and 12 meses of the card (B10): the same as GET /portfolios/{id}/performance, without the chart.',
+  })
+  returns?: PortfolioReturns;
+}
+
+@ApiSchema({
+  name: 'PortfolioTotals',
+  description:
+    'Header of the list of portfolios: "Patrimônio somado · dados de mercado de {closeDate}" (B8, D64).',
+})
+export class PortfolioTotalsDto {
+  @ApiProperty({
+    allOf: [{ $ref: getSchemaPath('DerivedValue') }],
+    description:
+      'USER_EQUITY: sum of the equity of every portfolio of the user; one `portfolios` input per portfolio (source PORTFOLIO), "0" without portfolios.',
+  })
+  equity: DerivedValue;
+
+  @ApiProperty({
+    allOf: [{ $ref: getSchemaPath('MarketData') }],
+    description: 'Date and source of the close the equity used (D27).',
+  })
+  marketData: MarketDataRef;
 }

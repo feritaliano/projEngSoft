@@ -67,6 +67,14 @@ const SERVER_ERROR_DETAIL = 'The server could not complete the request.';
 // Nest's not-found message echoes the raw URL ("Cannot GET /path?token=..."); the query may carry user input.
 const ROUTE_NOT_FOUND = /^(Cannot [A-Z]+ [^?\s]*)\?\S*$/;
 
+/** A route of the contract whose implementation is a later task of the plan (D64: contract before K7 and K8). */
+export function notImplemented(task: string): ProblemException {
+  return new ProblemException(
+    HttpStatus.NOT_IMPLEMENTED,
+    `Not implemented yet: arrives with ${task}.`,
+  );
+}
+
 export function titleFor(status: number): string {
   return STATUS_CODES[status] ?? 'Error';
 }
