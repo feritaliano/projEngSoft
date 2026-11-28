@@ -105,8 +105,8 @@ Prazo: 27/11/2026.
 
 ## Contrato — API do K7 e do K8 (backend)
 ```
-Agente: backend. Tarefa Contrato (D64), PR só de contrato, mesclado até 26/11. Se não der, avise o usuário no mesmo dia.
-Leia: a D64; a seção "S1+ (D64)" do plano; claude/arquitetura.md, seção 7.4 (contratos, DerivedValue); claude/microcopy.md (formulaCode e chaves de insumos); D52, D56, D59b, D63.
+Agente: backend. Tarefa Contrato (D64), PR só de contrato, mesclado até 26/11. Se não der, avise o usuário no mesmo dia. **Atrasado:** não foi mesclado até 26/11 (Aviso-C dado à usuária em 27/11); vem antes do K7 e do UX-2.
+Leia: a D64; a seção "S1+ (D64)" do plano; claude/arquitetura.md, seção 7.4 (contratos, DerivedValue); claude/microcopy.md (formulaCode e chaves de insumos); D52, D56, D59b, D63; o módulo market-data do K6 (backend/src/modules/market-data; a data do fechamento usado vem de LatestCloseDate).
 Faça: DTOs, rotas e backend/openapi/openapi.json dos endpoints abaixo (nomes finais são seus; os campos são o mínimo). As rotas novas respondem 501 até o K7 e o K8; as existentes ganham campos opcionais sem quebrar o W3 e o W4.
 - GET /portfolios: patrimônio de cada carteira (B8) e data do fechamento usado.
 - GET /portfolios/:id/summary: patrimônio, resultado não realizado em R$ e %, data e fonte do fechamento.
@@ -125,7 +125,7 @@ Prazo: 26/11/2026. Esforço estimado: 3 h.
 ## K7 — Carteira com mercado: B8, B9, B10, B11 (backend)
 ```
 Agente: backend. Tarefa K7 (D64), 26–30/11, mesclada até 30/11 (senão, avise o usuário no mesmo dia). Caminho crítico.
-Leia: a D64; a seção "S1+ (D64)" do plano; o contrato mesclado em 26/11; claude/arquitetura.md (market-data; analytics só como referência); D4, D17, D28, D32, D55, D63; database/docs/memoria-calculo.md.
+Leia: a D64; a seção "S1+ (D64)" do plano; o contrato mesclado; claude/arquitetura.md (market-data; analytics só como referência); D4, D17, D28, D32, D55, D63; database/docs/memoria-calculo.md; database/docs/fontes-poc.md, seção 6.2 (histórico do seed, eventos corporativos da janela e achado F17); o módulo market-data do K6 (backend/src/modules/market-data: leia quotes e index_values por portas desse módulo, acrescentando as de leitura que faltarem, e use LatestCloseDate para a data do último fechamento, sem acesso paralelo às tabelas).
 Faça:
 1. B8: valor de mercado = quantidade × último fechamento até a data (dia sem pregão usa o anterior); ganho ou perda em R$ e %, variação sobre o PM, variação do dia (fechamento do último pregão sobre o anterior), % da carteira; patrimônio da carteira em GET /portfolios e no summary. Renda fixa e cripto pelo custo, com motivo "sem cotação".
 2. B9: alocação por classe e por setor sobre o patrimônio.
@@ -133,11 +133,12 @@ Faça:
 4. B10: TWR total e de 12 meses (cotas diárias, com os fluxos nas datas das operações), sem proventos (S6), comparado com CDI e IPCA acumulados e com o Ibovespa nos mesmos períodos.
 5. A ordem das classes da D63 passa a usar o valor de mercado.
 6. Operação com preço fora da faixa do pregão é normal (decisão da usuária, 27/11/2026; database/docs/fontes-poc.md, F17): vale o preço executado. Na compra, no fim do pregão, o ganho ou a perda do dia é quantidade × (fechamento − preço executado) e a rentabilidade é (fechamento − preço executado) ÷ preço executado (compra a 10, fechamento a 12 = +20% no dia); na venda, o preço executado é o valor de saída e o lucro realizado segue a RN06. Não ajuste nem filtre essas operações; a TWR do dia da operação inclui esse ganho.
+7. Unidades dos índices (seed do BD-4 e ingestão do K6): CDI (SGS 12) em % ao dia, acumulado como Π(1 + taxa/100) nos dias publicados (o BCB publica também dias sem pregão, ex.: 24/12 e 31/12/2025); IPCA (SGS 433) em % ao mês, com o mês corrente publicado só no mês seguinte, então o período vai até o último mês publicado e o "como foi calculado" diz isso; IBOV em pontos. Operação em dia sem pregão (ex.: PETR4 em 14/03/2026, sábado) é avaliada pelo fechamento anterior.
 Tudo calculado na leitura, em Decimal, sem coluna nova (D4, D17); DerivedValue com insumos em todo número (B13).
 Pronto quando:
-- E2E sobre o seed (BD-4): "Longo prazo" com valor de mercado no último pregão do seed; isolamento com dados de dois usuários ao mesmo tempo; dia sem pregão usa o fechamento anterior.
+- E2E sobre o seed (BD-4; histórico de 02/01/2025 a 12/11/2026, primeira operação em 12/02/2025): "Longo prazo" com valor de mercado no último pregão do seed (12/11/2026); isolamento com dados de dois usuários ao mesmo tempo; dia sem pregão usa o fechamento anterior.
 - TWR conferido (critério do G-S2a, 01/12): spec com um caso calculado à mão (dois aportes e uma venda no período) e a TWR total e de 12 meses da "Longo prazo" iguais a um cálculo independente (planilha anexada ao PR).
-- Lista no PR dos eventos de corporate_events na janela para os ativos das carteiras do seed (do BD-4); se houver algum, avise o usuário no mesmo dia (sem o E1, o evento distorce valor e rentabilidade).
+- Eventos corporativos da janela: a lista já está em database/docs/fontes-poc.md, seção 6.2 (BD-4), e a usuária decidiu em 26/11 que as quedas sem marca de 26/10/2026 (BBDC4 em "Dividendos" e SMAL11 em "Aposentadoria") entram como variação de preço, sem o E1. Cite a lista no PR; avise o usuário no mesmo dia só se aparecer evento que não está nela.
 - backend/README.md atualizado; jobs backend e e2e verdes.
 Não faça: proventos, metas, carteira ideal ou IR; coluna ou tabela nova para dado derivado (se o tempo de resposta pedir cache, peça ao agente de banco e ao usuário antes).
 Prazo: 30/11/2026.
@@ -146,9 +147,9 @@ Prazo: 30/11/2026.
 ## K8 — Ativo com mercado: C2 e C3 (backend)
 ```
 Agente: backend. Tarefa K8 (D64), 26–30/11, depois do K7 se faltar tempo (o K7 é que tem aviso em 30/11).
-Leia: a D64; a seção "S1+ (D64)" do plano; o contrato de 26/11; D59b.
+Leia: a D64; a seção "S1+ (D64)" do plano; o contrato; D59b; o módulo market-data do K6 (portas de leitura e LatestCloseDate, as mesmas do K7); database/docs/fontes-poc.md, seção 6.2 (os 21 ativos com histórico no seed).
 Faça: C2 (último fechamento, variação do dia, data e fonte, série de fechamentos por período) e C3 (rentabilidade do ativo por período comparada com CDI, Ibovespa e IPCA) para ação, unit, FII, ETF e BDR; renda fixa e cripto ficam fora da página do ativo (S11), com a resposta definida no contrato.
-Pronto quando: E2E com um ativo do seed (série, variação e comparação); ativo sem cotação devolve série vazia com o motivo; nenhum endpoint devolve arquivo; jobs backend e e2e verdes.
+Pronto quando: E2E com um dos 21 ativos com histórico no seed (série, variação e comparação, de 02/01/2025 a 12/11/2026); ativo sem cotação devolve série vazia com o motivo (no banco de teste, um ativo do catálogo fora do seed serve de caso); nenhum endpoint devolve arquivo; jobs backend e e2e verdes.
 Não faça: C4 (fundamentos), C8 (FII), proventos; download ou exportação da série (D59b).
 Prazo: 30/11/2026.
 ```
@@ -170,7 +171,7 @@ Prazo: 27/11/2026.
 ```
 Agente: frontend. Tarefas FE-3 e R1-b, antecipadas pela D64 para 25–26/11 (eram até 04/12 e 05/12), em paralelo ao caminho crítico.
 Leia: a D64; a seção "S1+ (D64)" do plano; o prompt FE-3 em claude/prompts-correcao-s1-revisao-final.md e o prompt R1-b em claude/prompts-correcao-s1-auditoria-final.md.
-Faça: o que os dois prompts pedem, um PR por tarefa. No R1-b, o passo (4) (nota no README sobre a ordem seed → K5) só vale se o BD-2 não estiver na main em 26/11. O projeto mobile do Playwright criado no R1-b é o mesmo que o W5 e o W6 vão usar.
+Faça: o que os dois prompts pedem, um PR por tarefa. No R1-b, o passo (4) (nota no README sobre a ordem seed → K5) não vale mais: o BD-2 entrou na main em 26/11 (PR #62) e seed e K5 rodam em qualquer ordem. O projeto mobile do Playwright criado no R1-b é o mesmo que o W5 e o W6 vão usar.
 Pronto quando: os critérios de cada prompt; os dois PRs mesclados até 26/11, antes do W5.
 Prazo: 26/11/2026.
 ```
@@ -205,7 +206,7 @@ Prazo: 03/12/2026.
 ```
 Agente: banco de dados. Tarefa P4 com data nova pela D64: 28/11–30/11 (era 25/11–30/11), depois de BD-2, BD-3 e BD-4. Envio mantido em 30/11 (prazo 07/12). De 28/11 a 30/11, o P4 tem prioridade sobre qualquer outra tarefa sua (G-P4).
 Leia: a linha do P4 em claude/plano-de-acao.md e o seu perfil.
-Faça: o relatório com o ddl.sql, o inserts.sql e os resultados regerados depois do BD-4 (domínio novo de share_class e histórico de quotes e index_values). Decida com o usuário como anexar a listagem completa das tabelas que cresceram (item 5 do enunciado).
+Faça: o relatório com o ddl.sql, o inserts.sql e os resultados regerados depois do BD-4 (domínio novo de share_class e histórico de quotes e index_values). Decida com o usuário como anexar a listagem completa das tabelas que cresceram (item 5 do enunciado): depois do BD-4, database/results foi de 312 KB para 1,7 MB (tables/quotes.txt com 9.847 linhas e 1,41 MB; tables/index_values.txt com 962 linhas e 70 KB), e mudaram também queries/consulta-03.txt e tables/price_alerts.txt (alertas corrigidos no BD-4). Regere database/entrega/ (hoje a foto de 24/11) com o ddl.sql e o inserts.sql atuais. ops.ingestion_runs (BD-3) fica fora do DDL e do relatório (D22); o domínio novo de share_class (PNC, PND, PNV, PRA, PRB) entra, com o significado de cada código no glossário.
 Pronto quando: enviado até 30/11.
 ```
 
@@ -213,8 +214,8 @@ Pronto quando: enviado até 30/11.
 ```
 Agentes: frontend (dono) e backend. Tarefa FECHO (D64), 04–06/12. Nada do S1 muda depois de 04/12: só teste, documentação e correção de defeito achado aqui; nenhuma função entra nem sai.
 Leia: a D64; a seção "S1+ (D64)" do plano; docs/roteiro-demonstracao.md; README.md da raiz; backend/README.md.
-Frontend: jornada E2E (journey) com os números novos (patrimônio, resultado, alocação, evolução, rentabilidade se o B10 ficou, página do ativo); axe e teclado nas telas novas, em claro, escuro e 390 px; README da raiz ("Como rodar") com o worker e a atualização diária; roteiro de demonstração com a parte nova, o reprocesso das cotações até a véspera (comando do K6) e a conferência da data do último fechamento na véspera e 30 min antes; clone limpo pelo README.
-Backend: backend/README.md com o horário da atualização diária, o comando de reprocesso do histórico (plano B da demonstração) e o que fazer se o arquivo do dia não sair.
+Frontend: jornada E2E (journey) com os números novos (patrimônio, resultado, alocação, evolução, rentabilidade se o B10 ficou, página do ativo); axe e teclado nas telas novas, em claro, escuro e 390 px; README da raiz ("Como rodar"): o K6 já escreveu o worker, a atualização diária e os comandos; confira num clone limpo e acrescente o que faltar (atualizar a imagem do worker com `docker compose --profile app up -d --build`; no Linux, criar data/raw antes de subir); roteiro de demonstração com a parte nova, o reprocesso até a véspera (`npm --prefix backend run ingest:quotes -- --from <data> --to <véspera>` e `npm --prefix backend run ingest:indexes -- --from <data> --to <véspera>`) e a conferência da data do último fechamento na véspera e 30 min antes; clone limpo pelo README.
+Backend: conferir o backend/README.md, que o K6 já escreveu (atualização de segunda a sexta às 21:30, INGESTION_DAILY_TIME; reprocesso com ingest:quotes e ingest:indexes, o plano B da demonstração; arquivo do dia ausente fica NO_FILE em ops.ingestion_runs e é tentado de novo até INGESTION_MAX_ATTEMPTS; se não sair, rodar o reprocesso no dia seguinte), e corrigir o que o ensaio mostrar.
 Pronto quando: E2E do S1 com o S1+ verde no CI; alguém de fora sobe e usa o sistema seguindo só o README, com a data do último fechamento visível; contexto e plano atualizados com o que entrou e o que os gatilhos cortaram.
 Usuário: tag s1 no merge final; ensaio em 08/12.
 Prazo: 06/12/2026.
