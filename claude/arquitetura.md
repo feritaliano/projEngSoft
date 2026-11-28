@@ -259,7 +259,7 @@ Camadas por módulo (`domain` / `application` / `infrastructure` / `presentation
 | `portfolios` | Carteiras e propriedade | portfolios | S1 |
 | `operations` | Operações, `PositionCalculator`, posição, totais | operations | S1 |
 | `imports` | Planilha B3 | import_batches, ops.import_rows, operations (via serviço de `operations`) | S9 |
-| `market-data` | Cotações, índices, valor de mercado, alocação, rentabilidade do ativo. No S1+ (D64): portas `QuoteWriter` e `IndexValueWriter` (escritas só pela ingestão) e `LatestCloseDate` (data do último fechamento, para o K7 e o K8) | quotes, index_values (economic_indexes só via seed) | S1+ (K6, K7, K8); resto no S2 |
+| `market-data` | Cotações, índices, valor de mercado, alocação, rentabilidade do ativo. No S1+ (D64): portas `QuoteWriter` e `IndexValueWriter` (escritas só pela ingestão), `LatestCloseDate` (data do último fechamento) e as de leitura `QuoteReader` e `IndexValueReader`, pelas quais o K7 (valor de mercado, alocação, evolução e TWR da carteira, calculados na leitura em `operations`, D4) e o K8 leem fechamentos e índices | quotes, index_values (economic_indexes só via seed) | S1+ (K6, K7, K8); resto no S2 |
 | `corporate-actions` | Eventos corporativos na linha do tempo do `PositionCalculator` | corporate_events | **S2: registro manual (D29)**; S6: fonte automática |
 | `fundamentals` | Demonstrações, trimestres, indicadores, FIIs (informes mensal e trimestral), comunicados | financial_statements, statement_lines, fii_monthly_reports, fii_quarterly_reports, fii_report_properties, corporate_filings, analytics.* | S3, S8 |
 | `screening` | Ranking, filtros salvos, comparador | saved_screens, screen_criteria | S4 |
