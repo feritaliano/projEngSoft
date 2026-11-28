@@ -28,9 +28,10 @@ export function isLastDayOfMonth(date: string): boolean {
   return day === daysInMonth(year, month);
 }
 
-export function nextDay(date: string): string {
+/** The date `days` calendar days later (or earlier, if negative). */
+export function plusDays(date: string, days: number): string {
   const [year, month, day] = date.split('-').map(Number);
-  return new Date(Date.UTC(year, month - 1, day + 1))
+  return new Date(Date.UTC(year, month - 1, day + days))
     .toISOString()
     .slice(0, 10);
 }

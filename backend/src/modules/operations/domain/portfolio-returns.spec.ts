@@ -133,6 +133,7 @@ describe('portfolioPerformance (B10, D64)', () => {
         ['2025-01-15', '1'],
         ['2025-11-12', '1'],
         ['2025-11-13', '1'],
+        ['2026-11-11', '1'],
         ['2026-11-12', '1'],
       ]),
       // % a month on the 1st; 11/2026 not published yet.
@@ -167,15 +168,15 @@ describe('portfolioPerformance (B10, D64)', () => {
     });
 
     it('compounds the CDI rates dated in [from, close date), with the factors as inputs', () => {
-      // total: 15/01/2025, 12/11/2025, 13/11/2025 → 1.01³; 12 months: 12/11/2025, 13/11/2025 → 1.01².
+      // total: 15/01/2025, 12/11/2025, 13/11/2025, 11/11/2026 → 1.01⁴; 12 months: the last three → 1.01³.
       expect(round(result.total?.cdi?.value)).toBe(
-        new Decimal('1.01').pow(3).minus(1).times(100).toFixed(6),
+        new Decimal('1.01').pow(4).minus(1).times(100).toFixed(6),
       );
-      expect(round(result.last12Months?.cdi?.value)).toBe('2.010000');
+      expect(round(result.last12Months?.cdi?.value)).toBe('3.030100');
       expect(result.last12Months?.cdi?.formulaCode).toBe('CDI_RETURN');
       expect(inputsOf(result.last12Months?.cdi ?? null)).toEqual([
         ['startFactor', '1.0201', '2025-11-12'],
-        ['endFactor', '1.04060401', '2026-11-12'],
+        ['endFactor', '1.0510100501', '2026-11-11'],
       ]);
       expect(result.last12Months?.cdi?.inputs[0]).toMatchObject({
         source: 'MARKET',
@@ -294,5 +295,265 @@ describe('portfolioPerformance (B10, D64)', () => {
       null,
       null,
     ]);
+  });
+});
+
+describe('portfolioPerformance windows and coverage (D64)', () => {
+  const steady = (from: string, to: string, closes: [string, string][]) =>
+    daysOf([buy(from, '10', '10')], closes, to);
+
+  it('gives the 12 months exactly 12 months after the first operation', () => {
+    const days = steady('2025-11-12', '2026-11-12', [
+      ['2025-11-12', '10'],
+      ['2026-11-12', '12'],
+    ]);
+
+    const result = portfolioPerformance(days, NO_INDEXES, AS_OF, '2025-11-12');
+
+    expect(result.last12Months).toMatchObject({
+      from: '2025-11-12',
+      to: '2026-11-12',
+    });
+    expect(round(result.last12Months?.value.value, 2)).toBe('20.00');
+    expect(result).not.toHaveProperty('last12MonthsUnavailableReason');
+  });
+
+  it('counts the IPCA from the next month when the 12 months start on the last day of a month', () => {
+    const days = steady('2025-09-01', '2026-09-30', [
+      ['2025-09-01', '10'],
+      ['2026-09-30', '10'],
+    ]);
+    const ipca = series(
+      ['2025-09-01', '2025-10-01', '2026-09-01'].map((date) => [date, '1']),
+    );
+
+    const result = portfolioPerformance(
+      days,
+      { ...NO_INDEXES, ipca },
+      AS_OF,
+      '2025-09-01',
+    );
+
+    // From 30/09/2025 (end of day) to 30/09/2026: 10/2025 to 09/2026; 09/2025 stays out.
+    expect(inputsOf(result.last12Months?.ipca ?? null)).toEqual([
+      ['startFactor', '1.01', '2025-10-01'],
+      ['endFactor', '1.030301', '2026-09-01'],
+    ]);
+  });
+
+  it('measures a late start from the close of its first day: Ibovespa of that day, IPCA from the next', () => {
+    // Bought on 30/01 before the first close loaded, on 02/02.
+    const days = daysOf(
+      [buy('2026-01-30', '10', '10')],
+      [
+        ['2026-02-02', '10'],
+        ['2026-03-31', '11'],
+      ],
+      '2026-03-31',
+    );
+    const result = portfolioPerformance(
+      days,
+      {
+        cdi: [],
+        ipca: series([
+          ['2026-02-01', '5'],
+          ['2026-03-01', '1'],
+        ]),
+        ibov: series([
+          ['2026-01-30', '90'],
+          ['2026-02-02', '100'],
+          ['2026-03-31', '110'],
+        ]),
+      },
+      AS_OF,
+      '2026-01-30',
+    );
+
+    expect(result.total).toMatchObject({
+      from: '2026-02-02',
+      to: '2026-03-31',
+    });
+    expect(round(result.total?.value.value, 2)).toBe('10.00');
+    expect(inputsOf(result.total?.ibov ?? null)?.[0]).toEqual([
+      'startValue',
+      '100',
+      '2026-02-02',
+    ]);
+    // 02/2026 does not count whole: the window starts at the end of 02/02.
+    expect(round(result.total?.ipca?.value, 2)).toBe('1.00');
+    expect(result.last12MonthsAvailableFrom).toBe('2027-02-02');
+  });
+
+  describe('benchmarks need both ends of the window (null otherwise)', () => {
+    const days = steady('2026-03-02', '2026-04-30', [
+      ['2026-03-02', '10'],
+      ['2026-03-31', '10'],
+      ['2026-04-30', '11'],
+    ]);
+    const run = (indexes: Partial<MarketIndexes>) =>
+      portfolioPerformance(
+        days,
+        { ...NO_INDEXES, ...indexes },
+        AS_OF,
+        '2026-03-02',
+      );
+
+    it('takes a CDI that starts a few days after the start and ends a few days before the end, dated by the rates used', () => {
+      const result = run({
+        cdi: series([
+          ['2026-03-04', '1'],
+          ['2026-04-24', '1'],
+        ]),
+      });
+
+      expect(inputsOf(result.total?.cdi ?? null)).toEqual([
+        ['startFactor', '1', '2026-03-04'],
+        ['endFactor', '1.0201', '2026-04-24'],
+      ]);
+    });
+
+    it.each([
+      [
+        'starts too late',
+        [
+          ['2026-03-20', '1'],
+          ['2026-04-29', '1'],
+        ],
+      ],
+      [
+        'ends too early',
+        [
+          ['2026-03-02', '1'],
+          ['2026-04-10', '1'],
+        ],
+      ],
+    ] as [string, [string, string][]][])(
+      'leaves the CDI null when the series %s',
+      (_case, rows) => {
+        expect(run({ cdi: series(rows) }).total?.cdi).toBeNull();
+      },
+    );
+
+    it.each([
+      [
+        'has no point near the start',
+        [
+          ['2026-01-02', '90'],
+          ['2026-04-30', '100'],
+        ],
+      ],
+      [
+        'has no point near the end',
+        [
+          ['2026-02-27', '90'],
+          ['2026-04-10', '100'],
+        ],
+      ],
+      [
+        'has no point before the start',
+        [
+          ['2026-03-02', '90'],
+          ['2026-04-30', '100'],
+        ],
+      ],
+    ] as [string, [string, string][]][])(
+      'leaves the Ibovespa null when the series %s',
+      (_case, rows) => {
+        expect(run({ ibov: series(rows) }).total?.ibov).toBeNull();
+      },
+    );
+
+    it('leaves a chart point null when the last value of a benchmark is from before its month', () => {
+      const result = run({
+        cdi: series([
+          ['2026-03-02', '1'],
+          ['2026-03-30', '1'],
+          ['2026-04-01', '1'],
+        ]),
+        ibov: series([
+          ['2026-02-27', '90'],
+          ['2026-03-31', '100'],
+          ['2026-04-01', '100'],
+        ]),
+      });
+
+      // 31/03: values of March. 30/04: the last ones are of 01/04, more than 7 days before.
+      expect(
+        result.series.map((point) => [
+          point.date,
+          point.cdi !== null,
+          point.ibov !== null,
+        ]),
+      ).toEqual([
+        ['2026-03-31', true, true],
+        ['2026-04-30', false, false],
+      ]);
+    });
+
+    it('keeps the CDI of a point on the 1st, whose last rate needed is of the day before', () => {
+      const days = steady('2026-08-03', '2026-09-01', [
+        ['2026-08-03', '10'],
+        ['2026-09-01', '10'],
+      ]);
+      const result = portfolioPerformance(
+        days,
+        {
+          ...NO_INDEXES,
+          cdi: series([
+            ['2026-08-03', '1'],
+            ['2026-08-31', '1'],
+          ]),
+        },
+        AS_OF,
+        '2026-08-03',
+      );
+
+      expect(round(result.series[1].cdi, 4)).toBe('2.0100');
+    });
+
+    it('leaves a chart point null when the last value is from the month before, even within the tolerance', () => {
+      const early = steady('2026-03-02', '2026-04-02', [
+        ['2026-03-02', '10'],
+        ['2026-03-31', '10'],
+        ['2026-04-02', '11'],
+      ]);
+      const result = portfolioPerformance(
+        early,
+        {
+          ...NO_INDEXES,
+          cdi: series([
+            ['2026-03-02', '1'],
+            ['2026-03-31', '1'],
+          ]),
+          ibov: series([
+            ['2026-02-27', '90'],
+            ['2026-03-31', '100'],
+          ]),
+        },
+        AS_OF,
+        '2026-03-02',
+      );
+
+      expect(result.total?.cdi).not.toBeNull();
+      expect(result.total?.ibov).not.toBeNull();
+      expect(result.series[1]).toMatchObject({
+        date: '2026-04-02',
+        cdi: null,
+        ibov: null,
+      });
+    });
+  });
+
+  it('has no 12-month return from a zero quota (total loss), instead of dividing by zero', () => {
+    const zero = new Decimal(0);
+    const days = [
+      { date: '2025-01-02', equity: zero, invested: zero, quota: zero },
+      { date: '2026-01-05', equity: zero, invested: zero, quota: zero },
+    ];
+
+    const result = portfolioPerformance(days, NO_INDEXES, AS_OF, '2025-01-02');
+
+    expect(round(result.total?.value.value, 2)).toBe('-100.00');
+    expect(result.last12Months).toBeNull();
   });
 });

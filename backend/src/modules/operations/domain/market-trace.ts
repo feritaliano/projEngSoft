@@ -8,7 +8,7 @@ import type {
   InputName,
 } from './derived-value';
 
-// Builders of the S1+ traces (D26, D64): the input names and sources of each formulaCode listed in the contract PR.
+// Builders of the S1+ traces (D26, D64): formula codes and input names are FormulaCode and InputName of derived-value.ts.
 
 /** A derived number, full precision (RN11), dated by the day of the calculation (D54). */
 export function derivedValue(
@@ -17,6 +17,10 @@ export function derivedValue(
   inputs: readonly DerivedValueInput[],
   asOf: LocalDate,
 ): DerivedValue {
+  if (!value.isFinite()) {
+    // A division by zero that escaped a guard: a server fault (500), never a field error.
+    throw new Error(`${formulaCode} is not a finite number`);
+  }
   return {
     value: value.toFixed(),
     formulaCode,

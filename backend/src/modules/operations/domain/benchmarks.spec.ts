@@ -3,8 +3,8 @@ import { CompoundedRates, IndexLevels, wholeMonths } from './benchmarks';
 import {
   isLastDayOfMonth,
   monthStart,
-  nextDay,
   nextMonthStart,
+  plusDays,
   plusMonths,
 } from './calendar';
 
@@ -26,10 +26,11 @@ describe('calendar', () => {
     expect(nextMonthStart('2026-12-31')).toBe('2027-01-01');
   });
 
-  it('finds the next day across months and years', () => {
-    expect(nextDay('2025-11-12')).toBe('2025-11-13');
-    expect(nextDay('2026-02-28')).toBe('2026-03-01');
-    expect(nextDay('2025-12-31')).toBe('2026-01-01');
+  it('adds calendar days across months and years', () => {
+    expect(plusDays('2025-11-12', 1)).toBe('2025-11-13');
+    expect(plusDays('2026-02-28', 1)).toBe('2026-03-01');
+    expect(plusDays('2025-12-31', 1)).toBe('2026-01-01');
+    expect(plusDays('2026-03-02', -7)).toBe('2026-02-23');
   });
 
   it('tells the last day of a month', () => {
@@ -50,22 +51,23 @@ describe('CompoundedRates: CDI in % a day, IPCA in % a month', () => {
     ]),
   );
 
-  it('compounds as Π (1 + rate ÷ 100) the rates dated before a date', () => {
-    expect(cdi.factorBefore('2025-12-23').toFixed()).toBe('1');
-    expect(cdi.factorBefore('2025-12-26').toFixed()).toBe('1.00100025');
-    expect(cdi.factorBefore('2026-01-02')).toEqual(
+  it('compounds as Π (1 + rate ÷ 100) the rates dated in [from, to), with the first and last used', () => {
+    expect(cdi.usedIn('2025-12-24', '2025-12-31')).toEqual({
+      first: '2025-12-24',
+      last: '2025-12-26',
+      startFactor: new Decimal('1.0005'),
+      endFactor: new Decimal('1.0005').pow(3),
+    });
+    expect(cdi.usedIn('2025-12-01', '2026-01-02')?.endFactor).toEqual(
       new Decimal('1.0005').pow(4),
     );
+    expect(cdi.usedIn('2026-01-01', '2026-01-10')).toBeNull();
   });
 
-  it('counts the rates in [from, to)', () => {
-    expect(cdi.countIn('2025-12-24', '2025-12-31')).toBe(2);
-    expect(cdi.countIn('2026-01-01', '2026-01-10')).toBe(0);
-  });
-
-  it('knows its last date', () => {
-    expect(cdi.lastDate).toBe('2025-12-31');
-    expect(new CompoundedRates([]).lastDate).toBeNull();
+  it('knows its first and last date', () => {
+    expect([cdi.firstDate, cdi.lastDate]).toEqual(['2025-12-23', '2025-12-31']);
+    const empty = new CompoundedRates([]);
+    expect([empty.firstDate, empty.lastDate]).toEqual([null, null]);
   });
 });
 

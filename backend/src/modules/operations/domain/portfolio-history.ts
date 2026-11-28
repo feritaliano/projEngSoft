@@ -2,7 +2,7 @@ import { Decimal, toDecimal } from '../../../shared/domain/decimal';
 import type { ClosePoint } from '../../market-data/domain/market-data';
 import type { PositionState, PositionStep } from './position-calculator';
 
-/** One asset of a portfolio: the steps of its timeline (calculatePosition, chronological) and its closes up to the close date. */
+/** One asset of a portfolio: the steps of its timeline (calculatePosition, chronological, at least one) and its closes up to the close date. */
 export interface AssetHistory {
   readonly steps: readonly PositionStep[];
   /** Oldest first; empty without quote (fixed income and crypto until S11, D55). */
@@ -17,8 +17,13 @@ export interface PortfolioDay {
   readonly equity: Decimal;
   /** As PORTFOLIO_TOTAL_COST: cost of the units held (RN05, RN06). */
   readonly invested: Decimal;
-  /** TWR quota after the day, base 1 before the first operation. */
+  /** TWR quota after the day, base 1 before the first operation (or at the end of a late first day, below). */
   readonly quota: Decimal;
+  /**
+   * Only on a first day after the first operation: a quoted asset was bought before its first close, so the series
+   * starts at that close, measured from the end of the day (quota 1 at its close).
+   */
+  readonly startsAtClose?: true;
 }
 
 const ZERO = new Decimal(0);
@@ -51,9 +56,12 @@ interface Track {
 /**
  * The portfolio day by day, from its first operation to `until` (the close date): every trading day of its assets,
  * every operation date (a day without trading is valued by the previous close) and `until`. Operations after `until`
- * do not enter. The day return is (equity − previous equity − buys + sales) ÷ (previous equity + buys): buys count from
- * their executed price, so buying at 10 a stock that closes at 12 is +20% (F17), and sales count at the end of the day;
- * with nothing held and nothing bought the quota stays. Without dividends until S6.
+ * do not enter. The day return is (equity − previous equity − buys + sales) ÷ (previous equity + buys): a buy counts at
+ * its executed price plus fees and a sale at its net amount, both at the end of the day, so buying at 10 without fees
+ * a stock that closes at 12 is +20% (F17); with nothing held and nothing bought the quota stays. An asset without any
+ * close is valued at cost (D55); a quoted asset is never valued at cost: when one was bought before its first close, the
+ * days up to the latest such close are not shown and the series starts at the end of it (startsAtClose). Without
+ * dividends until S6.
  */
 export function portfolioDays(
   assets: readonly AssetHistory[],
@@ -90,6 +98,17 @@ export function portfolioDays(
     }
   }
 
+  // A quoted asset bought before its first close has no value until then: the series starts at the latest such close.
+  const lateStart =
+    tracks
+      .filter(
+        ({ steps, closes }) =>
+          closes.length > 0 && steps[0].item.date.toString() < closes[0].date,
+      )
+      .map(({ closes }) => closes[0].date)
+      .sort()
+      .pop() ?? null;
+
   const days: PortfolioDay[] = [];
   let quota = ONE;
   let previousEquity = ZERO;
@@ -122,6 +141,14 @@ export function portfolioDays(
           track.close ? track.state.quantity.value.times(track.close) : cost,
         );
       }
+    }
+    if (lateStart && date <= lateStart) {
+      if (date === lateStart) {
+        // The base: the return of this day is not measured, its close is where the quota starts.
+        days.push({ date, equity, invested, quota, startsAtClose: true });
+        previousEquity = equity;
+      }
+      continue;
     }
     const base = previousEquity.plus(buys);
     if (!base.isZero()) {

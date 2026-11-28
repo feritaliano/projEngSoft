@@ -24,6 +24,14 @@ function lowerBound(
   return low;
 }
 
+/** The rates of a window as compounded by CompoundedRates.usedIn. */
+export interface CompoundedWindow {
+  readonly first: string;
+  readonly last: string;
+  readonly startFactor: Decimal;
+  readonly endFactor: Decimal;
+}
+
 /**
  * A rate series in % per period as the BCB publishes it (SGS): CDI (12) in % a day on every banking day, trading or
  * not (24/12 and 31/12/2025 too); IPCA (433) in % a month on the 1st of the month. Compounded as Π (1 + rate ÷ 100).
@@ -43,14 +51,26 @@ export class CompoundedRates {
     this.factors = factors;
   }
 
-  /** Factor of the rates dated before `date`: what 1 at the start of the series is worth at the start of `date`. */
-  factorBefore(date: string): Decimal {
-    return this.factors[lowerBound(this.points, date)];
+  /**
+   * The rates dated in [from, toExclusive), or null without any: the first and the last one used, the factor of the
+   * rates before the first (startFactor) and up to the last, included (endFactor).
+   */
+  usedIn(from: string, toExclusive: string): CompoundedWindow | null {
+    const start = lowerBound(this.points, from);
+    const end = lowerBound(this.points, toExclusive);
+    if (end <= start) {
+      return null;
+    }
+    return {
+      first: this.points[start].date,
+      last: this.points[end - 1].date,
+      startFactor: this.factors[start],
+      endFactor: this.factors[end],
+    };
   }
 
-  /** Rates dated in [from, toExclusive). */
-  countIn(from: string, toExclusive: string): number {
-    return lowerBound(this.points, toExclusive) - lowerBound(this.points, from);
+  get firstDate(): string | null {
+    return this.points[0]?.date ?? null;
   }
 
   get lastDate(): string | null {

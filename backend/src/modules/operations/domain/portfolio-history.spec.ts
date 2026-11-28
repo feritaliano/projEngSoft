@@ -228,6 +228,63 @@ describe('portfolioDays: daily quotas with the flows on the operation dates (B10
   });
 });
 
+describe('portfolioDays with a quoted asset bought before its first close', () => {
+  // The stock was bought on 02/03 but its first close is on 04/03 (history loaded from then): it is never valued at
+  // cost. The series starts at the close of 04/03 (quota 1), and the bond, without any close, stays at cost (D55).
+  const days = portfolioDays(
+    [
+      history(
+        [buy('2026-03-02', '10', '10')],
+        [
+          ['2026-03-04', '12'],
+          ['2026-03-05', '15'],
+        ],
+      ),
+      history([buy('2026-03-03', '0.5', '2000')], []),
+    ],
+    '2026-03-05',
+  );
+
+  it('starts at the end of the first close of every quoted asset held, quota 1', () => {
+    expect(
+      days.map((day) => [
+        day.date,
+        day.equity.toFixed(),
+        round(day.quota, 4),
+        day.startsAtClose,
+      ]),
+    ).toEqual([
+      ['2026-03-04', '1120', '1.0000', true],
+      // (1150 − 1120) ÷ 1120
+      ['2026-03-05', '1150', '1.0268', undefined],
+    ]);
+  });
+
+  it('starts at the latest of those first closes when several assets were bought before theirs', () => {
+    const late = portfolioDays(
+      [
+        history([buy('2026-03-02', '1', '10')], [['2026-03-04', '10']]),
+        history([buy('2026-03-02', '1', '10')], [['2026-03-05', '10']]),
+      ],
+      '2026-03-05',
+    );
+
+    expect(late.map((day) => [day.date, day.startsAtClose])).toEqual([
+      ['2026-03-05', true],
+    ]);
+  });
+
+  it('starts normally when the first close is on the day of the buy', () => {
+    const normal = portfolioDays(
+      [history([buy('2026-03-04', '10', '10')], [['2026-03-04', '12']])],
+      '2026-03-04',
+    );
+
+    expect(normal[0]).not.toHaveProperty('startsAtClose');
+    expect(round(normal[0].quota)).toBe('1.2000000000');
+  });
+});
+
 describe('quotaAt and monthEndDays', () => {
   const days = portfolioDays(
     [
