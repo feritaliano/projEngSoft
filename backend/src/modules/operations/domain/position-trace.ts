@@ -242,7 +242,7 @@ export function positionLine(
 }
 
 /** Sum of per-asset values as a portfolio total, one `positions` input (ASSET_POSITION) per line. */
-function portfolioSum<Line extends PositionLine>(
+export function portfolioSum<Line extends PositionLine>(
   formulaCode: FormulaCode,
   lines: readonly Line[],
   valueOf: (line: Line) => DerivedValue,
@@ -264,7 +264,7 @@ function portfolioSum<Line extends PositionLine>(
   return derived(formulaCode, total, inputs, asOf);
 }
 
-function isOpen(line: PositionLine): line is OpenPositionLine {
+export function isOpen(line: PositionLine): line is OpenPositionLine {
   return line.status === 'OPEN';
 }
 
