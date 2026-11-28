@@ -74,3 +74,27 @@ export abstract class IndexValueWriter {
 export abstract class LatestCloseDate {
   abstract get(): Promise<LocalDate | null>;
 }
+
+/** A close of an asset on a trading day (quotes.close, COTAHIST, not adjusted: D64b). */
+export interface ClosePoint {
+  readonly date: string;
+  readonly close: string;
+}
+
+/** Port: reads closes (K7, K8). */
+export abstract class QuoteReader {
+  /** Closes of the assets up to `until`, oldest first; an asset without any close is absent from the map. */
+  abstract closesUntil(
+    assetIds: readonly string[],
+    until: LocalDate,
+  ): Promise<ReadonlyMap<string, readonly ClosePoint[]>>;
+}
+
+/** Port: reads index values as published (CDI % a.d., IPCA % a.m. on the 1st of the month, IBOV points). */
+export abstract class IndexValueReader {
+  /** Values of the index up to `until`, oldest first. */
+  abstract valuesUntil(
+    code: MarketIndexCode,
+    until: LocalDate,
+  ): Promise<readonly IndexPoint[]>;
+}

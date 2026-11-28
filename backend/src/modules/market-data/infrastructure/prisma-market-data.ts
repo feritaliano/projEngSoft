@@ -2,11 +2,14 @@ import { Injectable } from '@nestjs/common';
 import { LocalDate } from '../../../shared/domain/local-date';
 import { PrismaService } from '../../../shared/infrastructure/prisma/prisma.service';
 import {
+  type ClosePoint,
   type IndexPoint,
+  IndexValueReader,
   IndexValueWriter,
   LatestCloseDate,
   type MarketIndexCode,
   type QuotedAsset,
+  QuoteReader,
   QuoteWriter,
   type QuoteRow,
 } from '../domain/market-data';
@@ -86,6 +89,73 @@ export class PrismaIndexValueWriter extends IndexValueWriter {
         AS v(reference_date, value)
       ON CONFLICT (economic_index_id, reference_date) DO UPDATE SET value = EXCLUDED.value
       WHERE index_values.value IS DISTINCT FROM EXCLUDED.value`;
+  }
+}
+
+const isoDate = (date: Date) => date.toISOString().slice(0, 10);
+
+/** Closes by asset, one query (K7, K8). */
+@Injectable()
+export class PrismaQuoteReader extends QuoteReader {
+  constructor(private readonly prisma: PrismaService) {
+    super();
+  }
+
+  async closesUntil(
+    assetIds: readonly string[],
+    until: LocalDate,
+  ): Promise<ReadonlyMap<string, readonly ClosePoint[]>> {
+    const closes = new Map<string, ClosePoint[]>();
+    if (assetIds.length === 0) {
+      return closes;
+    }
+    const rows = await this.prisma.quote.findMany({
+      where: {
+        assetId: { in: [...new Set(assetIds)] },
+        quoteDate: { lte: new Date(`${until.toString()}T00:00:00.000Z`) },
+      },
+      select: { assetId: true, quoteDate: true, close: true },
+      orderBy: [{ assetId: 'asc' }, { quoteDate: 'asc' }],
+    });
+    for (const row of rows) {
+      const point = {
+        date: isoDate(row.quoteDate),
+        close: row.close.toFixed(),
+      };
+      const list = closes.get(row.assetId);
+      if (list) {
+        list.push(point);
+      } else {
+        closes.set(row.assetId, [point]);
+      }
+    }
+    return closes;
+  }
+}
+
+/** Index values by code, one query (K7, K8). */
+@Injectable()
+export class PrismaIndexValueReader extends IndexValueReader {
+  constructor(private readonly prisma: PrismaService) {
+    super();
+  }
+
+  async valuesUntil(
+    code: MarketIndexCode,
+    until: LocalDate,
+  ): Promise<readonly IndexPoint[]> {
+    const rows = await this.prisma.indexValue.findMany({
+      where: {
+        economicIndex: { code },
+        referenceDate: { lte: new Date(`${until.toString()}T00:00:00.000Z`) },
+      },
+      select: { referenceDate: true, value: true },
+      orderBy: { referenceDate: 'asc' },
+    });
+    return rows.map((row) => ({
+      date: isoDate(row.referenceDate),
+      value: row.value.toFixed(),
+    }));
   }
 }
 
