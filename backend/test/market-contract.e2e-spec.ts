@@ -16,11 +16,11 @@ describe('S1+ market routes before K7 and K8 (E2E, D64)', () => {
   const http = () => request(app.getHttpServer());
 
   const ROUTES = [
-    `/api/v1/portfolios/${ANY_PORTFOLIO}/allocation`,
-    `/api/v1/portfolios/${ANY_PORTFOLIO}/evolution`,
-    `/api/v1/portfolios/${ANY_PORTFOLIO}/performance`,
-    '/api/v1/assets/PETR4/quotes',
-    '/api/v1/assets/PETR4/performance?period=P5Y',
+    [`/api/v1/portfolios/${ANY_PORTFOLIO}/allocation`, 'K7'],
+    [`/api/v1/portfolios/${ANY_PORTFOLIO}/evolution`, 'K7'],
+    [`/api/v1/portfolios/${ANY_PORTFOLIO}/performance`, 'K7'],
+    ['/api/v1/assets/PETR4/quotes', 'K8'],
+    ['/api/v1/assets/PETR4/performance?period=P5Y', 'K8'],
   ];
 
   beforeAll(async () => {
@@ -37,21 +37,31 @@ describe('S1+ market routes before K7 and K8 (E2E, D64)', () => {
     await http().get(route).expect(401);
   });
 
-  it.each(ROUTES)('%s answers 501 in problem+json', async (route) => {
+  it.each(ROUTES)('%s answers 501 until %s', async (route, task) => {
     const response = await http()
       .get(route)
       .set('Authorization', ana.bearer)
       .expect(501);
     expect(response.headers['content-type']).toBe(PROBLEM_JSON);
-  });
-
-  it('rejects a period outside MarketPeriod with the field (D56)', async () => {
-    const response = await http()
-      .get('/api/v1/assets/PETR4/quotes?period=P3M')
-      .set('Authorization', ana.bearer)
-      .expect(400);
-    expect(response.body).toMatchObject({
-      errors: [{ field: 'period', code: 'INVALID_VALUE' }],
+    expect(response.body).toEqual({
+      type: 'about:blank',
+      title: 'Not Implemented',
+      status: 501,
+      detail: `Not implemented yet: arrives with ${task}.`,
+      instance: route.split('?')[0],
     });
   });
+
+  it.each(['quotes', 'performance'])(
+    '%s rejects a period outside MarketPeriod with the field (D56)',
+    async (route) => {
+      const response = await http()
+        .get(`/api/v1/assets/PETR4/${route}?period=P3M`)
+        .set('Authorization', ana.bearer)
+        .expect(400);
+      expect(response.body).toMatchObject({
+        errors: [{ field: 'period', code: 'INVALID_VALUE' }],
+      });
+    },
+  );
 });
