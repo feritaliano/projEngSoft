@@ -91,7 +91,34 @@ export const FORMULA_TEXTS: Record<FormulaCode, FormulaText> = {
     account: '{grossValue} − {fees} = {value}',
     explanation: 'É quanto a venda rendeu depois dos custos da nota.',
   },
+  // shortcut: codes of the S1+ contract (D64) without text until UX-2 writes them in claude/microcopy.md; W5 and W6
+  // replace these entries. No screen shows them before W5: only the fields added for K7 and K8 carry these codes.
+  ...pending([
+    'MARKET_VALUE',
+    'MARKET_VALUE_AT_COST',
+    'UNREALIZED_PROFIT',
+    'UNREALIZED_PROFIT_PERCENT',
+    'POSITION_DAY_CHANGE',
+    'POSITION_DAY_CHANGE_PERCENT',
+    'PORTFOLIO_WEIGHT',
+    'PORTFOLIO_EQUITY',
+    'PORTFOLIO_UNREALIZED_PROFIT',
+    'PORTFOLIO_UNREALIZED_PROFIT_PERCENT',
+    'ALLOCATION_VALUE',
+    'ALLOCATION_PERCENT',
+    'TWR',
+    'ASSET_DAY_CHANGE_PERCENT',
+    'ASSET_RETURN',
+    'CDI_RETURN',
+    'IBOV_RETURN',
+    'IPCA_RETURN',
+  ]),
 };
+
+function pending<C extends FormulaCode>(codes: readonly C[]): Record<C, FormulaText> {
+  const text: FormulaText = { label: '', of: '', formula: '', account: null, explanation: '' };
+  return Object.fromEntries(codes.map((code) => [code, text])) as Record<C, FormulaText>;
+}
 
 /** "Valores usados": label of each input by its `name` (section 3); `sales` and `positions` are labeled per item. */
 export const INPUT_LABELS: Record<string, string> = {

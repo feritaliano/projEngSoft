@@ -19,7 +19,7 @@ const rows = (value: DerivedValue, asset: typeof PETR4 | null = PETR4) =>
   explain({ value, asset }).rows.map((r) => ({ ...r, value: plain(r.value) }));
 
 describe('explain (C1, the 9 formulaCode of the microcopy, section 3)', () => {
-  it('has the texts of every formulaCode of the API', () => {
+  it('has the texts of the 9 formulaCode of S1; the S1+ ones wait for UX-2 (D64)', () => {
     const codes: FormulaCode[] = [
       'AVG_PRICE_BUY',
       'TOTAL_COST',
@@ -31,7 +31,10 @@ describe('explain (C1, the 9 formulaCode of the microcopy, section 3)', () => {
       'OPERATION_TOTAL_BUY',
       'OPERATION_NET_SELL',
     ];
-    expect(Object.keys(FORMULA_TEXTS).sort()).toEqual(codes.sort());
+    const withText = Object.entries(FORMULA_TEXTS)
+      .filter(([, texts]) => texts.label)
+      .map(([code]) => code);
+    expect(withText.sort()).toEqual(codes.sort());
   });
 
   it('AVG_PRICE_BUY: inputs by name and origin, intermediate PM with 4 places, no sum in the front', () => {
