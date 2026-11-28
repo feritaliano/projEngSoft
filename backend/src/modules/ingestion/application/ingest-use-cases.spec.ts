@@ -14,19 +14,35 @@ import {
   FakeSourceLocks,
   InMemoryIndexValueWriter,
   InMemoryIngestionRuns,
+  InMemoryLatestCloseDate,
   InMemoryQuoteWriter,
   InMemoryRawFiles,
 } from '../../../../test/fakes/ingestion-fakes';
 import { LocalDate } from '../../../shared/domain/local-date';
 import type { QuotedAsset } from '../../market-data/domain/market-data';
-import { DailyIngestion } from './daily-ingestion.use-case';
-import { IngestIndexes } from './ingest-indexes.use-case';
+import {
+  DailyIngestion,
+  QUOTES_CATCH_UP_MAX_DAYS,
+} from './daily-ingestion.use-case';
+import {
+  DAILY_INDEX_WINDOW_DAYS,
+  DAILY_IPCA_WINDOW_DAYS,
+  IngestIndexes,
+} from './ingest-indexes.use-case';
 import { IngestQuotes } from './ingest-quotes.use-case';
-import { IngestionRunner } from './ingestion-runner';
+import { IngestionRunner, type RunOutcome } from './ingestion-runner';
 import { LoadQuotes, QUOTES_BATCH_SIZE } from './load-quotes.use-case';
 
 const day = (iso: string) => LocalDate.parse(iso);
 const COTAHIST_TEXT = readFileSync(COTAHIST_DAILY_TXT, 'latin1');
+/** The daily COTAHIST excerpt of 25/11 moved to another trading day (header and quote dates). */
+const cotahistOf = (iso: string) => {
+  const ddmmyyyy = iso.split('-').reverse().join('');
+  return download(
+    `COTAHIST_D${ddmmyyyy}.ZIP`,
+    COTAHIST_TEXT.replaceAll('20261125', iso.replaceAll('-', '')),
+  );
+};
 
 describe('K6 ingestion use cases (fakes, no database)', () => {
   let sources: FakeMarketSources;
@@ -53,7 +69,12 @@ describe('K6 ingestion use cases (fakes, no database)', () => {
       new LoadQuotes(quoteWriter),
     );
     indexes = new IngestIndexes(runner, sources, raw, indexWriter);
-    daily = new DailyIngestion(quotes, indexes, runs);
+    daily = new DailyIngestion(
+      quotes,
+      indexes,
+      runs,
+      new InMemoryLatestCloseDate(quoteWriter),
+    );
     sources.answers.set(
       'cotahist:2026-11-25',
       download('COTAHIST_D25112026.ZIP', COTAHIST_TEXT),
@@ -278,10 +299,12 @@ describe('K6 ingestion use cases (fakes, no database)', () => {
     });
 
     it('in a daily run, a file still without the day ends as NO_FILE (tried again later)', async () => {
-      expect(await indexes.daily('B3_IBOV', day('2026-11-27'))).toMatchObject({
-        status: 'NO_FILE',
-        referenceDate: '2026-11-27',
-      });
+      expect(await indexes.daily('B3_IBOV', day('2026-11-27'))).toEqual([
+        expect.objectContaining({
+          status: 'NO_FILE',
+          referenceDate: '2026-11-27',
+        }),
+      ]);
       expect(indexWriter.values.size).toBe(0);
     });
 
@@ -307,30 +330,54 @@ describe('K6 ingestion use cases (fakes, no database)', () => {
       );
     });
 
-    it('asks the SGS for recent windows in the daily runs', async () => {
+    it('asks the SGS for windows that cover the quotes catch-up in the daily runs', async () => {
       await indexes.daily('BCB_SGS_CDI', day('2026-11-26'));
       await indexes.daily('BCB_SGS_IPCA', day('2026-11-26'));
 
       expect(sources.calls).toEqual(
         expect.arrayContaining([
-          'sgs:CDI:2026-10-27:2026-11-26',
-          'sgs:IPCA:2026-07-29:2026-11-26',
+          'sgs:CDI:2026-08-28:2026-11-26',
+          'sgs:IPCA:2026-06-29:2026-11-26',
         ]),
       );
     });
 
-    it('on the first trading day of a year, asks for the new IBOV file and the SGS window across the years', async () => {
+    it('the index windows reach back over the calendar days of the longest quotes catch-up', () => {
+      const catchUpSpan = Math.ceil(QUOTES_CATCH_UP_MAX_DAYS / 5) * 7;
+
+      expect(DAILY_INDEX_WINDOW_DAYS).toBeGreaterThanOrEqual(catchUpSpan);
+      // IPCA of a month (dated on the 1st) comes out about 40 days later.
+      expect(DAILY_IPCA_WINDOW_DAYS).toBeGreaterThanOrEqual(catchUpSpan + 45);
+    });
+
+    it('in the daily IBOV run of a day inside a year, asks only for the file of that year', async () => {
+      await indexes.daily('B3_IBOV', day('2026-11-26'));
+
+      expect(sources.calls).toEqual(['ibov:2026']);
+    });
+
+    it('on the first trading day of a year, loads the end of the previous IBOV file, asks for the new one and the SGS window across the years', async () => {
       sources.answers.set('sgs:CDI', download('cdi.json', CDI_TEXT, 'utf8'));
 
       const ibov = await indexes.daily('B3_IBOV', day('2027-01-04'));
-      const cdi = await indexes.daily('BCB_SGS_CDI', day('2027-01-04'));
+      const [cdi] = await indexes.daily('BCB_SGS_CDI', day('2027-01-04'));
 
-      expect(sources.calls).toContain('ibov:2027');
-      expect(ibov).toMatchObject({
-        status: 'NO_FILE',
-        referenceDate: '2027-01-04',
-      });
-      expect(sources.calls).toContain('sgs:CDI:2026-12-05:2027-01-04');
+      expect(sources.calls).toEqual(
+        expect.arrayContaining(['ibov:2026', 'ibov:2027']),
+      );
+      // The year that ended first; the new year last, it decides the retries.
+      expect(ibov).toEqual([
+        expect.objectContaining({
+          status: 'SUCCEEDED',
+          referenceDate: '2026-11-26',
+        }),
+        expect.objectContaining({
+          status: 'NO_FILE',
+          referenceDate: '2027-01-04',
+        }),
+      ]);
+      expect(indexWriter.values.get('IBOV|2026-11-26')).toBe('176799.84');
+      expect(sources.calls).toContain('sgs:CDI:2026-10-06:2027-01-04');
       expect(cdi.file).toMatch(/^bcb-sgs\/2027\//);
     });
 
@@ -392,6 +439,128 @@ describe('K6 ingestion use cases (fakes, no database)', () => {
       const outcomes = await daily.run(day('2026-11-25'), ['B3_COTAHIST']);
 
       expect(outcomes[0].error).toBe('boom');
+    });
+
+    describe('catch-up of the quotes (D64c)', () => {
+      /** A close of PETR4 on the date: the last close the catch-up starts after. */
+      const closeOn = (iso: string) =>
+        quoteWriter.upsert([
+          {
+            assetId: 'petr4',
+            date: iso,
+            open: '1',
+            high: '1',
+            low: '1',
+            close: '1',
+            volume: '1',
+            tradesCount: 1,
+          },
+        ]);
+      const quoteRuns = (outcomes: readonly RunOutcome[]) =>
+        outcomes
+          .filter((o) => o.source === 'B3_COTAHIST')
+          .map((o) => [o.referenceDate, o.status]);
+
+      it('loads every weekday since the last close up to the trading day; a past day without file (holiday) is skipped', async () => {
+        await closeOn('2026-11-19');
+        sources.answers.set('cotahist:2026-11-23', cotahistOf('2026-11-23'));
+        sources.answers.set('cotahist:2026-11-24', cotahistOf('2026-11-24'));
+
+        const outcomes = await daily.run(day('2026-11-25'));
+
+        expect(quoteRuns(outcomes)).toEqual([
+          ['2026-11-20', 'NO_FILE'],
+          ['2026-11-23', 'SUCCEEDED'],
+          ['2026-11-24', 'SUCCEEDED'],
+          ['2026-11-25', 'SUCCEEDED'],
+        ]);
+        expect(quoteWriter.rows.has('petr4|2026-11-23')).toBe(true);
+        expect(outcomes.slice(-3).map((o) => o.source)).toEqual([
+          'B3_IBOV',
+          'BCB_SGS_CDI',
+          'BCB_SGS_IPCA',
+        ]);
+      });
+
+      it('stops at a day that fails, so the next run starts again from it', async () => {
+        await closeOn('2026-11-20');
+        sources.answers.set(
+          'cotahist:2026-11-23',
+          new TypeError('fetch failed'),
+        );
+
+        const failed = await daily.run(day('2026-11-25'), ['B3_COTAHIST']);
+
+        expect(quoteRuns(failed)).toEqual([['2026-11-23', 'FAILED']]);
+        expect(sources.calls).not.toContain('cotahist:2026-11-24');
+
+        sources.answers.set('cotahist:2026-11-23', cotahistOf('2026-11-23'));
+        const retried = await daily.run(day('2026-11-25'), ['B3_COTAHIST']);
+
+        expect(quoteRuns(retried)).toEqual([
+          ['2026-11-23', 'SUCCEEDED'],
+          ['2026-11-24', 'NO_FILE'],
+          ['2026-11-25', 'SUCCEEDED'],
+        ]);
+      });
+
+      it(`recovers at most ${QUOTES_CATCH_UP_MAX_DAYS} weekdays per run, the oldest first, with a warning`, async () => {
+        const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
+        await closeOn('2026-01-02');
+
+        const outcomes = await daily.run(day('2026-11-25'), ['B3_COTAHIST']);
+
+        const days = quoteRuns(outcomes).map(([date]) => date);
+        expect(days).toHaveLength(QUOTES_CATCH_UP_MAX_DAYS);
+        expect(days[0]).toBe('2026-01-05');
+        expect(days.at(-1)).toBe('2026-03-27');
+        expect(warn).toHaveBeenCalledWith(
+          expect.objectContaining({
+            from: day('2026-01-05'),
+            to: day('2026-11-25'),
+            missing: 233,
+          }),
+          expect.stringContaining('ingest:quotes'),
+        );
+      });
+
+      it('nothing to recover: only the trading day, not loaded again when it already was', async () => {
+        await daily.run(day('2026-11-25'), ['B3_COTAHIST']);
+
+        const again = await daily.run(day('2026-11-25'), ['B3_COTAHIST']);
+
+        expect(again).toEqual([
+          expect.objectContaining({
+            referenceDate: '2026-11-25',
+            status: 'SUCCEEDED',
+            alreadyLoaded: true,
+          }),
+        ]);
+      });
+
+      it('a failure to read the last close is FAILED for the quotes and the other sources still run', async () => {
+        const latest = new InMemoryLatestCloseDate(quoteWriter);
+        jest.spyOn(latest, 'get').mockRejectedValue(new Error('database down'));
+        const broken = new DailyIngestion(quotes, indexes, runs, latest);
+
+        const outcomes = await broken.run(day('2026-11-25'));
+
+        expect(outcomes.map((o) => [o.source, o.status])).toEqual([
+          ['B3_COTAHIST', 'FAILED'],
+          ['B3_IBOV', 'SUCCEEDED'],
+          ['BCB_SGS_CDI', 'SUCCEEDED'],
+          ['BCB_SGS_IPCA', 'SUCCEEDED'],
+        ]);
+      });
+
+      it('isBehind: only when the quotes stop before the day (none at all is not behind)', async () => {
+        expect(await daily.isBehind(day('2026-11-25'))).toBe(false);
+
+        await closeOn('2026-11-24');
+
+        expect(await daily.isBehind(day('2026-11-25'))).toBe(true);
+        expect(await daily.isBehind(day('2026-11-24'))).toBe(false);
+      });
     });
   });
 });

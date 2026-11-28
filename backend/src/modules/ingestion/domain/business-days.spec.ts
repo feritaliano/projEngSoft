@@ -4,6 +4,7 @@ import {
   isWeekday,
   nextDailyRun,
   parseDailyTime,
+  previousDailyRun,
   toIsoDate,
   weekdaysBetween,
 } from './business-days';
@@ -86,6 +87,26 @@ describe('business days (K6)', () => {
         'UTC',
       );
       expect(next.at.toISOString()).toBe('2026-11-25T21:30:00.000Z');
+    });
+  });
+
+  describe('previousDailyRun (São Paulo): the weekday whose run a worker started now has missed', () => {
+    const previous = (now: string) =>
+      previousDailyRun(new Date(now), AT_2130, SAO_PAULO).toString();
+
+    it('is today once the time has come', () => {
+      expect(previous('2026-11-25T21:30:00-03:00')).toBe('2026-11-25');
+      expect(previous('2026-11-25T23:59:00-03:00')).toBe('2026-11-25');
+    });
+
+    it('is the previous weekday before the time, never today', () => {
+      expect(previous('2026-11-25T21:29:00-03:00')).toBe('2026-11-24');
+      expect(previous('2026-11-30T10:00:00-03:00')).toBe('2026-11-27'); // Monday → Friday
+    });
+
+    it('is Friday on the weekend, from the São Paulo date', () => {
+      expect(previous('2026-11-28T10:00:00-03:00')).toBe('2026-11-27');
+      expect(previous('2026-11-29T23:00:00-03:00')).toBe('2026-11-27');
     });
   });
 });

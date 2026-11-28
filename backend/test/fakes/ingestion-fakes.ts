@@ -1,8 +1,9 @@
 import { createHash } from 'node:crypto';
-import type { LocalDate } from '../../src/shared/domain/local-date';
+import { LocalDate } from '../../src/shared/domain/local-date';
 import {
   type IndexPoint,
   IndexValueWriter,
+  LatestCloseDate,
   type MarketIndexCode,
   type QuotedAsset,
   QuoteWriter,
@@ -199,6 +200,19 @@ export class InMemoryQuoteWriter extends QuoteWriter {
       this.rows.set(key, row);
     }
     return Promise.resolve(written);
+  }
+}
+
+/** The last quote date of an InMemoryQuoteWriter, as PrismaLatestCloseDate reads it from quotes. */
+export class InMemoryLatestCloseDate extends LatestCloseDate {
+  constructor(private readonly quotes: InMemoryQuoteWriter) {
+    super();
+  }
+
+  get(): Promise<LocalDate | null> {
+    const dates = [...this.quotes.rows.values()].map((row) => row.date).sort();
+    const last = dates.at(-1);
+    return Promise.resolve(last ? LocalDate.parse(last) : null);
   }
 }
 

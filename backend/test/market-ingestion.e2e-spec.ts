@@ -373,9 +373,9 @@ describe('Market data ingestion (integration, K6, D64)', () => {
     it('the daily run of a day not yet in the IBOV file is NO_FILE and writes nothing', async () => {
       const before = await snapshot();
 
-      expect(await indexes.daily('B3_IBOV', day('2026-11-27'))).toMatchObject({
-        status: 'NO_FILE',
-      });
+      expect(await indexes.daily('B3_IBOV', day('2026-11-27'))).toEqual([
+        expect.objectContaining({ status: 'NO_FILE' }),
+      ]);
       expect(await snapshot()).toEqual(before);
       expect(await runsOf('B3_IBOV')).toEqual([
         expect.objectContaining({
@@ -397,19 +397,59 @@ describe('Market data ingestion (integration, K6, D64)', () => {
 
     const outcomes = await app.get(DailyIngestion).run(day('2026-11-25'));
 
-    expect(outcomes.map((o) => [o.source, o.status])).toEqual([
+    // The last run of each source (the quotes also catch up the days after the seed).
+    const last = new Map(outcomes.map((o) => [o.source, o.status]));
+    expect([...last]).toEqual([
       ['B3_COTAHIST', 'SUCCEEDED'],
       ['B3_IBOV', 'SUCCEEDED'],
       ['BCB_SGS_CDI', 'SUCCEEDED'],
       ['BCB_SGS_IPCA', 'SUCCEEDED'],
     ]);
     // Old NO_FILE and FAILED gone; the old SUCCEEDED (idempotency key) and the recent NO_FILE stay.
-    expect(
-      (await runsOf('B3_COTAHIST')).map((r) => [r.status, r.referenceDate]),
-    ).toEqual([
+    const cotahist = (await runsOf('B3_COTAHIST')).map((r) => [
+      r.status,
+      r.referenceDate,
+    ]);
+    expect(cotahist.slice(0, 2)).toEqual([
       ['SUCCEEDED', '2026-01-05'],
       ['NO_FILE', '2026-11-20'],
-      ['SUCCEEDED', '2026-11-25'],
     ]);
+    expect(cotahist.at(-1)).toEqual(['SUCCEEDED', '2026-11-25']);
+  });
+
+  it('the daily ingestion recovers the trading days missed since the last close, and a second run changes nothing (D64c)', async () => {
+    answerIndexes();
+    // The seed (BD-4) has quotes up to 12/11; the fixture of 25/11 also serves as the file of 13/11.
+    await prisma.$executeRaw`DELETE FROM quotes WHERE quote_date > '2026-11-12'`;
+    sources.answers.set(
+      'cotahist:2026-11-13',
+      download(
+        'COTAHIST_D13112026.TXT',
+        readFileSync(COTAHIST_DAILY_TXT, 'latin1').replaceAll(
+          '20261125',
+          '20261113',
+        ),
+      ),
+    );
+    const daily = app.get(DailyIngestion);
+
+    const outcomes = await daily.run(day('2026-11-25'), ['B3_COTAHIST']);
+
+    // 16–24/11 have no file in the fakes: past days without file are holidays, passed.
+    expect(outcomes.map((o) => [o.referenceDate, o.status])).toEqual([
+      ['2026-11-13', 'SUCCEEDED'],
+      ...[16, 17, 18, 19, 20, 23, 24].map((d) => [`2026-11-${d}`, 'NO_FILE']),
+      ['2026-11-25', 'SUCCEEDED'],
+    ]);
+    expect(await quoteOf('PETR4', '2026-11-13')).toHaveLength(1);
+    expect(String(await app.get(LatestCloseDate).get())).toBe('2026-11-25');
+
+    const before = await snapshot();
+    const again = await daily.run(day('2026-11-25'), ['B3_COTAHIST']);
+
+    expect(again).toEqual([
+      expect.objectContaining({ status: 'SUCCEEDED', alreadyLoaded: true }),
+    ]);
+    expect(await snapshot()).toEqual(before);
   });
 });
