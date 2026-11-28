@@ -36,13 +36,11 @@ import { LoadQuotes, QUOTES_BATCH_SIZE } from './load-quotes.use-case';
 const day = (iso: string) => LocalDate.parse(iso);
 const COTAHIST_TEXT = readFileSync(COTAHIST_DAILY_TXT, 'latin1');
 /** The daily COTAHIST excerpt of 25/11 moved to another trading day (header and quote dates). */
-const cotahistOf = (iso: string) => {
-  const ddmmyyyy = iso.split('-').reverse().join('');
-  return download(
-    `COTAHIST_D${ddmmyyyy}.ZIP`,
+const cotahistOf = (iso: string) =>
+  download(
+    `COTAHIST_D${iso.split('-').reverse().join('')}.ZIP`,
     COTAHIST_TEXT.replaceAll('20261125', iso.replaceAll('-', '')),
   );
-};
 
 describe('K6 ingestion use cases (fakes, no database)', () => {
   let sources: FakeMarketSources;
