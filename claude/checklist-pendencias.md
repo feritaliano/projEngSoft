@@ -1,4 +1,4 @@
-# Checklist de pendências — S1 e S1+ (atualizado em 25/11/2026)
+# Checklist de pendências — S1 e S1+ (atualizado em 25/11/2026; caminho crítico conferido em 28/11/2026, `main` em `2870e40`)
 
 > Estado da `main` em `fb595cc` (PR #59, D63). Plano: `claude/plano-de-acao.md` (seção "S1+ (D64)"); prompts desta rodada: `claude/prompts-s1-plus-d64.md`; correções: `claude/prompts-correcao-s1-auditoria-final.md` e `claude/prompts-correcao-s1-revisao-final.md` (23/11), além das decisões ainda abertas de `claude/prompts-correcao-s1.md` (12/11). O código do S1 está completo (R1 concluído); a D64 (25/11) acrescenta o S1+ antes de 06/12: valor de mercado, alocação, evolução, rentabilidade e página do ativo com cotação.
 
@@ -13,12 +13,12 @@
 - [x] ~~Backend e frontend: D63, ordem das classes no Detalhe pelo patrimônio (#58, #59)~~.
 
 ## 2. Caminho crítico do S1+ (D64; prioridade do backend até 30/11 e do banco até 27/11)
-- [ ] **Você: DOC** (25/11): mesclar o PR da D64.
-- [ ] **Agentes de banco e de backend: BD-2 + BK-5** (25–26/11), um PR: seed depois do K5 (A-1), teste trocado, imagem fixa (N6), actions (N7).
-- [ ] **Agente de banco: BD-3** (25–26/11): domínio de `share_class` para as +33 ações que o K5 passa a gravar (BD-3; 62 = 44 por classe + 18 por formato do ticker; das 44, 8 não são ações (CPA, REC, TPR) e 3 têm ticker fora do formato (AXIA17G, AXIA19G, AXIA21G)) e `ops.ingestion_runs`.
-- [ ] **Agente de banco: BD-4** (26–27/11): histórico de cotações e de CDI, IPCA e IBOV no seed.
-- [ ] **Agente de backend: K6** (25–27/11): ingestão diária no worker (COTAHIST, BCB, IBOV).
-- [ ] **Agente de backend: contrato da API** do K7 e do K8, **mesclado até 26/11**. Se não sair, você é avisado no mesmo dia.
+- [x] **Você: DOC** (25/11): mesclar o PR da D64. **Feito (PR #61).**
+- [x] **Agentes de banco e de backend: BD-2 + BK-5** (25–26/11), um PR: seed depois do K5 (A-1), teste trocado, imagem fixa (N6), actions (N7). **Feito (PR #62, 26/11).**
+- [x] **Agente de banco: BD-3** (25–26/11): domínio de `share_class` para as +33 ações que o K5 passa a gravar (BD-3; 62 = 44 por classe + 18 por formato do ticker; das 44, 8 não são ações (CPA, REC, TPR) e 3 têm ticker fora do formato (AXIA17G, AXIA19G, AXIA21G)) e `ops.ingestion_runs`. **Feito (PR #63).**
+- [x] **Agente de banco: BD-4** (26–27/11): histórico de cotações e de CDI, IPCA e IBOV no seed. **Feito (PR #64).**
+- [x] **Agente de backend: K6** (25–27/11): ingestão diária no worker (COTAHIST, BCB, IBOV). **Feito (PR #65).**
+- [x] **Agente de backend: contrato da API** do K7 e do K8, **mesclado até 26/11**. Se não sair, você é avisado no mesmo dia. **Feito (PR #68, mesclado em 28/11, com atraso; Aviso-C dado em 27/11).**
 - [ ] **Agente de backend: K7** (B8, B9, B10, B11) e **K8** (C2, C3), 26–30/11. **K7 mesclado até 30/11**; senão, aviso no mesmo dia.
 ## 2. Agora (até 30/11)
 - [x] ~~Agente de banco: P4 (relatório da Parte 2)~~, gerado em 24/11 (`database/entrega/`).
@@ -27,7 +27,7 @@
 - [ ] **Você: PL1**, o calendário de entregas de ES (vencido em 19/11), e **PL2**, o retorno da Parte 1 de BD (se não chegar até 26/11, o P4 segue com uma nota).
 
 ## 3. Em paralelo (não passa na frente do caminho crítico)
-- [ ] **Agente de UX/UI: UX-2** (25–27/11): Lista e Detalhe no handoff até 26/11, página do ativo até 27/11, microcopy dos `formulaCode` novos.
+- [x] **Agente de UX/UI: UX-2** (25–27/11; **concluído em 28/11**, atrasado pelo contrato): microcopy dos 19 `formulaCode` (`claude/microcopy.md`, seções 12, 13 e 13.6) e handoff da Lista, do Detalhe e da página do ativo só com C2 e C3 (`claude/handoff-ux.md`, seção "S1+ (D64)", com frames, estados, mobile, gráficos acessíveis, contraste e foco e o contrato do PR #68). Libera o W5 e o W6.
 - [ ] **Agente de frontend: FE-3** (25–26/11): E2E local contra `carteira_test` documentado (N1), N2–N5, actions dos jobs `frontend` e `e2e` (N7), checklist dos PRs (N8).
 - [ ] **Agente de frontend: R1-b** (25–26/11): estados mobile com teste, projeto Playwright em 390 px com axe, checagem a 320 px (A-2, A-4).
 - [ ] **Agente de frontend: W5** (27/11–02/12): Lista e Detalhe com valor de mercado, alocação, evolução e rentabilidade (ngx-echarts).

@@ -1,6 +1,6 @@
 # Microcopy — "como foi calculado" (U4)
 
-> Criado em 31/10/2026 pelo agente de UX/UI (tarefa U4); seção 7 (ações com ícone, D51) no mesmo dia; seções 8 a 11 e códigos de `source` para o contrato do K4 em 10/11/2026; seção 10 por código de erro (D56) no mesmo dia; em 13/11/2026 (U7a), origem `FORM` da prévia, origem `ASSET_POSITION` sem repetir o ativo, estados do Resumo e seção 12 (erros de carregamento). Fonte única dos textos do `DerivedValueExplainer` (C1) e dos ⓘ do S1. O frontend gera a partir desta tabela um dicionário indexado por `formulaCode` (`frontend/src/app/shared/derived-value/microcopy.pt-BR.ts`) e não escreve esses textos nos templates (D26, arquitetura 7.5). Mudança de texto = mudança neste arquivo.
+> Criado em 31/10/2026 pelo agente de UX/UI (tarefa U4); seção 7 (ações com ícone, D51) no mesmo dia; seções 8 a 11 e códigos de `source` para o contrato do K4 em 10/11/2026; seção 10 por código de erro (D56) no mesmo dia; em 13/11/2026 (U7a), origem `FORM` da prévia, origem `ASSET_POSITION` sem repetir o ativo, estados do Resumo e seção 12 (erros de carregamento); em 28/11/2026 (UX-2, D64), seção 13 com os 19 `formulaCode` do contrato do S1+ (PR #68) e, no mesmo dia, carregando e erro dos blocos de mercado (seção 12) e resumo e tabela de dados dos gráficos (13.6). Fonte única dos textos do `DerivedValueExplainer` (C1) e dos ⓘ do S1. O frontend gera a partir desta tabela um dicionário indexado por `formulaCode` (`frontend/src/app/shared/derived-value/microcopy.pt-BR.ts`) e não escreve esses textos nos templates (D26, arquitetura 7.5). Mudança de texto = mudança neste arquivo.
 
 ## 1. Como o componente monta o painel
 O backend devolve todo número derivado como `DerivedValue` = `{ value, formulaCode, inputs: [{ name, value, source, referenceDate }], asOf }` (arquitetura, seção 7). O painel é sempre o mesmo, de cima para baixo:
@@ -63,10 +63,10 @@ O botão ⓘ ao lado de um número tem `aria-label` = "Como foi calculado: {Rót
 | Operação com data antiga | Rodapé ganha a frase: "Inclui operações lançadas depois com data anterior, recalculadas em ordem de data." (RN09) |
 
 ## 5. Termos (usar sempre os mesmos)
-preço médio (PM) · custos (corretagem e taxas) · lucro realizado · posição · posição aberta / encerrada · valor da operação · total com custos · valor líquido · carteira · corretora. Não usar: "custo médio", "taxas" sozinho, "lucro" sem "realizado", "saldo".
+preço médio (PM) · custos (corretagem e taxas) · lucro realizado · posição · posição aberta / encerrada · valor da operação · total com custos · valor líquido · carteira · corretora. S1+ (D64): patrimônio · valor de mercado · ganho ou perda não realizado · variação sobre o PM · variação do dia · % da carteira · rentabilidade (TWR) · fechamento · sem cotação. Não usar: "custo médio", "taxas" sozinho, "lucro" sem "realizado" (para o não realizado, "ganho ou perda"), "saldo", "cotação atual" ou "em tempo real" (é o fechamento do último pregão), "rendimento" para a rentabilidade da carteira.
 
 ## 6. O que não está aqui
-Textos das próximas etapas (rentabilidade, valor de mercado, proventos, metas, indicadores) entram nesta tabela quando a etapa for para o handoff.
+Valor de mercado, alocação e rentabilidade do S1+ estão na seção 13. Textos das próximas etapas (proventos, metas, indicadores) entram aqui quando a etapa for para o handoff.
 
 ## 7. Ações com ícone: tooltip e nome acessível (D51)
 Ações de linha e de cartão são só ícone (`IconButton`). O tooltip mostra o texto curto; o `aria-label` é o texto curto + o alvo, para quem usa leitor de tela saber em qual linha está agindo. `{ativo}` = ticker; sem ticker (renda fixa, D50), o nome de exibição do título (ex.: "Tesouro IPCA+ 2035"). Datas em dd/mm/aaaa.
@@ -200,4 +200,117 @@ Quando cada estado aparece: `claude/handoff-ux.md`, "Carregando e erro por tela"
 | Detalhe da carteira (4) | Calculando posições a partir das suas operações… | Não conseguimos carregar esta carteira | O servidor teve um problema. Suas operações continuam salvas. |
 | Histórico (6) | Carregando operações… (no lugar da contagem "{n} operações") | Não conseguimos carregar as operações | O servidor teve um problema. Suas operações continuam salvas. |
 | Catálogo (7) | Buscando "{termo}"… (no lugar de "{n} ativos encontrados") | Não conseguimos buscar os ativos | O servidor teve um problema. Sua busca continua no campo: tente de novo em instantes. |
+| Página do ativo (8), tela | Carregando {ticker}… | Não conseguimos carregar {ticker} | O servidor teve um problema. Tente de novo em instantes. |
+| Bloco Patrimônio somado (Lista, S1+) | Carregando o patrimônio… | — | Patrimônio somado indisponível. (link "Tentar de novo" ao lado) |
+| Bloco Patrimônio (Detalhe, S1+) | Carregando a evolução do patrimônio… | Não conseguimos carregar a evolução | O resto da carteira continua disponível. |
+| Bloco Rentabilidade (Detalhe e página do ativo, S1+) | Calculando a rentabilidade… | Não conseguimos calcular a rentabilidade | O resto da página continua disponível. |
+| Bloco Alocação (Detalhe, S1+) | Carregando a alocação… | Não conseguimos carregar a alocação | O resto da carteira continua disponível. |
+| Bloco Cotação (página do ativo, S1+) | Carregando a cotação… | Não conseguimos carregar a cotação | O resto da página continua disponível. |
 
+Nos blocos do S1+, o erro fica dentro do cartão do bloco (título do bloco visível), com o mesmo botão **Tentar de novo**, que refaz só a chamada daquele bloco (`claude/handoff-ux.md`, "Estados do S1+").
+
+## 13. S1+ (D64): mercado, alocação e rentabilidade (UX-2, 28/11/2026)
+Textos dos 19 `formulaCode` do contrato do PR #68. O painel continua o da seção 1; o que muda está abaixo. Os números de mercado usam o fechamento do último pregão da B3, nunca tempo real (D64c). Renda fixa e cripto entram pelo custo, com "sem cotação" (D55). Sem proventos, toda rentabilidade mede só o preço (D64b). As cotações do COTAHIST não são ajustadas por desdobramento ou grupamento (D64b, sem o E1).
+
+### 13.1 Mudanças no painel
+| Parte | Regra nova |
+|---|---|
+| Link de insumo derivado | O texto passa a ser **"Ver cálculo {de}"**, com `{de}` tirado da coluna **De** da tabela 13.4, que já traz a preposição e o artigo ("do valor de mercado", "da variação do dia"). Para os 9 códigos do S1, `{de}` = "do " + o rótulo em minúsculas, como hoje. Isso vale para `DERIVED`, `ASSET_POSITION` ("Posição aberta · ver cálculo {de}") e `PORTFOLIO` |
+| Valor | Percentual em pontos percentuais (`"9.84"` = 9,84%): 2 casas, com sinal ("+ 9,84%", "− 1,70%"), no painel. Na tabela e nos cartões, as casas dos frames (1 nas colunas, 2 nos totais) |
+| Notas fixas | Depois da Explicação, o painel mostra as notas da coluna **Notas** da tabela 13.4: **(P)** e **(E)** (seção 13.3) |
+| Rodapé | Pela coluna **Rodapé** da tabela 13.4 (seção 13.3). O rodapé atual (seção 2) continua para os 9 códigos do S1 |
+| Valor nulo | Número `null` não tem ⓘ. O motivo vem em `unavailableReason` (seção 13.5) |
+
+### 13.2 Origens novas e formatos dos insumos
+| Origem | Linha de origem |
+|---|---|
+| `MARKET` com `marketSource` = `B3_COTAHIST` | Fechamento de {referenceDate dd/mm/aaaa} · B3 (COTAHIST) |
+| `MARKET` com `B3_INDEX` | Pontos de {referenceDate dd/mm/aaaa} · B3 |
+| `MARKET` com `BCB_SGS`, em `CDI_RETURN` | Fator das taxas diárias do CDI até {referenceDate dd/mm/aaaa} · Banco Central (SGS) |
+| `MARKET` com `BCB_SGS`, em `IPCA_RETURN` | Fator das taxas mensais do IPCA até {referenceDate mm/aaaa} · Banco Central (SGS) |
+| `PORTFOLIO` | Rótulo do item: o nome da carteira (`portfolio.name`). Linha de origem (link): Carteira · ver cálculo do patrimônio |
+| `POSITION` em `startQuota` e `endQuota` | Calculada das suas operações e dos fechamentos até {referenceDate dd/mm/aaaa} |
+| `POSITION` em `dayBuys` e `daySales` | Suas operações de {referenceDate dd/mm/aaaa} |
+| `POSITION` nos demais insumos | Como na seção 2: Suas operações até {referenceDate dd/mm/aaaa} |
+
+O fator do CDI e do IPCA é **calculado** a partir das taxas publicadas. Por isso o texto não diz que o fator foi "publicado".
+
+| `name` | Rótulo | Formato do valor |
+|---|---|---|
+| `quantity` | Quantidade em carteira | quantidade pela classe (seção 1) |
+| `lastClose` | Último fechamento | R$, 2 casas |
+| `previousClose` | Fechamento anterior | R$, 2 casas |
+| `startClose` / `endClose` | Fechamento no início / Fechamento no fim | R$, 2 casas |
+| `totalCost` | Custo total | R$, 2 casas |
+| `marketValue` | Valor de mercado | R$, 2 casas |
+| `previousMarketValue` | Valor de mercado no pregão anterior | R$, 2 casas |
+| `dayBuys` / `daySales` | Compras do dia / Vendas do dia | R$, 2 casas |
+| `dayChange` | Variação do dia | R$ com sinal |
+| `unrealizedProfit` | Ganho ou perda não realizado | R$ com sinal |
+| `equity` | Patrimônio da carteira | R$, 2 casas |
+| `groupValue` | Valor de mercado de {classe ou setor} (nome do grupo da linha) | R$, 2 casas |
+| `startQuota` / `endQuota` | Cota no início / Cota no fim | número com 6 casas ("1,098412") |
+| `startFactor` / `endFactor` | Fator acumulado no início / Fator acumulado no fim | número com 6 casas |
+| `startValue` / `endValue` | Ibovespa no início / Ibovespa no fim | pontos, 2 casas ("128.456,78 pontos") |
+| `positions[]` | {ticker ou displayName} por item (origem `ASSET_POSITION`) | R$, 2 casas |
+| `portfolios[]` | nome da carteira por item (origem `PORTFOLIO`) | R$, 2 casas |
+
+### 13.3 Notas e rodapés
+| Código | Texto |
+|---|---|
+| Nota (P), sem proventos | Não inclui proventos (dividendos, JCP e rendimentos): mede só a variação de preço. |
+| Nota (E), sem ajuste de eventos | Os fechamentos da B3 não são ajustados por desdobramento ou grupamento. Se houve um no período, este número fica distorcido até a etapa S2. |
+| Rodapé (C), carteira com mercado | Calculado em {asOf} a partir das suas operações nesta carteira e dos fechamentos da B3. |
+| Rodapé (U), todas as carteiras | Calculado em {asOf} a partir de todas as suas carteiras e dos fechamentos da B3. |
+| Rodapé (A), ativo | Calculado em {asOf} a partir dos fechamentos publicados pela B3 (COTAHIST). |
+| Rodapé (B), CDI e IPCA | Calculado em {asOf} a partir das taxas publicadas pelo Banco Central (SGS). |
+| Rodapé (I), Ibovespa | Calculado em {asOf} a partir dos pontos do Ibovespa publicados pela B3. |
+
+### 13.4 Tabela dos códigos novos
+| `formulaCode` | Onde aparece | Rótulo | De | Fórmula | Valores usados (`name` → origem) | Conta | Explicação | Notas | Rodapé |
+|---|---|---|---|---|---|---|---|---|---|
+| `MARKET_VALUE` | Detalhe, coluna Valor de mercado; página do ativo, "Na sua carteira" | Valor de mercado | do valor de mercado | Valor de mercado = quantidade em carteira × último fechamento | `quantity` → POSITION; `lastClose` → MARKET (B3_COTAHIST) | {quantity} × {lastClose} = {value} | É quanto a sua posição valeria pelo fechamento do último pregão, antes de custos e impostos de uma venda. | E | C |
+| `MARKET_VALUE_AT_COST` | Detalhe, coluna Valor de mercado (renda fixa e cripto) | Valor de mercado (pelo custo) | do valor de mercado | Sem cotação: valor de mercado = custo total | `totalCost` → DERIVED (`TOTAL_COST`) | {totalCost} = {value} | Renda fixa e cripto ainda não têm cotação no sistema: entram pelo custo que você pagou, sem ganho ou perda de mercado. A cotação dessas classes chega na etapa S11. | — | C |
+| `UNREALIZED_PROFIT` | Detalhe, posição | Ganho ou perda não realizado | do ganho ou perda não realizado | Ganho ou perda não realizado = valor de mercado − custo total | `marketValue` → DERIVED; `totalCost` → DERIVED | {marketValue} − {totalCost} = {value} | É quanto você ganharia ou perderia se vendesse a posição pelo último fechamento, antes de custos e impostos. Só vira lucro realizado quando você vende. | E | C |
+| `UNREALIZED_PROFIT_PERCENT` | Detalhe, coluna Variação s/ PM; página do ativo, "Variação sobre o PM" | Variação sobre o PM | da variação sobre o PM | Variação sobre o PM = ganho ou perda não realizado ÷ custo total × 100 | `unrealizedProfit` → DERIVED; `totalCost` → DERIVED | {unrealizedProfit} ÷ {totalCost} × 100 = {value} | É o ganho ou a perda sobre o que você pagou. Dá o mesmo que comparar o último fechamento com o seu preço médio. | E | C |
+| `POSITION_DAY_CHANGE` | Detalhe, posição | Variação do dia | da variação do dia | Variação do dia = valor no fechamento − valor no pregão anterior − compras do dia + vendas do dia | `marketValue` → DERIVED; `previousMarketValue` → DERIVED; `dayBuys`, `daySales` → POSITION | {marketValue} − {previousMarketValue} − {dayBuys} + {daySales} = {value} | É quanto a posição ganhou ou perdeu no último pregão, sem contar como ganho o dinheiro que você pôs ou tirou nesse dia. A compra do dia conta a partir do preço que você pagou. | E | C |
+| `POSITION_DAY_CHANGE_PERCENT` | Detalhe, posição | Variação do dia (%) | da variação do dia em % | Variação do dia (%) = variação do dia ÷ (valor no pregão anterior + compras do dia) × 100 | `dayChange` → DERIVED; `previousMarketValue` → DERIVED; `dayBuys` → POSITION | {dayChange} ÷ ({previousMarketValue} + {dayBuys}) × 100 = {value} | É a variação do dia sobre o que estava aplicado nesse dia: o valor do pregão anterior mais as compras do dia. | E | C |
+| `PORTFOLIO_WEIGHT` | Detalhe, coluna % da carteira | % da carteira | do % da carteira | % da carteira = valor de mercado ÷ patrimônio × 100 | `marketValue` → DERIVED; `equity` → DERIVED | {marketValue} ÷ {equity} × 100 = {value} | É a fatia desta posição no patrimônio da carteira. Renda fixa e cripto entram pelo custo. | — | C |
+| `PORTFOLIO_EQUITY` | Lista, Patrimônio do cartão; Detalhe, indicador Patrimônio | Patrimônio | do patrimônio | Patrimônio = soma do valor de mercado das posições abertas | `positions[]` → ASSET_POSITION (link para o `MARKET_VALUE` ou o `MARKET_VALUE_AT_COST` de cada uma) | soma dos itens (sem fórmula escrita: `account` null) | É quanto valem hoje os ativos que você tem nesta carteira, pelo fechamento do último pregão. Renda fixa e cripto entram pelo custo, porque ainda não têm cotação. | E | C |
+| `PORTFOLIO_UNREALIZED_PROFIT` | Detalhe, resumo | Ganho ou perda não realizado da carteira | do ganho ou perda não realizado da carteira | Ganho ou perda não realizado = patrimônio − custo total da carteira | `equity` → DERIVED; `totalCost` → DERIVED (`PORTFOLIO_TOTAL_COST`) | {equity} − {totalCost} = {value} | É quanto a carteira ganharia ou perderia se você vendesse tudo pelo último fechamento, antes de custos e impostos. Não inclui o lucro já realizado nas vendas. | E | C |
+| `PORTFOLIO_UNREALIZED_PROFIT_PERCENT` | Detalhe, resumo | Ganho ou perda não realizado da carteira (%) | do ganho ou perda não realizado da carteira em % | Ganho ou perda (%) = ganho ou perda não realizado ÷ custo total da carteira × 100 | `unrealizedProfit` → DERIVED; `totalCost` → DERIVED | {unrealizedProfit} ÷ {totalCost} × 100 = {value} | É esse ganho ou perda sobre o que você investiu nos ativos que ainda tem. | E | C |
+| `ALLOCATION_VALUE` | Detalhe, alocação por classe e por setor | Valor de mercado de {classe ou setor} | do valor de mercado do grupo | Valor do grupo = soma do valor de mercado das posições abertas do grupo | `positions[]` → ASSET_POSITION | soma dos itens (`account` null) | Soma o valor de mercado das posições abertas desta classe ou deste setor. Ativo sem setor no cadastro entra em "Sem setor". | E | C |
+| `ALLOCATION_PERCENT` | Detalhe, alocação | % de {classe ou setor} na carteira | do % do grupo na carteira | % do grupo = valor do grupo ÷ patrimônio × 100 | `groupValue` → DERIVED; `equity` → DERIVED | {groupValue} ÷ {equity} × 100 = {value} | É a fatia do grupo no patrimônio da carteira. Não é recomendação de compra ou venda. | — | C |
+| `TWR` | Lista, Rentabilidade total e 12 meses dos cartões; Detalhe, indicadores e gráfico de rentabilidade | Rentabilidade (TWR) | da rentabilidade | Rentabilidade = (cota no fim ÷ cota no início − 1) × 100 | `startQuota`, `endQuota` → POSITION | ({endQuota} ÷ {startQuota} − 1) × 100 = {value} | Mede quanto o seu dinheiro rendeu sem contar aportes e retiradas como ganho: a cota começa em 1 e muda só com a variação de preço dos ativos. Assim a carteira pode ser comparada com o CDI, o Ibovespa e o IPCA. | P, E | C |
+| `ASSET_DAY_CHANGE_PERCENT` | Página do ativo, "no dia" do cabeçalho | Variação no dia | da variação no dia | Variação no dia = (fechamento − fechamento anterior) ÷ fechamento anterior × 100 | `lastClose`, `previousClose` → MARKET (B3_COTAHIST) | ({lastClose} − {previousClose}) ÷ {previousClose} × 100 = {value} | É quanto o preço de fechamento mudou em relação ao pregão anterior. | E | A |
+| `ASSET_RETURN` | Página do ativo, rentabilidade por período | Rentabilidade de {ticker} | da rentabilidade do ativo | Rentabilidade = (fechamento no fim ÷ fechamento no início − 1) × 100 | `startClose`, `endClose` → MARKET (B3_COTAHIST) | ({endClose} ÷ {startClose} − 1) × 100 = {value} | É a variação do preço de fechamento no período. | P, E | A |
+| `CDI_RETURN` | Detalhe e página do ativo, comparação | CDI no período | do CDI no período | CDI = (fator no fim ÷ fator no início − 1) × 100, com as taxas diárias compostas | `startFactor`, `endFactor` → MARKET (BCB_SGS) | ({endFactor} ÷ {startFactor} − 1) × 100 = {value} | É quanto rendeu o CDI no mesmo período, para comparação. As taxas diárias do Banco Central são compostas dia a dia. | — | B |
+| `IBOV_RETURN` | Detalhe e página do ativo, comparação | Ibovespa no período | do Ibovespa no período | Ibovespa = (pontos no fim ÷ pontos no início − 1) × 100 | `startValue`, `endValue` → MARKET (B3_INDEX) | ({endValue} ÷ {startValue} − 1) × 100 = {value} | É quanto variou o Ibovespa no mesmo período, para comparação. | — | I |
+| `IPCA_RETURN` | Detalhe e página do ativo, comparação | IPCA no período | do IPCA no período | IPCA = (fator no fim ÷ fator no início − 1) × 100, com as taxas mensais compostas | `startFactor`, `endFactor` → MARKET (BCB_SGS; datas em mm/aaaa) | ({endFactor} ÷ {startFactor} − 1) × 100 = {value} | É a inflação do período, para comparação: só meses inteiros, até o último IPCA publicado, sem proporcional de mês incompleto. | — | B |
+| `USER_EQUITY` | Lista, "Patrimônio somado" do cabeçalho | Patrimônio somado | do patrimônio somado | Patrimônio somado = soma do patrimônio de todas as suas carteiras | `portfolios[]` → PORTFOLIO (link para o `PORTFOLIO_EQUITY` de cada carteira) | soma dos itens (`account` null) | Soma o patrimônio de todas as suas carteiras. Carteira sem operações entra com R$ 0,00. | E | U |
+
+### 13.5 Casos de borda do S1+
+| Situação | Texto |
+|---|---|
+| `unavailableReason` = `NO_QUOTE` (renda fixa e cripto) | Na célula do número de mercado (variação sobre o PM, variação do dia, ganho ou perda): "sem cotação", sem ⓘ. O valor de mercado aparece pelo custo, com o ⓘ do `MARKET_VALUE_AT_COST`, e um rótulo pequeno "pelo custo" abaixo do valor |
+| `unavailableReason` = `SHORT_HISTORY`, Rentabilidade 12 meses da carteira | A carteira começou em {data da primeira operação}; o valor aparece a partir de {last12MonthsAvailableFrom dd/mm/aaaa}. (texto do frame do Detalhe; no cartão da Lista: "menos de 12 meses") |
+| `SHORT_HISTORY` na página do ativo, num período (`comparison` null) | Linha inteira "—" (ativo e índices). Abaixo da tabela: "Sem fechamentos suficientes para {períodos, ligados por vírgula e \"e\"}: o histórico do ativo no sistema é menor que a janela." Com esse período escolhido nos chips: cartões "—" e, no lugar do gráfico, "Sem fechamentos suficientes para {período}: o histórico do ativo no sistema é menor que a janela." |
+| Variação do dia `null` sem motivo (primeiro pregão do ativo) | "—", sem ⓘ |
+| Posição encerrada (K7: campos de mercado `null`) | "—" nas colunas de mercado, como no PM e no custo total |
+| Carteira sem posição aberta | Patrimônio R$ 0,00, com ⓘ; `positions[]` vazio: "Valores usados" mostra "Nenhuma posição aberta nesta carteira." |
+| Usuário sem carteira | Cabeçalho da Lista sem "Patrimônio somado" (estado vazio da Lista) |
+| Comparação sem dado do índice na janela | "—" na coluna do índice e, abaixo do gráfico ou da tabela: "{CDI \| Ibovespa \| IPCA} sem dado publicado para todo o período." |
+| Data e fonte do fechamento, ao lado dos números de mercado | Fechamento de {marketData.closeDate dd/mm/aaaa} · B3. Sem fechamento carregado (`closeDate` null): "Sem fechamento da B3 carregado ainda." |
+
+### 13.6 Gráficos: resumo acessível e tabela de dados
+Cada gráfico tem um resumo (`aria-label` do contêiner `role="img"`) e o botão de texto **Ver tabela de dados** / **Ocultar tabela de dados** (`aria-expanded`), que abre a tabela com a legenda (`<caption>`) abaixo. Datas dd/mm/aaaa; meses "mmm/aaaa" ("out/2026"); números como na tela.
+
+| Gráfico | Resumo (`aria-label`) | Legenda da tabela (`<caption>`) | Colunas |
+|---|---|---|---|
+| Patrimônio (Detalhe) | Patrimônio e valor aplicado de {mês inicial} a {mês final}: patrimônio {último patrimônio}, valor aplicado {último aplicado}. | Patrimônio e valor aplicado no fechamento de cada mês | Mês, Patrimônio, Valor aplicado |
+| Rentabilidade acumulada (Detalhe) | Rentabilidade acumulada de {from} a {to}: carteira {valor}, CDI {cdi}, Ibovespa {ibov}, IPCA {ipca}. | Rentabilidade acumulada da carteira e dos índices desde {from} | Mês, Carteira, CDI, Ibovespa, IPCA |
+| Alocação (Detalhe) | Sem resumo: a lista já é texto ("{classe ou setor}, {percentual}, {valor}") | — | — |
+| Cotação (página do ativo) | Fechamento de {ticker} de {primeira data} a {última data}: de {primeiro fechamento} a {último fechamento}. | Fechamento diário de {ticker} no período de {período por extenso} | Data, Fechamento |
+| Rentabilidade acumulada (página do ativo) | Rentabilidade acumulada em {período}, de {from} a {to}: {ticker} {valor}, Ibovespa {ibov}, CDI {cdi}, IPCA {ipca}. | Sem botão: a tabela "Rentabilidade por período" é a alternativa ("Ver tabela abaixo" na nota) | — |
+
+Índice sem dado no resumo: "{índice} sem dado". Período por extenso: "1 mês", "6 meses", "12 meses", "24 meses", "5 anos", "todo o histórico".
